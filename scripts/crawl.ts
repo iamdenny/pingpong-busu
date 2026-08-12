@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { inferDivisionSystem, normalizePlayerName, normalizedRecordSchema, type NormalizedRecord } from '@busu/domain';
 import { InMemoryRecordRepository } from '@busu/crawler-core';
-import { MockSourceAdapter, airpingAdapter, astreeAdapter, okpingpongAdapter, myttAdapter, superstarAdapter, ttaDivisionAdapter, yonginTtAdapter } from '@busu/source-adapters';
+import { MockSourceAdapter, airpingAdapter, astreeAdapter, ipingAdapter, okpingpongAdapter, myttAdapter, superstarAdapter, ttaDivisionAdapter, yonginTtAdapter } from '@busu/source-adapters';
 
 const args=process.argv.slice(2); const mode=args[0]??'fixture'; const value=(flag:string)=>{const index=args.indexOf(flag); return index>=0?args[index+1]:undefined;};
 const query=value('--query')??'김탁구'; const version=Number(value('--version')??'1')===2?2:1; const source=value('--source')??'mock';
@@ -16,6 +16,6 @@ const repository=new InMemoryRecordRepository(); for(const record of state.recor
 const started=performance.now();
 if(mode==='live' && process.env.CRAWL_LIVE!=='true'){ console.error('live crawling is disabled: set CRAWL_LIVE=true after policy approval'); process.exitCode=2; }
 else {
-  const adapters={mock:new MockSourceAdapter(version),airping:airpingAdapter,astree:astreeAdapter,ttadivision:ttaDivisionAdapter,okpingpong:okpingpongAdapter,mytt:myttAdapter,superstar:superstarAdapter,yongintt:yonginTtAdapter}; const adapter=adapters[source as keyof typeof adapters];
+  const adapters={mock:new MockSourceAdapter(version),airping:airpingAdapter,astree:astreeAdapter,ttadivision:ttaDivisionAdapter,okpingpong:okpingpongAdapter,mytt:myttAdapter,superstar:superstarAdapter,yongintt:yonginTtAdapter,iping:ipingAdapter}; const adapter=adapters[source as keyof typeof adapters];
   if(!adapter){console.error(`unsupported source: ${source}`);process.exitCode=2;} else try { const result=await adapter.search({name:query,normalizedName:normalizePlayerName(query),maxPages:Number(value('--maxPages')??1),live:mode==='live'},{now:()=>new Date(),timeoutMs:Number(process.env.CRAWLER_REQUEST_TIMEOUT_MS??8000),userAgent:process.env.CRAWLER_USER_AGENT??'BUSU/0.1'}); const summary=repository.upsertMany(result.records); state.records=[...repository.records.values()]; state.revisions+=repository.revisions.length; writeFileSync(statePath,JSON.stringify(state,null,2)); console.log(JSON.stringify({source:adapter.sourceCode,query,found:result.records.length,...summary,failed:0,revisions:repository.revisions.length,durationMs:Math.round(performance.now()-started)},null,2)); } catch(error){console.error(JSON.stringify({source,query,found:0,inserted:0,updated:0,unchanged:0,failed:1,error:error instanceof Error?error.message:'unknown',durationMs:Math.round(performance.now()-started)},null,2));process.exitCode=1;}
 }

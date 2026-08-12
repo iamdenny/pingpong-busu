@@ -20,7 +20,7 @@ Korean table tennis player rank and tournament record search.
 - 검색 시 저장 데이터 유무와 관계없이 활성 출처별로 갱신하고 사이트별 실시간 진행 상태 표시
 - 승인된 에어핑퐁·오케이핑퐁 공개 선수 검색을 출처별 opt-in 수집으로 제공하고, 긴급 중지 시 원문 검색 링크로 대체
 - strict TypeScript domain 정규화, 안정 해시, diff/revision 판정
-- mock adapter와 fixture crawler, synthetic fixture로 검증한 애즈트리·대한탁구협회 디비전·마이티티·슈퍼스타탁구·용인탁구협회 다음 카페 HTTP adapter
+- mock adapter와 fixture crawler, synthetic fixture로 검증한 애즈트리·대한탁구협회 디비전·마이티티·슈퍼스타탁구·용인탁구협회 다음 카페·아이핑 HTTP adapter
 - Supabase PostgreSQL migration, RLS, synthetic seed, Edge Functions
 - GitHub Actions CI, Pages 배포, 수동 crawler workflow
 
@@ -47,7 +47,7 @@ pnpm test:e2e
 
 `VITE_SUPABASE_URL` 또는 `VITE_SUPABASE_PUBLISHABLE_KEY`가 없거나 `VITE_APP_MODE=demo`이면 자동으로 demo repository를 사용합니다. 기존 프로젝트의 `VITE_SUPABASE_ANON_KEY`도 호환합니다. 화면 상단에 가상 데이터임을 표시합니다. 모든 인물과 대회는 합성 데이터입니다.
 
-로컬 전용 middleware를 사용할 때는 `.env.local`에서 `VITE_DEV_LIVE_SEARCH=true`, `CRAWL_LIVE=true`, `CRAWLER_SOURCE_ASTREE_ENABLED=true`를 함께 설정합니다. 배포된 Supabase Edge Function에서 활성 출처를 조회할 때는 `VITE_DEV_LIVE_SEARCH=false`, `VITE_SOURCE_REFRESH_ENABLED=true`로 설정하고 서버에 출처별 플래그를 둡니다. 용인탁구협회 다음 카페는 서버의 `KAKAO_REST_API_KEY`도 필요합니다. 브라우저가 외부 출처를 직접 호출하지 않으며 service key나 외부 API key도 받지 않습니다. 동일 이름은 소속별 후보로 분리하고 자동 병합하지 않습니다. `.env.local`은 배포에 포함되지 않습니다.
+로컬 전용 middleware를 사용할 때는 `.env.local`에서 `VITE_DEV_LIVE_SEARCH=true`, `CRAWL_LIVE=true`, `CRAWLER_SOURCE_ASTREE_ENABLED=true`를 함께 설정합니다. 배포된 Supabase Edge Function에서 활성 출처를 조회할 때는 `VITE_DEV_LIVE_SEARCH=false`, `VITE_SOURCE_REFRESH_ENABLED=true`로 설정하고 서버에 출처별 플래그를 둡니다. 용인탁구협회 다음 카페는 서버의 `KAKAO_REST_API_KEY`, 아이핑은 `IPING_USERNAME`과 `IPING_PASSWORD`도 필요합니다. 브라우저가 외부 출처를 직접 호출하지 않으며 service key, 외부 API key, 로그인 자격증명도 받지 않습니다. 동일 이름은 소속별 후보로 분리하고 자동 병합하지 않습니다. `.env.local`은 배포에 포함되지 않습니다.
 
 ## Supabase 설정
 
@@ -60,7 +60,7 @@ supabase functions serve
 
 [초기 migration](./supabase/migrations/202608120001_initial_schema.sql)은 테이블, index, public view, RLS를 함께 만듭니다. 브라우저에는 `VITE_SUPABASE_URL`과 publishable key만 둡니다. `SUPABASE_SERVICE_ROLE_KEY` 또는 secret key는 trusted crawler/운영 환경에서만 사용합니다. production 전환은 두 public 값을 설정하고 `VITE_APP_MODE=production`으로 빌드합니다.
 
-Supabase repository는 공개 검색/상세 view와 refresh Edge Function을 사용합니다. [두 번째 migration](./supabase/migrations/202608120002_astree_refresh.sql)이 identity, revision upsert RPC와 상세 view를 추가합니다. Edge 환경에 `CRAWL_LIVE=true`, 활성 출처별 환경 변수, `CRAWLER_USER_AGENT`를 설정하고 DB의 `sources.enabled`도 true로 둬야 실제 요청이 활성화됩니다. 마이티티는 단기 JSF 세션을 검색 요청에만 쓰고 저장하지 않으며, 슈퍼스타탁구는 공개 개인별 결과 GET 검색만 사용합니다. 용인탁구협회 카페는 카카오 공식 카페 검색 API를 검색당 1회 호출하고 용인 카페 URL만 남깁니다.
+Supabase repository는 공개 검색/상세 view와 refresh Edge Function을 사용합니다. [두 번째 migration](./supabase/migrations/202608120002_astree_refresh.sql)이 identity, revision upsert RPC와 상세 view를 추가합니다. Edge 환경에 `CRAWL_LIVE=true`, 활성 출처별 환경 변수, `CRAWLER_USER_AGENT`를 설정하고 DB의 `sources.enabled`도 true로 둬야 실제 요청이 활성화됩니다. 마이티티는 단기 JSF 세션을 검색 요청에만 쓰고 저장하지 않으며, 슈퍼스타탁구는 공개 개인별 결과 GET 검색만 사용합니다. 용인탁구협회 카페는 카카오 공식 카페 검색 API를 검색당 1회 호출하고 용인 카페 URL만 남깁니다. 아이핑은 서버 전용 계정으로 조회마다 새 PHP 세션을 만들고 CP949 검색 결과만 처리하며 세션 식별자와 자격증명은 저장하지 않습니다.
 
 선수 기록은 크롤러 확인 시각이 아니라 `대회일 → 게시일 → 확인 시각` 우선순위로 최신순 정렬합니다. 대회일과 게시일이 모두 없는 기록은 날짜가 있는 기록 뒤에 표시합니다.
 
@@ -84,7 +84,7 @@ pnpm crawl:fixture --query 김탁구 --version 2
 
 ## Live crawler 안전 정책
 
-`CRAWL_LIVE=false`가 기본입니다. 현재 production에서는 에어핑퐁·애즈트리·대한탁구협회 디비전·오케이핑퐁·마이티티·슈퍼스타탁구와 용인탁구협회 다음 카페 공개 검색을 출처별 플래그로 활성화합니다. 에어핑퐁과 오케이핑퐁은 저장소 운영자가 수집 승낙 완료를 확인한 범위에서 공개 선수 검색 결과만 처리합니다. 용인 카페는 공식 카카오 API의 무료 쿼터 안에서 `{이름} 대회` 최신 50건을 한 번 조회하고, 용인 카페 URL과 정확한 이름 근거가 있는 검색 요약만 저장합니다. 아이핑 선수 검색은 비회원 요청을 로그인 화면으로 전환하므로 출처 목록에만 표시하고 자동수집하지 않습니다. 디비전 응답의 휴대폰과 슈퍼스타의 레이팅 표는 저장하지 않습니다. 로그인/CAPTCHA/접근제어 우회와 BAND scraping은 구현하지 않으며 밴드는 사용자 검색 출처 목록에서도 제외합니다. 신규 출처는 [출처 추가 안내](./docs/adding-a-source.md)의 등록 절차와 정책 점검을 통과한 뒤 개별적으로 활성화합니다.
+`CRAWL_LIVE=false`가 기본입니다. 현재 production에서는 에어핑퐁·애즈트리·대한탁구협회 디비전·오케이핑퐁·마이티티·슈퍼스타탁구와 용인탁구협회 다음 카페 공개 검색을 출처별 플래그로 활성화합니다. 에어핑퐁과 오케이핑퐁은 저장소 운영자가 수집 승낙 완료를 확인한 범위에서 공개 선수 검색 결과만 처리합니다. 용인 카페는 공식 카카오 API의 무료 쿼터 안에서 `{이름} 대회` 최신 50건을 한 번 조회하고, 용인 카페 URL과 정확한 이름 근거가 있는 검색 요약만 저장합니다. 아이핑은 인증형 adapter 구현을 완료했지만 전용 계정 Secret, `CRAWLER_SOURCE_IPING_ENABLED=true`, DB `sources.enabled=true`를 모두 설정한 경우에만 전국오픈·시군구 입상과 출전 이력을 조회합니다. 디비전 응답의 휴대폰과 슈퍼스타의 레이팅 표는 저장하지 않습니다. CAPTCHA/MFA/접근제어 우회와 BAND scraping은 구현하지 않으며 밴드는 사용자 검색 출처 목록에서도 제외합니다. 신규 출처는 [출처 추가 안내](./docs/adding-a-source.md)의 등록 절차와 정책 점검을 통과한 뒤 개별적으로 활성화합니다.
 
 출처가 지역 칼럼을 제공하지 않을 때는 대회명과 종목명에서 `도·특별시·광역시·특별자치도 → 시·특례시·군·구`를 정규표현식으로 추출합니다. AI 판단은 사용하지 않으며, 접미사가 생략된 일부 지역 대회명만 제한된 별칭 사전을 사용합니다. 화면에서는 이를 `기록 기반 지역 추정`으로 표시하며, 동일인 병합이나 공식 거주지 판단에는 사용하지 않습니다.
 

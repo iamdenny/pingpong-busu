@@ -18,7 +18,7 @@ describe('HomePage', () => {
     expect(screen.getByText('에어핑퐁').closest('li')).toHaveTextContent('운영 설정 필요');
     expect(screen.getByText('오케이핑퐁').closest('li')).toHaveTextContent('운영 설정 필요');
     expect(screen.getByText('슈퍼스타탁구').closest('li')).toHaveTextContent('검색 중');
-    expect(screen.getByText('아이핑').closest('li')).toHaveTextContent('로그인 필요 · 자동수집 안 함');
+    expect(screen.getByText('아이핑').closest('li')).toHaveTextContent('서버 계정 설정 필요');
     expect(screen.getByText('용인탁구협회 다음 카페').closest('li')).toHaveTextContent('무료 API 키 설정 필요');
     expect(screen.queryByText('밴드')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: '마이티티 사이트 열기' })).toHaveAttribute('href', 'https://mytt.kr/');

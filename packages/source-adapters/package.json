@@ -3,8 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit", "build": "tsc --noEmit" },
-  "dependencies": { "@busu/domain": "workspace:*", "@busu/crawler-core": "workspace:*", "zod": "^4.3.6" },
-  "devDependencies": { "typescript": "^5.9.3" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@busu/crawler-core": "workspace:*",
+    "@busu/domain": "workspace:*",
+    "iconv-lite": "^0.7.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
 }

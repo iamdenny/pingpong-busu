@@ -5,3 +5,4 @@ export { parseOkPingpongSearchHtml } from '../okpingpong/parser';
 export { parseMyttSearchForm, parseMyttSearchHtml } from '../mytt/parser';
 export { parseSuperstarSearchHtml } from '../superstar/parser';
 export { parseYonginCafeSearchResponse } from '../yongintt/parser';
+export { parseIpingSearchHtml } from '../iping/parser';

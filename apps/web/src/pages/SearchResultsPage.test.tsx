@@ -34,7 +34,7 @@ describe('SearchResultsPage', () => {
     const direct = await screen.findByRole('complementary', { name: '원문 사이트 직접 검색' });
     expect(within(direct).getByRole('link', { name: '에어핑퐁' })).toHaveAttribute('href', expect.stringContaining('keyword=%EA%B9%80%ED%83%81%EA%B5%AC'));
     expect(within(direct).getByRole('link', { name: '오케이핑퐁' })).toHaveAttribute('href', expect.stringContaining('keyword=%EA%B9%80%ED%83%81%EA%B5%AC'));
-    expect(within(direct).getByRole('link', { name: '아이핑 (로그인)' })).toHaveAttribute('href', 'https://www.iping.club/index.html');
+    expect(within(direct).getByRole('link', { name: '아이핑 (로그인)' })).toHaveAttribute('href', 'https://www.iping.club/?pg=Search');
 
     const tabs = screen.getByRole('tablist', { name: '검색 결과 구분' });
     expect(within(tabs).getByRole('tab', { name: '입상 1건' })).toHaveAttribute('aria-selected', 'true');

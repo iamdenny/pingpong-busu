@@ -22,7 +22,7 @@ flowchart LR
   S --> V["Supabase public views"]
   S --> E["refresh-player Edge Function"]
   E --> A["출처별 HTTP adapter"]
-  A --> X["공개 탁구 사이트"]
+  A --> X["공개·인증형 탁구 사이트"]
   E --> P["upsert RPC / PostgreSQL"]
   P --> V
 ```
@@ -66,6 +66,7 @@ flowchart LR
 - 브라우저는 publishable key만 가진다.
 - `refresh-player`는 publishable key를 검증한 뒤 service role로 source 상태와 upsert RPC에 접근한다.
 - 외부 HTTP는 Edge Function이 수행하고 브라우저는 출처에 직접 연결하지 않는다.
+- 아이핑 자격증명은 Edge Secret에만 두고 요청마다 생성한 세션 쿠키는 조회가 끝나면 폐기한다.
 - PAT, DB password, service role key는 프런트 build 환경에 전달하지 않는다.
 
 ## 정규화와 revision

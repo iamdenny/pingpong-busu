@@ -43,14 +43,16 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 | Variable | `CRAWLER_SOURCE_YONGINTT_ENABLED` | 용인탁구협회 다음 카페 공식 검색 API adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false` |
 | Variable | `CRAWLER_SOURCE_AIRPING_ENABLED` | 에어핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false` |
 | Variable | `CRAWLER_SOURCE_OKPINGPONG_ENABLED` | 오케이핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false` |
-| Variable | `CRAWLER_SOURCE_IPING_ENABLED` | 사용하지 않음. 아이핑 선수 검색은 로그인 필요로 catalog만 유지 |
+| Variable | `CRAWLER_SOURCE_IPING_ENABLED` | 아이핑 인증형 adapter 스위치. 전용 계정 Secret 설정 전 기본 `false` |
 | Variable | `CRAWLER_USER_AGENT` | 출처 요청 식별자 |
 | Variable | `CRAWLER_SOURCE_MIN_INTERVAL_MS` | 출처별 최소 호출 간격. 기본 2초 |
 | Secret | `KAKAO_REST_API_KEY` | 카카오 공식 Daum 카페 검색 API 키. 브라우저와 로그에 노출하지 않음 |
+| Secret | `IPING_USERNAME` | 아이핑 조회 전용 최소권한 계정 ID. Supabase Edge 런타임에만 전달 |
+| Secret | `IPING_PASSWORD` | 아이핑 조회 전용 계정 비밀번호. Supabase Edge 런타임에만 전달 |
 
 GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. 커스텀 도메인은 `http://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. 이 중 source refresh 값은 브라우저에서 갱신 UI를 켜는 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다.
 
-PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키는 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 실제 크롤링은 두 variable뿐 아니라 DB의 `sources.enabled`도 명시적으로 켜야 하며, 출처 운영 허용 범위를 확인하기 전에는 활성화하지 않습니다.
+PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키와 아이핑 자격증명은 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 아이핑을 켤 때는 두 Secret을 먼저 등록한 뒤 `CRAWLER_SOURCE_IPING_ENABLED=true`, 마지막으로 DB `sources.enabled=true` 순서로 활성화합니다. 어느 하나라도 없으면 요청하지 않습니다.
 
 Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 출처별 최소 호출 간격을 적용합니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
 

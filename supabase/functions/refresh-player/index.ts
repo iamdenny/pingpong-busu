@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { parseAirpingSearchHtml, parseAstreeSearchHtml, parseMyttSearchForm, parseMyttSearchHtml, parseOkPingpongSearchHtml, parseSuperstarSearchHtml, parseTtaDivisionSearchResponse, parseYonginCafeSearchResponse } from '../_shared/generated/astree-parser.js';
+import iconv from 'npm:iconv-lite@0.7.0';
+import { parseAirpingSearchHtml, parseAstreeSearchHtml, parseIpingSearchHtml, parseMyttSearchForm, parseMyttSearchHtml, parseOkPingpongSearchHtml, parseSuperstarSearchHtml, parseTtaDivisionSearchResponse, parseYonginCafeSearchResponse } from '../_shared/generated/astree-parser.js';
 import { hasValidPublishableApiKey } from '../_shared/auth.ts';
 import { corsHeaders, json } from '../_shared/http.ts';
 import { isRecord, normalizeName } from '../_shared/normalize.ts';
@@ -7,7 +8,7 @@ import { ttaDivisionCa } from '../_shared/tta-ca.ts';
 
 const sourceCodes = ['mock', 'airping', 'astree', 'ttadivision', 'okpingpong', 'mytt', 'superstar', 'yongintt', 'iping', 'band'] as const;
 type SourceCode = typeof sourceCodes[number];
-type LiveSourceCode = Exclude<SourceCode, 'mock' | 'iping' | 'band'>;
+type LiveSourceCode = Exclude<SourceCode, 'mock' | 'band'>;
 interface RefreshInput { name: string; club?: string; region?: string; sourceCodes?: SourceCode[]; force: boolean; }
 
 class SafeSourceError extends Error {
@@ -22,6 +23,7 @@ const sourceFlags: Record<LiveSourceCode, string> = {
   mytt: 'CRAWLER_SOURCE_MYTT_ENABLED',
   superstar: 'CRAWLER_SOURCE_SUPERSTAR_ENABLED',
   yongintt: 'CRAWLER_SOURCE_YONGINTT_ENABLED',
+  iping: 'CRAWLER_SOURCE_IPING_ENABLED',
 };
 
 const parserVersions: Record<LiveSourceCode, string> = {
@@ -32,6 +34,7 @@ const parserVersions: Record<LiveSourceCode, string> = {
   mytt: 'mytt-2',
   superstar: 'superstar-1',
   yongintt: 'yongintt-1',
+  iping: 'iping-1',
 };
 
 function parseInput(value: unknown): RefreshInput {
@@ -146,6 +149,90 @@ async function fetchYonginCafeRecords(name: string, fetchedAt: string): Promise<
   return parsed.records;
 }
 
+const ipingBaseUrl = 'https://www.iping.club/';
+const ipingUnescapedByte = /^[A-Za-z0-9_.~-]$/u;
+
+function encodeIpingComponent(value: string): string {
+  return [...iconv.encode(value, 'cp949')]
+    .map((byte) => {
+      const character = String.fromCharCode(byte);
+      return ipingUnescapedByte.test(character) ? character : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`;
+    })
+    .join('');
+}
+
+function encodeIpingForm(fields: Readonly<Record<string, string>>): string {
+  return Object.entries(fields).map(([key, value]) => `${encodeIpingComponent(key)}=${encodeIpingComponent(value)}`).join('&');
+}
+
+function ipingCookie(response: Response): string | undefined {
+  return response.headers.get('set-cookie')?.split(';', 1)[0];
+}
+
+async function decodeIpingResponse(response: Response): Promise<string> {
+  return iconv.decode(new Uint8Array(await response.arrayBuffer()), 'cp949');
+}
+
+function assertIpingHtmlResponse(response: Response, label: string): void {
+  if (response.status === 403) throw new SafeSourceError('source_blocked', '아이핑 접근이 차단되었습니다.');
+  if (response.status === 429) throw new SafeSourceError('source_rate_limited', '아이핑 요청 제한에 도달했습니다.');
+  if (!response.ok) throw new Error(`아이핑 ${label} HTTP ${response.status}`);
+  if (!(response.headers.get('content-type') ?? '').toLocaleLowerCase().includes('text/html')) throw new Error(`아이핑 ${label} 검색 구조 변경`);
+}
+
+async function fetchIpingRecords(name: string, fetchedAt: string): Promise<Array<Record<string, unknown>>> {
+  const username = Deno.env.get('IPING_USERNAME');
+  const password = Deno.env.get('IPING_PASSWORD');
+  if (!username || !password) throw new SafeSourceError('source_not_configured', '아이핑 전용 계정 Secret이 설정되지 않았습니다.');
+  const userAgent = Deno.env.get('CRAWLER_USER_AGENT') ?? 'BUSU/0.1';
+  const baseHeaders = { accept: 'text/html', 'accept-encoding': 'identity', 'user-agent': userAgent };
+  const loginUrl = `${ipingBaseUrl}?pg=login`;
+  const loginPage = await fetch(loginUrl, { signal: AbortSignal.timeout(8000), headers: baseHeaders, redirect: 'manual' });
+  assertIpingHtmlResponse(loginPage, '로그인 화면');
+  const initialCookie = ipingCookie(loginPage);
+  if (!initialCookie) throw new SafeSourceError('source_schema_changed', '아이핑 로그인 세션 구조 점검이 필요합니다.');
+  const loginResponse = await fetch(loginUrl, {
+    method: 'POST',
+    signal: AbortSignal.timeout(8000),
+    redirect: 'manual',
+    body: encodeIpingForm({ path: '', pg: 'login', Mid: username, Pwd: password }),
+    headers: { ...baseHeaders, cookie: initialCookie, referer: loginUrl, 'content-type': 'application/x-www-form-urlencoded; charset=euc-kr' },
+  });
+  if (loginResponse.status === 403) throw new SafeSourceError('source_blocked', '아이핑 접근이 차단되었습니다.');
+  if (loginResponse.status === 429) throw new SafeSourceError('source_rate_limited', '아이핑 요청 제한에 도달했습니다.');
+  if (loginResponse.status >= 400) throw new Error(`아이핑 로그인 HTTP ${loginResponse.status}`);
+  const sessionCookie = ipingCookie(loginResponse) ?? initialCookie;
+  const destination = new URL(
+    loginResponse.status >= 300 && loginResponse.status < 400 ? loginResponse.headers.get('location') ?? '/' : '/',
+    ipingBaseUrl,
+  ).toString();
+  const verificationResponse = await fetch(destination, { signal: AbortSignal.timeout(8000), headers: { ...baseHeaders, cookie: sessionCookie, referer: loginUrl }, redirect: 'follow' });
+  assertIpingHtmlResponse(verificationResponse, '로그인 확인');
+  const verificationHtml = await decodeIpingResponse(verificationResponse);
+  if (/자동등록방지|Please prove that you are human/iu.test(verificationHtml)) throw new SafeSourceError('source_blocked', '아이핑 사람 확인 절차가 필요합니다.');
+  if (!verificationHtml.includes('mb_logout.php')) throw new SafeSourceError('source_auth_failed', '아이핑 계정 인증에 실패했습니다.');
+
+  const search = async (suffix: string): Promise<string> => {
+    const query = encodeIpingForm({ pg: 'Search', SchVal: name });
+    const response = await fetch(`${ipingBaseUrl}?${query}${suffix}`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { ...baseHeaders, cookie: sessionCookie, referer: `${ipingBaseUrl}?pg=Search` },
+      redirect: 'follow',
+    });
+    assertIpingHtmlResponse(response, '선수 검색');
+    const html = await decodeIpingResponse(response);
+    if (/자동등록방지|Please prove that you are human/iu.test(html)) throw new SafeSourceError('source_blocked', '아이핑 사람 확인 절차가 필요합니다.');
+    if (html.includes('name="Mid"') && html.includes('name="Pwd"')) throw new SafeSourceError('source_auth_failed', '아이핑 인증 세션이 만료되었습니다.');
+    return html;
+  };
+  const [entriesHtml, nationwideAwardsHtml, districtAwardsHtml] = await Promise.all([search('&B=Y'), search('&Ctype=A'), search('&Ctype=B')]);
+  return [
+    ...(parseIpingSearchHtml(entriesHtml, name, fetchedAt, 'entry') as Array<Record<string, unknown>>),
+    ...(parseIpingSearchHtml(nationwideAwardsHtml, name, fetchedAt, 'award') as Array<Record<string, unknown>>),
+    ...(parseIpingSearchHtml(districtAwardsHtml, name, fetchedAt, 'award') as Array<Record<string, unknown>>),
+  ];
+}
+
 async function fetchMyttRecords(name: string, club: string | undefined, fetchedAt: string): Promise<Array<Record<string, unknown>>> {
   const url = 'https://mytt.kr/main/player_list.xhtml';
   const userAgent = Deno.env.get('CRAWLER_USER_AGENT') ?? 'BUSU/0.1';
@@ -221,8 +308,8 @@ Deno.serve(async (request) => {
         results.push({ sourceCode, status: 'succeeded', inserted: 0, updated: 0, unchanged: 0, synthetic: true });
         continue;
       }
-      if (sourceCode === 'band' || sourceCode === 'iping') {
-        results.push({ sourceCode, status: 'skipped', reason: sourceCode === 'band' ? 'manual_only' : 'authentication_required' });
+      if (sourceCode === 'band') {
+        results.push({ sourceCode, status: 'skipped', reason: 'manual_only' });
         continue;
       }
       const liveSourceCode = sourceCode as LiveSourceCode;
@@ -276,6 +363,8 @@ Deno.serve(async (request) => {
           records.push(...await fetchSuperstarRecords(input.name, fetchedAt));
         } else if (sourceCode === 'yongintt') {
           records.push(...await fetchYonginCafeRecords(input.name, fetchedAt));
+        } else if (sourceCode === 'iping') {
+          records.push(...await fetchIpingRecords(input.name, fetchedAt));
         } else {
           records.push(...await fetchSimpleHtmlRecords(sourceCode, input.name, fetchedAt));
         }

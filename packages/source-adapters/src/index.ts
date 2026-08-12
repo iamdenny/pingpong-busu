@@ -14,6 +14,9 @@ export * from './superstar/adapter';
 export * from './superstar/parser';
 export * from './yongintt/adapter';
 export * from './yongintt/parser';
+export * from './iping/adapter';
+export * from './iping/encoding';
+export * from './iping/parser';
 
 import { DisabledSourceAdapter } from './skeleton';
 import { AstreeSourceAdapter } from './astree/adapter';
@@ -23,6 +26,7 @@ import { OkPingpongSourceAdapter } from './okpingpong/adapter';
 import { MyttSourceAdapter } from './mytt/adapter';
 import { SuperstarSourceAdapter } from './superstar/adapter';
 import { YonginTtSourceAdapter } from './yongintt/adapter';
+import { IpingSourceAdapter } from './iping/adapter';
 export const airpingAdapter = new AirpingSourceAdapter(process.env.CRAWLER_SOURCE_AIRPING_ENABLED === 'true');
 export const astreeAdapter = new AstreeSourceAdapter(process.env.CRAWLER_SOURCE_ASTREE_ENABLED === 'true');
 export const ttaDivisionAdapter = new TtaDivisionSourceAdapter(process.env.CRAWLER_SOURCE_TTADIVISION_ENABLED === 'true');
@@ -33,5 +37,10 @@ export const yonginTtAdapter = new YonginTtSourceAdapter(
   process.env.CRAWLER_SOURCE_YONGINTT_ENABLED === 'true',
   process.env.KAKAO_REST_API_KEY,
 );
-export const ipingAdapter = new DisabledSourceAdapter('iping', 'browser', 'auth-required-0');
+export const ipingAdapter = new IpingSourceAdapter(
+  process.env.CRAWLER_SOURCE_IPING_ENABLED === 'true',
+  process.env.IPING_USERNAME && process.env.IPING_PASSWORD
+    ? { username: process.env.IPING_USERNAME, password: process.env.IPING_PASSWORD }
+    : undefined,
+);
 export const bandAdapter = new DisabledSourceAdapter('band', 'manual');

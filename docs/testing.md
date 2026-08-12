@@ -27,6 +27,7 @@ title: '테스트 전략'
 - 빈 결과는 `[]`, 필수 식별자/열 누락은 schema 또는 parse error로 처리한다.
 - parser 동작이 바뀌면 fixture test와 parser version을 함께 올린다.
 - Edge generated bundle은 workspace parser test가 기준이다.
+- CP949/EUC-KR 출처는 검색어 인코딩과 응답 디코딩도 별도 unit test로 고정한다.
 
 ## 필수 게이트
 

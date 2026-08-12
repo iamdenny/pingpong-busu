@@ -1,0 +1,27 @@
+{
+  "$schema": "./aio-config.schema.md",
+  "base_branch": "main",
+  "default_assignees": ["iamdenny"],
+  "title_prefix": {
+    "root": "PingpongBusu",
+    "scope_rules": {}
+  },
+  "labels": {
+    "user_based": {},
+    "path_based": {},
+    "special": []
+  },
+  "reviewers": {
+    "default": [],
+    "path_based": {}
+  },
+  "project_paths": {},
+  "test_commands": {},
+  "release_notes": {
+    "format": "monolingual",
+    "languages": ["ko"],
+    "tag_pattern": "v*"
+  },
+  "wiki": {},
+  "hooks": {}
+}

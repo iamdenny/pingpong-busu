@@ -163,7 +163,7 @@ title: 'BUSU 제품 스펙'
 | `superstar` | 슈퍼스타탁구 | HTTP GET | 활성 opt-in | 개인별 결과만 저장, 레이팅 제외 |
 | `airping` | 에어핑퐁 | HTTP | parser 준비, 운영 비활성 | 재사용 승낙 필요 |
 | `okpingpong` | 오케이핑퐁 | HTTP | parser 준비, 운영 비활성 | 재사용 승낙 필요 |
-| `iping` | 아이핑 | 인증 필요 | 운영 비활성 | 비회원 선수 검색이 로그인으로 전환됨 |
+| `iping` | 아이핑 | 서버 인증형 HTTP | 운영 비활성 | 전용 계정 Secret 설정 후 전국오픈·시군구 입상과 출전 이력 조회 |
 | `band` | 밴드 | 없음 | 사용자 목록 제외 | scraping 금지 |
 | `mock` | 가상 출처 | fixture | 개발 전용 | 실제 데이터와 badge로 구분 |
 
