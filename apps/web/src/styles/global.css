@@ -222,7 +222,7 @@ p {
   background: transparent;
   color: var(--primary);
   text-decoration: underline;
-  min-height: 44px;
+  min-height: 48px;
 }
 .source-overview {
   background: #eef4ff;

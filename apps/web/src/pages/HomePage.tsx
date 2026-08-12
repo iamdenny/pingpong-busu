@@ -8,6 +8,7 @@ import { playerRepository } from "../lib/runtime";
 const homeTitle = "BUSU · 탁구 선수 부수·입상 기록 통합검색";
 const homeDescription =
   "여러 탁구 대회 사이트의 선수 부수, 출전·입상 기록과 원문 출처를 한곳에서 검색하고 비교하세요.";
+const exampleQueries = ["김탁구", "이라켓", "김탁구 용인"] as const;
 
 const statusText = (
   sourceCode: string,
@@ -53,8 +54,17 @@ export function HomePage() {
         />
         <div className="examples">
           예시 검색어:{" "}
-          <button onClick={() => navigate("/search?q=김탁구")}>김탁구</button>
-          <button onClick={() => navigate("/search?q=이라켓")}>이라켓</button>
+          {exampleQueries.map((query) => (
+            <button
+              key={query}
+              type="button"
+              onClick={() =>
+                navigate(`/search?q=${encodeURIComponent(query)}`)
+              }
+            >
+              {query}
+            </button>
+          ))}
         </div>
       </section>
       {sources.data && (

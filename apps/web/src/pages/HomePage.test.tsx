@@ -1,8 +1,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { HomePage } from "./HomePage";
+
+function SearchQueryProbe() {
+  const location = useLocation();
+  return (
+    <output data-testid="search-query">
+      {new URLSearchParams(location.search).get("q")}
+    </output>
+  );
+}
 
 describe("HomePage", () => {
   it("keeps source details compact and reveals statuses with URLs", async () => {
@@ -53,5 +63,23 @@ describe("HomePage", () => {
     expect(
       screen.getByRole("link", { name: "마이티티 사이트 열기" }),
     ).toHaveAttribute("href", "https://mytt.kr/");
+  });
+
+  it("offers name and name-plus-region example searches", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <HomePage />
+          <SearchQueryProbe />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "김탁구" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "이라켓" })).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "김탁구 용인" }),
+    );
+    expect(screen.getByTestId("search-query")).toHaveTextContent("김탁구 용인");
   });
 });

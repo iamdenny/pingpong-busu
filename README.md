@@ -13,6 +13,7 @@ Korean table tennis player rank and tournament record search.
 - 탁구 라켓과 부수 단계를 결합한 BUSU 심볼, 브라우저 파비콘과 홈 헤더 브랜딩
 - 홈·검색 결과·선수 상세별 의미 있는 title, description, canonical, Open Graph와 Twitter 메타데이터
 - 환경 변수 없이 동작하는 한국어 demo 검색 결과 3건(가상 선수)
+- 홈의 `김탁구`, `이라켓`, `김탁구 용인` 빠른 예시 검색
 - 검색 결과 상단의 최근 공개 기록 기반 오픈·통합·지역·디비전부수별 추정 분포와 `통합부수 여자6부` 형식의 여자 종목 표기
 - 김탁구 동명이인 2명의 지역·소속 분리
 - `김미진 용인`처럼 이름 뒤에 지역을 붙이는 동명이인 필터
