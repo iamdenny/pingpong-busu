@@ -64,6 +64,15 @@ describe("SearchResultsPage", () => {
     expect(
       screen.queryByRole("link", { name: "상세 보기" }),
     ).not.toBeInTheDocument();
+    const playerCard = screen
+      .getByRole("link", {
+        name: "김탁구 서울 스핀탁구클럽 상세 기록 보기",
+      })
+      .querySelector("article");
+    expect(playerCard?.querySelector(".candidate-card__footer")).toBeNull();
+    expect(
+      playerCard?.querySelector(".candidate-card__meta"),
+    ).toHaveTextContent("최근 확인");
 
     const summary = screen.getByRole("region", { name: "현재 추정 부수" });
     expect(

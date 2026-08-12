@@ -389,7 +389,7 @@ export function SearchResultsPage() {
                 <div className="avatar" aria-hidden="true">
                   {player.name.slice(0, 1)}
                 </div>
-                <div>
+                <div className="candidate-card__summary">
                   <div className="candidate-name-row">
                     <h2>{player.name}</h2>
                     <span
@@ -408,9 +408,20 @@ export function SearchResultsPage() {
                     · {player.club ?? "소속 미상"}
                   </p>
                 </div>
-                <span className={`identity identity--${player.identityStatus}`}>
-                  {identityText[player.identityStatus]}
-                </span>
+                <div className="candidate-card__meta">
+                  <span
+                    className={`identity identity--${player.identityStatus}`}
+                  >
+                    {identityText[player.identityStatus]}
+                  </span>
+                  <span className="candidate-card__checked">
+                    최근 확인{" "}
+                    {new Intl.DateTimeFormat("ko-KR", {
+                      dateStyle: "medium",
+                    }).format(new Date(player.lastCheckedAt))}
+                    <ChevronRight aria-hidden="true" size={17} />
+                  </span>
+                </div>
               </div>
               <dl className="stats">
                 <div>
@@ -440,15 +451,6 @@ export function SearchResultsPage() {
                   <dd>{player.sourceCount}곳</dd>
                 </div>
               </dl>
-              <div className="candidate-card__footer">
-                <span>
-                  최근 확인{" "}
-                  {new Intl.DateTimeFormat("ko-KR", {
-                    dateStyle: "medium",
-                  }).format(new Date(player.lastCheckedAt))}
-                </span>
-                <ChevronRight aria-hidden="true" size={20} />
-              </div>
             </article>
           </Link>
         ))}
