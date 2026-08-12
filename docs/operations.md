@@ -1,3 +1,11 @@
+---
+summary: 'Supabase와 GitHub 배포, 출처 장애, 환경 전환과 데이터 보존 절차를 설명한다.'
+read_when:
+  - production을 배포하거나 운영할 때
+  - 출처 장애나 DB 용량 문제에 대응할 때
+title: '운영'
+---
+
 # 운영
 
 ## 출처 장애
@@ -36,11 +44,11 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 | Variable | `CRAWLER_USER_AGENT` | 출처 요청 식별자 |
 | Variable | `CRAWLER_SOURCE_MIN_INTERVAL_MS` | 출처별 최소 호출 간격. 기본 2초 |
 
-GitHub Pages의 `github-pages` environment에는 `VITE_SOURCE_REFRESH_ENABLED=true`를 추가해야 검색 화면이 Edge Function에 갱신을 요청합니다. 이 값은 브라우저에서 갱신 UI를 켜는 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다.
+GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. 커스텀 도메인은 `http://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. 이 중 source refresh 값은 브라우저에서 갱신 UI를 켜는 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다.
 
 PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 실제 크롤링은 두 variable뿐 아니라 DB의 `sources.enabled`도 명시적으로 켜야 하며, 출처 운영 허용 범위를 확인하기 전에는 활성화하지 않습니다.
 
-Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 공개 클라이언트가 강제 갱신으로 cooldown을 우회하지 못하도록 `force` 입력은 서버에서 무시합니다. 같은 이름은 6시간 동안 저장 결과를 재사용하고, 서로 다른 이름 요청도 출처별 최소 호출 간격으로 제한합니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA나 별도 gateway rate limit을 추가합니다.
+Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 출처별 최소 호출 간격을 적용합니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
 
 [source catalog migration](../supabase/migrations/202608120003_source_catalog.sql)은 production DB에 기본 source 메타데이터를 생성하고, 후속 migration이 검증을 마친 출처를 개별 활성화합니다. 합성 선수와 대회 데이터는 `seed.sql`에 남아 있어 `db push` production 배포에는 포함되지 않습니다.
 

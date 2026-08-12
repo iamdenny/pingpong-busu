@@ -6,6 +6,8 @@ Korean table tennis player rank and tournament record search.
 
 여러 탁구 대회 사이트에 흩어진 선수의 출전 부수, 입상 기록, 소속 이력과 출처를 한곳에서 조회하고 비교합니다. BUSU는 부수를 판정하는 서비스가 아니라 판단 근거를 모으는 서비스입니다.
 
+현재 구현의 사용자 흐름·도메인 규칙·수용 조건은 [제품 스펙](./docs/product-spec.md), 전체 문서 목록은 [문서 인덱스](./docs/README.md)를 참고하세요.
+
 ## 현재 MVP
 
 - 환경 변수 없이 동작하는 한국어 demo 검색 결과 3건(가상 선수)
@@ -61,7 +63,7 @@ Supabase repository는 공개 검색/상세 view와 refresh Edge Function을 사
 
 입상 기록은 공개 결과가 우승·준우승·1~3위·2강·4강으로 표시된 경우만 집계합니다. 8강 이하, 예선·본선 진출 등은 전체 이력에는 남기되 입상 건수에는 포함하지 않습니다.
 
-부수는 값(`4부`, `A부`, `T5` 등)과 체계(`open`, `integrated`, `women`, `regional`, `division`)를 별도로 저장합니다. 대한탁구협회 디비전은 공개 선수조회에 표시되는 T1~T7 등급을 `division`으로 저장합니다. 일반 숫자 부수는 시·군·구 같은 지역명과 무관하게 `integrated`로 분류하고, 대회명·종목명에 `오픈`이 명시된 경우만 `open`으로 분류합니다. `women`·`regional`은 해당 부수 체계가 명시된 경우에만 사용하며, 부수 값 자체가 없으면 `체계 확인 필요`로 표시합니다.
+부수는 값(`4부`, `A부`, `T5` 등)과 체계(`open`, `integrated`, `women`, `regional`, `division`)를 별도로 저장합니다. 대한탁구협회 디비전은 공개 선수조회에 표시되는 T1~T7 등급을 `division`으로 저장합니다. 참가 종목에 `여자` 또는 `여성`이 있으면 `women`으로 우선 분류합니다. 일반 숫자 부수는 시·군·구 같은 지역명과 무관하게 `integrated`로 분류하고, 대회명·종목명에 `오픈`이 명시된 경우만 `open`으로 분류합니다. `regional`은 지역부수 체계가 명시된 경우에만 사용하며, 부수 값 자체가 없으면 `체계 확인 필요`로 표시합니다.
 
 ## Fixture crawler
 
@@ -81,7 +83,7 @@ pnpm crawl:fixture --query 김탁구 --version 2
 
 ## GitHub Pages
 
-Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니다. main push 시 `/pingpong-busu/` base로 demo build가 배포됩니다. production이면 repository variables에 `VITE_APP_MODE=production`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. publishable key는 브라우저 공개용 값이며, service role/secret key는 Pages workflow에 넣지 않습니다.
+Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니다. 현재 커스텀 도메인 `http://busu.iamdenny.com/`은 asset base `/`로 배포합니다. production repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. `http://iamdenny.com/pingpong-busu/`은 커스텀 도메인으로 이동하는 이전 진입점입니다. publishable key는 브라우저 공개용 값이며, service role/secret key는 Pages workflow에 넣지 않습니다.
 
 ## 서버 배포
 
@@ -101,12 +103,13 @@ docs                 설계·정책·운영 문서
 
 ## 개인정보와 한계
 
-전화번호, 이메일, 전체 생년월일, 주소와 원본 HTML/이미지/PDF를 저장하지 않습니다. 이름만 같은 선수를 자동 병합하지 않습니다. 애즈트리 외 실사이트 parser, 운영자 인증, 정정 요청 UI, 공식 부수 판정은 없습니다. 애즈트리 운영 활성화에는 출처 운영자 확인과 실제 Supabase project가 필요합니다. 라이선스는 아직 결정되지 않음.
+전화번호, 이메일, 전체 생년월일, 주소와 원본 HTML/이미지/PDF를 저장하지 않습니다. 이름만 같은 선수를 자동 병합하지 않습니다. 운영자 인증, 정정 요청 UI, 동명이인 관리자 merge/split, 공식 부수 판정은 없습니다. 실출처 운영 활성화에는 출처별 정책 확인과 실제 Supabase project가 필요합니다. 라이선스는 아직 결정되지 않음.
 
 ## Roadmap
 
-1. 애즈트리 운영자 확인과 실제 Supabase refresh end-to-end 검증
-2. 허용 범위를 확인한 두 번째 HTTP source adapter
-3. 관리자용 동명이인 merge/split 검토
+1. 공개 refresh abuse control과 운영 모니터링 강화
+2. 출처 운영 허용 범위의 정기 재검토와 허용된 source 확대
+3. 관리자용 동명이인 merge/split 검토와 감사 이력
+4. 대회별 최소 출전 가능 부수 규칙 엔진
 
 기여 규칙은 [CONTRIBUTING.md](./CONTRIBUTING.md), 전체 방향은 [MVP 범위](./docs/mvp-scope.md)와 [roadmap](./docs/roadmap.md)을 참고하세요.

@@ -1,0 +1,34 @@
+# Design System: BUSU Web
+
+**Project ID:** web
+
+BUSU는 기록 근거를 빠르게 비교하는 차분하고 신뢰감 있는 검색 도구다. 장식보다 정보 위계를 우선하고, 밝은 청색 강조과 넉넉한 흰 배경으로 공개 기록과 상태 변화를 명확히 보여준다.
+
+## 1. Visual Theme & Atmosphere
+
+화면은 공공 데이터 도구처럼 안정적이되 딱딱하지 않아야 한다. 검색이 가장 강한 시각적 진입점이며, 결과에서는 후보·부수·출처 상태가 짧은 시선 이동으로 읽혀야 한다. 실제 공개 기록과 가상 데이터, 확정 정보와 추정 정보의 경계는 색과 문구로 분명히 구분한다.
+
+## 2. Color Palette & Roles
+
+- **Rally Blue (`#165DFF`)**: 검색 버튼, 링크, 핵심 수치, active 상태에만 사용한다.
+- **Deep Rally Blue (`#0F46CA`)**: primary hover와 눌림 상태다.
+- **Ink Navy (`#0F172A`)**: 제목과 핵심 본문이다.
+- **Slate Gray (`#64748B`)**: 보조 설명, 날짜, 미확인 정보다.
+- **Court Mist (`#F6F8FB`)**: 전체 페이지 배경이다.
+- **Paper White (`#FFFFFF`)**: 카드와 표의 표면이다.
+- **Line Silver (`#E2E8F0`)**: 구획선과 중립 border다.
+- **Verified Teal (`#0F766E`)**: 실제 공개 기록과 성공 상태다.
+- **Caution Amber (`#B45309`)**: 동명이인·출처 차이·운영 주의다.
+- **Error Red (`#B91C1C`)**: 입력 오류와 실패 상태에만 사용한다.
+
+## 3. Typography Rules
+
+Inter, Pretendard, Apple system sans 순서의 글꼴을 사용한다. hero 제목은 `clamp()`로 유동 크기를 갖고 강한 음수 letter-spacing을 사용한다. 페이지 제목은 굵게, metadata와 상태는 0.72~0.9rem의 작은 크기로 낮춘다. 본문 line-height는 1.55를 유지해 한국어 가독성을 확보한다.
+
+## 4. Component Stylings
+
+Primary button은 Rally Blue 표면과 12px radius, 최소 44~48px touch target을 갖는다. 일반 후보는 16px radius의 흰 카드와 얇은 border를 사용하지만, 부수 요약은 카드 반복을 피하고 하나의 compact 2행 표로 표시한다. 상태 badge는 pill 형태지만 핵심 데이터 자체를 pill 남용으로 표현하지 않는다. 경고는 옅은 amber 배경, 실제 기록은 옅은 teal 배경을 사용한다.
+
+## 5. Layout Principles
+
+페이지 본문은 최대 1120px이고 중앙 정렬한다. desktop에서는 정보가 가로 grid/table로 정렬되며, 700px 이하에서는 후보와 상세 이력을 세로 흐름으로 전환한다. 긴 부수 요약은 페이지 높이를 늘리지 않고 해당 표 컨테이너만 가로 스크롤한다. 상세 기록은 desktop table, mobile card를 사용하되 DOM 의미와 날짜·원문 순서는 동일하게 유지한다.
