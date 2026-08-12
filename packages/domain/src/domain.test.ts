@@ -101,16 +101,19 @@ describe('Korean region inference', () => {
 });
 
 describe('division system inference', () => {
-  it('recognizes the four division systems from explicit evidence', () => {
+  it('uses open only when explicit and defaults ordinary numeric busu to integrated', () => {
     expect(inferDivisionSystem('전국오픈 탁구대회')).toBe('open');
     expect(inferDivisionSystem('통합 6부 개인단식')).toBe('integrated');
     expect(inferDivisionSystem('여자 4부 개인단식')).toBe('women');
-    expect(inferDivisionSystem('수원시 협회장배')).toBe('regional');
+    expect(inferDivisionSystem('수원시 협회장배', '6부')).toBe('integrated');
+    expect(inferDivisionSystem('서울특별시 강남구청장배', '5부')).toBe('integrated');
+    expect(inferDivisionSystem('지역부수 4부')).toBe('regional');
     expect(inferDivisionSystem('탁구 디비전리그', 'T5')).toBe('division');
   });
 
-  it('does not treat every women event as a women division system', () => {
-    expect(inferDivisionSystem('전국대회', '여자 단식')).toBe('unknown');
+  it('treats a women event name as a women division system', () => {
+    expect(inferDivisionSystem('전국오픈대회', '여자 단식', '4부')).toBe('women');
+    expect(inferDivisionSystem('전국대회', '남자 단식')).toBe('unknown');
     expect(parseDivisionSystem('전국오픈')).toBe('open');
     expect(parseDivisionSystem('디비전부수')).toBe('division');
   });

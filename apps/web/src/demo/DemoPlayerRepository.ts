@@ -5,11 +5,11 @@ import { demoPlayers } from './data';
 export class DemoPlayerRepository implements PlayerRepository {
   async listSourceStatuses(): Promise<SourceStatus[]> {
     return [
-      { sourceCode: 'astree', displayName: '애즈트리', baseUrl: 'https://astree.co.kr/', adapterMode: 'http', enabled: true, parserVersion: 'astree-3' },
+      { sourceCode: 'astree', displayName: '애즈트리', baseUrl: 'https://astree.co.kr/', adapterMode: 'http', enabled: true, parserVersion: 'astree-4' },
       { sourceCode: 'ttadivision', displayName: '대한탁구협회 디비전', baseUrl: 'https://ttadivision.sports.or.kr/', adapterMode: 'http', enabled: true, parserVersion: 'ttadivision-1' },
-      { sourceCode: 'airping', displayName: '에어핑퐁', baseUrl: 'https://airping.co.kr/', adapterMode: 'http', enabled: false, parserVersion: 'airping-1' },
-      { sourceCode: 'okpingpong', displayName: '오케이핑퐁', baseUrl: 'http://okpingpong.co.kr/', adapterMode: 'http', enabled: false, parserVersion: 'okpingpong-1' },
-      { sourceCode: 'mytt', displayName: '마이티티', baseUrl: 'https://mytt.kr/', adapterMode: 'http', enabled: true, parserVersion: 'mytt-1' },
+      { sourceCode: 'airping', displayName: '에어핑퐁', baseUrl: 'https://airping.co.kr/', adapterMode: 'http', enabled: false, parserVersion: 'airping-2' },
+      { sourceCode: 'okpingpong', displayName: '오케이핑퐁', baseUrl: 'http://okpingpong.co.kr/', adapterMode: 'http', enabled: false, parserVersion: 'okpingpong-2' },
+      { sourceCode: 'mytt', displayName: '마이티티', baseUrl: 'https://mytt.kr/', adapterMode: 'http', enabled: true, parserVersion: 'mytt-2' },
     ];
   }
   async searchPlayers(input: PlayerSearchInput) {

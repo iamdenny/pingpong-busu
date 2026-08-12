@@ -23,11 +23,11 @@ const sourceFlags: Record<LiveSourceCode, string> = {
 };
 
 const parserVersions: Record<LiveSourceCode, string> = {
-  airping: 'airping-1',
-  astree: 'astree-3',
+  airping: 'airping-2',
+  astree: 'astree-4',
   ttadivision: 'ttadivision-1',
-  okpingpong: 'okpingpong-1',
-  mytt: 'mytt-1',
+  okpingpong: 'okpingpong-2',
+  mytt: 'mytt-2',
 };
 
 function parseInput(value: unknown): RefreshInput {

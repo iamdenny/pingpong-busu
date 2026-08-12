@@ -7,7 +7,7 @@ const SEARCH_URL = 'https://astree.co.kr/bbs/board.php';
 export class AstreeSourceAdapter implements SourceAdapter {
   readonly sourceCode = 'astree';
   readonly mode = 'http';
-  readonly parserVersion = 'astree-3';
+  readonly parserVersion = 'astree-4';
   constructor(readonly enabled = false) {}
   supportsLiveRefresh(): boolean { return this.enabled; }
 

@@ -10,7 +10,7 @@ describe('Astree parser', () => {
   it('parses synthetic singles and doubles records', () => {
     const records = parseAstreeSearchHtml(fixture('search-result.html'), '홍라켓', '2026-08-12T00:00:00.000Z');
     expect(records).toHaveLength(2);
-    expect(records[0]).toMatchObject({ playerName: '홍라켓', clubText: '가상드라이브클럽', region: '경기도 수원시', tournamentName: '2026 수원시 합성 탁구대회', tournamentDate: '2026-07-18', eventType: 'singles', divisionSystem: 'regional', divisionValue: '6부', rankText: '준우승' });
+    expect(records[0]).toMatchObject({ playerName: '홍라켓', clubText: '가상드라이브클럽', region: '경기도 수원시', tournamentName: '2026 수원시 합성 탁구대회', tournamentDate: '2026-07-18', eventType: 'singles', divisionSystem: 'integrated', divisionValue: '6부', rankText: '준우승' });
     expect(records[1]).toMatchObject({ eventType: 'doubles', rankText: '본선 8강' });
     expect(records[0]?.sourceUrl).toMatch(/^https:\/\/astree\.co\.kr\/bbs\/board\.php\?/u);
     expect(records[0]?.naturalKeyHash).not.toBe(records[1]?.naturalKeyHash);

@@ -5,20 +5,20 @@ export const demoPlayers: PlayerDetail[] = [
     id: 'kim-seoul', name: '김탁구', normalizedName: '김탁구', region: '서울', club: '스핀탁구클럽', recentObservedDivision: '5부', recentObservedDivisionSystem: 'open', resultCount: 3, sourceCount: 3, lastCheckedAt: '2026-08-12T04:30:00.000Z', identityStatus: 'likely', dataKind: 'demo',
     records: [
       { id: 'r1', date: '2026-07-20', tournament: '2026 가상 전국오픈', scale: 'national', event: '남자 단식', club: '스핀탁구클럽', division: '5부', divisionSystem: 'open', rank: '우승', sourceCode: 'mock', sourceName: '가상 출처', sourceUrl: 'https://example.invalid/mock/result/1', lastCheckedAt: '2026-08-12T04:30:00.000Z' },
-      { id: 'r2', date: '2026-04-06', tournament: '서울 가상 생활체육대회', scale: 'province', event: '개인 단식', club: '스핀탁구클럽', division: '4부', divisionSystem: 'regional', rank: '3위', sourceCode: 'airping', sourceName: '에어핑퐁', sourceUrl: 'https://airping.co.kr/', lastCheckedAt: '2026-08-11T18:00:00.000Z' },
+      { id: 'r2', date: '2026-04-06', tournament: '서울 가상 생활체육대회', scale: 'province', event: '개인 단식', club: '스핀탁구클럽', division: '4부', divisionSystem: 'integrated', rank: '3위', sourceCode: 'airping', sourceName: '에어핑퐁', sourceUrl: 'https://airping.co.kr/', lastCheckedAt: '2026-08-11T18:00:00.000Z' },
       { id: 'r3', date: '2023-11-12', tournament: '가상 라켓 축제', scale: 'club', event: '혼합 복식', club: '스핀탁구회', division: 'A부', rank: '준우승', sourceCode: 'astree', sourceName: '애즈트리', sourceUrl: 'https://astree.co.kr/', lastCheckedAt: '2026-08-10T10:00:00.000Z' },
     ],
     sources: [
       { sourceCode: 'mock', sourceName: '가상 출처', latestRecordDate: '2026-07-20', latestClub: '스핀탁구클럽', recentObservedDivision: '5부', recentObservedDivisionSystem: 'open', resultCount: 1, latestRank: '우승', lastCheckedAt: '2026-08-12T04:30:00.000Z', status: 'fresh' },
-      { sourceCode: 'airping', sourceName: '에어핑퐁', latestRecordDate: '2026-04-06', latestClub: '스핀탁구클럽', recentObservedDivision: '4부', recentObservedDivisionSystem: 'regional', resultCount: 1, latestRank: '3위', lastCheckedAt: '2026-08-11T18:00:00.000Z', status: 'refreshing' },
+      { sourceCode: 'airping', sourceName: '에어핑퐁', latestRecordDate: '2026-04-06', latestClub: '스핀탁구클럽', recentObservedDivision: '4부', recentObservedDivisionSystem: 'integrated', resultCount: 1, latestRank: '3위', lastCheckedAt: '2026-08-11T18:00:00.000Z', status: 'refreshing' },
       { sourceCode: 'astree', sourceName: '애즈트리', latestRecordDate: '2023-11-12', latestClub: '스핀탁구회', recentObservedDivision: 'A부', resultCount: 1, latestRank: '준우승', lastCheckedAt: '2026-08-10T10:00:00.000Z', status: 'parser_attention' },
       { sourceCode: 'band', sourceName: '밴드', resultCount: 0, status: 'unsupported' },
     ],
   },
   {
-    id: 'kim-busan', name: '김탁구', normalizedName: '김탁구', region: '부산', club: '블루라켓', recentObservedDivision: '6부', recentObservedDivisionSystem: 'regional', resultCount: 0, sourceCount: 1, lastCheckedAt: '2026-08-09T03:00:00.000Z', identityStatus: 'unreviewed', dataKind: 'demo',
-    records: [{ id: 'r4', date: '2025-09-14', tournament: '부산 가상 구대회', scale: 'district', event: '단식', club: '블루라켓', division: '6부', divisionSystem: 'regional', rank: '8강', sourceCode: 'mock', sourceName: '가상 출처', sourceUrl: 'https://example.invalid/mock/result/2', lastCheckedAt: '2026-08-09T03:00:00.000Z' }],
-    sources: [{ sourceCode: 'mock', sourceName: '가상 출처', latestRecordDate: '2025-09-14', latestClub: '블루라켓', recentObservedDivision: '6부', recentObservedDivisionSystem: 'regional', resultCount: 0, lastCheckedAt: '2026-08-09T03:00:00.000Z', status: 'fresh' }],
+    id: 'kim-busan', name: '김탁구', normalizedName: '김탁구', region: '부산', club: '블루라켓', recentObservedDivision: '6부', recentObservedDivisionSystem: 'integrated', resultCount: 0, sourceCount: 1, lastCheckedAt: '2026-08-09T03:00:00.000Z', identityStatus: 'unreviewed', dataKind: 'demo',
+    records: [{ id: 'r4', date: '2025-09-14', tournament: '부산 가상 구대회', scale: 'district', event: '단식', club: '블루라켓', division: '6부', divisionSystem: 'integrated', rank: '8강', sourceCode: 'mock', sourceName: '가상 출처', sourceUrl: 'https://example.invalid/mock/result/2', lastCheckedAt: '2026-08-09T03:00:00.000Z' }],
+    sources: [{ sourceCode: 'mock', sourceName: '가상 출처', latestRecordDate: '2025-09-14', latestClub: '블루라켓', recentObservedDivision: '6부', recentObservedDivisionSystem: 'integrated', resultCount: 0, lastCheckedAt: '2026-08-09T03:00:00.000Z', status: 'fresh' }],
   },
   {
     id: 'lee-gyeonggi', name: '이라켓', normalizedName: '이라켓', region: '경기', club: '드라이브탁구회', recentObservedDivision: '4부', recentObservedDivisionSystem: 'open', resultCount: 1, sourceCount: 1, lastCheckedAt: '2026-08-08T02:00:00.000Z', identityStatus: 'verified', dataKind: 'demo',

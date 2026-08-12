@@ -17,7 +17,7 @@ function assertResponse(response: Response, label: string): void {
 export class MyttSourceAdapter implements SourceAdapter {
   readonly sourceCode = 'mytt';
   readonly mode = 'http';
-  readonly parserVersion = 'mytt-1';
+  readonly parserVersion = 'mytt-2';
   constructor(readonly enabled = false) {}
   supportsLiveRefresh(): boolean { return this.enabled; }
 

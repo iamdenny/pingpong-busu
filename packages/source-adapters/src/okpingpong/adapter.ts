@@ -5,7 +5,7 @@ import { OKPINGPONG_SEARCH_URL, parseOkPingpongSearchHtml } from './parser';
 export class OkPingpongSourceAdapter implements SourceAdapter {
   readonly sourceCode = 'okpingpong';
   readonly mode = 'http';
-  readonly parserVersion = 'okpingpong-1';
+  readonly parserVersion = 'okpingpong-2';
   constructor(readonly enabled = false) {}
   supportsLiveRefresh(): boolean { return this.enabled; }
 

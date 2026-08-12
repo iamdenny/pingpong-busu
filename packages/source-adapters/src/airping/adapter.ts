@@ -5,7 +5,7 @@ import { AIRPING_SEARCH_URL, parseAirpingSearchHtml } from './parser';
 export class AirpingSourceAdapter implements SourceAdapter {
   readonly sourceCode = 'airping';
   readonly mode = 'http';
-  readonly parserVersion = 'airping-1';
+  readonly parserVersion = 'airping-2';
   constructor(readonly enabled = false) {}
   supportsLiveRefresh(): boolean { return this.enabled; }
 
