@@ -10,7 +10,8 @@ a { color:var(--primary); text-decoration:none; }
 .demo-banner { background:#eaf1ff; color:#123b8f; text-align:center; padding:.55rem 1rem; font-weight:700; font-size:.9rem; }
 .live-dev-banner { background:#e7f7f3; color:#0f5f59; text-align:center; padding:.55rem 1rem; font-weight:700; font-size:.9rem; }
 .site-header { max-width:1120px; margin:auto; padding:1.15rem 1.25rem; }
-.brand { display:inline-flex; align-items:baseline; gap:.7rem; color:var(--text); }
+.brand { display:inline-flex; align-items:center; gap:.7rem; color:var(--text); }
+.brand img { width:2.2rem; height:2.2rem; border-radius:.55rem; flex:none; }
 .brand span { font-weight:900; letter-spacing:-.04em; font-size:1.55rem; color:var(--primary); }
 .brand small { font-weight:700; color:var(--muted); }
 main { min-height:70vh; }

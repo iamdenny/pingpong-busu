@@ -1,3 +1,34 @@
 import { Link, Outlet } from 'react-router-dom';
 import { isDemoMode, isDevLiveMode } from '../lib/runtime';
-export function Layout() { return <div className="app-shell">{isDemoMode && <div className="demo-banner" role="status">현재 화면은 개발용 가상 데이터입니다.</div>}{isDevLiveMode && <div className="live-dev-banner" role="status">개발용 실시간 검색 · 애즈트리 공개 기록을 출처와 함께 표시합니다.</div>}<header className="site-header"><Link to="/" className="brand" aria-label="BUSU 홈"><span>BUSU</span><small>탁구 기록 통합검색</small></Link></header><main><Outlet /></main><footer><strong>BUSU</strong><p>부수를 판정하지 않고, 판단할 근거를 한곳에 모읍니다.</p><p>공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후 반영합니다.</p></footer></div>; }
+
+export function Layout() {
+  return (
+    <div className="app-shell">
+      {isDemoMode && (
+        <div className="demo-banner" role="status">
+          현재 화면은 개발용 가상 데이터입니다.
+        </div>
+      )}
+      {isDevLiveMode && (
+        <div className="live-dev-banner" role="status">
+          개발용 실시간 검색 · 애즈트리 공개 기록을 출처와 함께 표시합니다.
+        </div>
+      )}
+      <header className="site-header">
+        <Link to="/" className="brand" aria-label="BUSU 홈">
+          <img src={`${import.meta.env.BASE_URL}busu-logo.png`} alt="" aria-hidden="true" />
+          <span>BUSU</span>
+          <small>탁구 기록 통합검색</small>
+        </Link>
+      </header>
+      <main>
+        <Outlet />
+      </main>
+      <footer>
+        <strong>BUSU</strong>
+        <p>부수를 판정하지 않고, 판단할 근거를 한곳에 모읍니다.</p>
+        <p>공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후 반영합니다.</p>
+      </footer>
+    </div>
+  );
+}
