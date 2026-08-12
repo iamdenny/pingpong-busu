@@ -1,0 +1,8 @@
+{
+  "paging": { "totalPage": 1, "totalCount": 3 },
+  "result": [
+    { "memberSeq": "synthetic-1", "memberNm": "홍라켓", "memberCell": "private-field-must-be-ignored", "eliteType": "일반회원", "dlPlyrGrd": "T5", "rtLstScr1": "1242", "memberSex": "남", "sigunguFormalNm": "경기 부천시", "oteamFnm": "합성올빼미" },
+    { "memberSeq": "synthetic-2", "memberNm": "홍라켓", "memberCell": "private-field-must-be-ignored", "eliteType": "일반회원", "dlPlyrGrd": "T7", "rtLstScr1": "500", "memberSex": "남", "sigunguFormalNm": "", "oteamFnm": "" },
+    { "memberSeq": "synthetic-3", "memberNm": "다른선수", "memberCell": "private-field-must-be-ignored", "eliteType": "일반회원", "dlPlyrGrd": "T6", "rtLstScr1": "800", "memberSex": "여", "sigunguFormalNm": "서울 강남구", "oteamFnm": "합성클럽" }
+  ]
+}

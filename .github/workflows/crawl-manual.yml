@@ -1,0 +1,31 @@
+name: Manual crawl
+on:
+  workflow_dispatch:
+    inputs:
+      source: { description: Source code, required: true, default: mock, type: choice, options: [mock, airping, astree, ttadivision, okpingpong, mytt] }
+      query: { description: Player name, required: true, default: 김탁구, type: string }
+      live: { description: Enable approved live access, required: true, default: false, type: boolean }
+      maxPages: { description: Maximum pages, required: true, default: '1', type: string }
+permissions: { contents: read }
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11.17.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Fixture crawl
+        if: ${{ !inputs.live }}
+        run: pnpm crawl:fixture --query "${{ inputs.query }}" --version 1
+      - name: Approved live crawl
+        if: ${{ inputs.live }}
+        run: pnpm crawl:live --query "${{ inputs.query }}" --source "${{ inputs.source }}" --maxPages "${{ inputs.maxPages }}"
+        env:
+          CRAWL_LIVE: "true"
+          CRAWLER_SOURCE_ASTREE_ENABLED: ${{ inputs.source == 'astree' && 'true' || 'false' }}
+          CRAWLER_SOURCE_TTADIVISION_ENABLED: ${{ inputs.source == 'ttadivision' && 'true' || 'false' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

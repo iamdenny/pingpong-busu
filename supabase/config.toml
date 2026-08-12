@@ -1,0 +1,16 @@
+project_id = "pingpong-busu"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+
+[db]
+port = 54322
+major_version = 17
+
+[functions.refresh-player]
+verify_jwt = false
+
+[functions.refresh-status]
+verify_jwt = false

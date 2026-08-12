@@ -1,0 +1,32 @@
+import type { DivisionSystem } from './models';
+
+export const divisionSystemLabels: Record<DivisionSystem, string> = {
+  open: '오픈부수',
+  integrated: '통합부수',
+  women: '여자부수',
+  regional: '지역부수',
+  division: '디비전부수',
+  unknown: '체계 확인 필요',
+};
+
+export function parseDivisionSystem(value?: string | null): DivisionSystem | undefined {
+  if (!value) return undefined;
+  if (value === 'open' || /오픈/u.test(value)) return 'open';
+  if (value === 'integrated' || /통합/u.test(value)) return 'integrated';
+  if (value === 'women' || /(?:여자|여성)/u.test(value)) return 'women';
+  if (value === 'regional' || /지역/u.test(value)) return 'regional';
+  if (value === 'division' || /디비전/u.test(value)) return 'division';
+  if (value === 'unknown') return 'unknown';
+  return undefined;
+}
+
+export function inferDivisionSystem(...evidence: Array<string | undefined>): DivisionSystem {
+  const text = evidence.filter((value): value is string => value !== undefined).join(' ').normalize('NFKC');
+  if (/디비전|(?:^|\s)T[1-7](?=\s|$)/iu.test(text)) return 'division';
+  if (/(?:여자|여성)\s*(?:부수|\d+\s*부)/u.test(text)) return 'women';
+  if (/통합\s*(?:부수|\d+\s*부)/u.test(text)) return 'integrated';
+  if (/(?:전국\s*)?오픈(?:부수|부|혼성|\s|$)/u.test(text)) return 'open';
+  if (/지역(?:부수|부|\s|\d)/u.test(text)) return 'regional';
+  if (/(?:특별시|광역시|특별자치시|특별자치도|도|특례시|시|군|구)(?:\s|$)/u.test(text)) return 'regional';
+  return 'unknown';
+}

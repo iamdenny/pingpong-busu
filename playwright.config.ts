@@ -1,0 +1,2 @@
+import { defineConfig, devices } from '@playwright/test';
+export default defineConfig({ testDir:'./tests/e2e', fullyParallel:true, use:{baseURL:'http://127.0.0.1:4173/pingpong-busu/',trace:'on-first-retry'}, webServer:{command:'./node_modules/.bin/vite preview --config apps/web/vite.config.ts --configLoader runner --host 127.0.0.1',url:'http://127.0.0.1:4173/pingpong-busu/',reuseExistingServer:!process.env.CI}, projects:[{name:'chromium',use:{...devices['Desktop Chrome']}},{name:'mobile',use:{...devices['Pixel 7']}}] });

@@ -1,0 +1,2 @@
+import { render, screen } from '@testing-library/react'; import { describe, expect, it } from 'vitest'; import { demoPlayers } from '../demo/data'; import { SourceComparison } from './SourceComparison';
+describe('SourceComparison',()=>{it('marks differing source observations without calling them errors',()=>{render(<SourceComparison sources={demoPlayers[0]!.sources}/>);expect(screen.getByText(/출처별 기록이 다릅니다/)).toBeInTheDocument();expect(screen.getByRole('checkbox',{name:'차이가 있는 항목만'})).toBeInTheDocument();});});

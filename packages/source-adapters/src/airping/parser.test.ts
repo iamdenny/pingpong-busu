@@ -1,0 +1,23 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { SourceSchemaChangedError } from '@busu/crawler-core';
+import { parseAirpingSearchHtml } from './parser';
+
+const fixture = readFileSync(resolve(import.meta.dirname, '../../../../fixtures/sources/airping/search-result.html'), 'utf8');
+
+describe('에어핑퐁 parser', () => {
+  it('parses synthetic participation and award records without merging identities', () => {
+    const records = parseAirpingSearchHtml(fixture, '홍라켓', '2026-08-12T00:00:00.000Z');
+    expect(records).toHaveLength(2);
+    expect(records[0]).toMatchObject({ sourceCode: 'airping', playerName: '홍라켓', clubText: '합성드라이브', region: '경기도 용인시', tournamentDate: '2026-07-18', eventType: 'singles', divisionValue: '6부', rankText: '본선 8강' });
+    expect(records[1]).toMatchObject({ eventType: 'team', rankText: '공동3위' });
+    expect(records[0]?.sourceUrl).not.toContain('PHPSESSID');
+    expect(parseAirpingSearchHtml(fixture, '동명이인', '2026-08-12T00:00:00.000Z')).toEqual([]);
+  });
+
+  it('separates a schema change from an empty result', () => {
+    expect(parseAirpingSearchHtml('<form id="playerSearchForm"></form><ul class="_mc_content_list"><li>검색결과가 없습니다.</li></ul>', '홍라켓', '2026-08-12T00:00:00.000Z')).toEqual([]);
+    expect(() => parseAirpingSearchHtml('<html></html>', '홍라켓', '2026-08-12T00:00:00.000Z')).toThrow(SourceSchemaChangedError);
+  });
+});

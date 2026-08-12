@@ -1,0 +1,3 @@
+export const corsHeaders = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type', 'content-type': 'application/json; charset=utf-8' };
+export const json = (body: unknown, status = 200): Response => new Response(JSON.stringify(body), { status, headers: corsHeaders });
+export function assertHttpUrl(value: string, hosts: readonly string[]): string { const url = new URL(value); if (!['http:','https:'].includes(url.protocol) || !hosts.includes(url.hostname)) throw new Error('source_url_not_allowed'); url.hash=''; url.searchParams.delete('jsessionid'); return url.toString(); }

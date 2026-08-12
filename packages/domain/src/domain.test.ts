@@ -1,0 +1,147 @@
+import { describe, expect, it } from 'vitest';
+import {
+  canonicalJson,
+  createContentHash,
+  createNaturalKeyHash,
+  decideRecordUpsert,
+  mayAutoMerge,
+  normalizeClubName,
+  normalizePlayerName,
+  parsePlayerName,
+  withRecordHashes,
+  isAwardRank,
+  inferKoreanRegion,
+  inferDivisionSystem,
+  parseDivisionSystem,
+  sortPlayerRecordsByLatest,
+  type PlayerRecord,
+  type RecordHashInput,
+} from './index';
+
+const base: RecordHashInput = {
+  sourceCode: 'mock', externalPlayerId: 'm-1', playerName: '김탁구', normalizedPlayerName: '김탁구',
+  clubText: '스핀 탁구클럽', region: '서울', tournamentName: '가상 오픈', tournamentDate: '2026-07-01',
+  eventName: '남자 단식', eventType: 'singles', divisionSystem: 'regional', divisionValue: '5부', rankText: '우승',
+  sourceUrl: 'https://example.invalid/result/1', observedAt: '2026-08-12T00:00:00.000Z',
+};
+
+describe('normalization and hashes', () => {
+  it('normalizes Korean and English names and clubs', () => {
+    expect(normalizePlayerName(' 김 민 수 ')).toBe('김민수');
+    expect(normalizePlayerName('Kim Min Su')).toBe('kimminsu');
+    expect(normalizeClubName(' 스핀  탁구클럽 ')).toBe('스핀탁구클럽');
+  });
+  it('extracts an optional division candidate', () => {
+    expect(parsePlayerName('김민수(5부)')).toMatchObject({ name: '김민수', divisionCandidate: '5부' });
+    expect(parsePlayerName('김민수(서울)')).not.toHaveProperty('divisionCandidate');
+  });
+  it('canonicalizes object field order', () => {
+    expect(canonicalJson({ b: '값', a: 1 })).toBe(canonicalJson({ a: 1, b: '값' }));
+  });
+  it('keeps hashes stable across whitespace and unicode compatibility forms', () => {
+    expect(createNaturalKeyHash(base)).toBe(createNaturalKeyHash({ ...base, tournamentName: '가상  오픈' }));
+    expect(createContentHash(base)).toBe(createContentHash({ ...base, clubText: '스핀  탁구클럽' }));
+  });
+  it('supports records without dates and external ids', () => {
+    const without: RecordHashInput = { ...base };
+    delete without.tournamentDate;
+    delete without.externalPlayerId;
+    expect(createNaturalKeyHash(without)).toHaveLength(16);
+  });
+});
+
+describe('diff and identity', () => {
+  it('handles insert, unchanged and changed revisions', () => {
+    const first = withRecordHashes(base);
+    expect(decideRecordUpsert(undefined, first).kind).toBe('insert');
+    expect(decideRecordUpsert(first, first).kind).toBe('unchanged');
+    for (const [field, value] of [['divisionValue', '4부'], ['clubText', '새 클럽'], ['rankText', '준우승']] as const) {
+      const next = withRecordHashes({ ...base, [field]: value });
+      const decision = decideRecordUpsert(first, next);
+      expect(decision.kind).toBe('update');
+      if (decision.kind === 'update') expect(decision.changedFields).toContain(field);
+    }
+  });
+  it('never merges identity candidates by name only', () => {
+    const player = { id: '1', name: '김탁구', normalizedName: '김탁구', resultCount: 0, sourceCount: 1, lastCheckedAt: '', identityStatus: 'unreviewed' as const };
+    expect(mayAutoMerge(player, { ...player, id: '2' })).toBe(false);
+  });
+  it('separates award results from bracket progress', () => {
+    expect(isAwardRank('우승')).toBe(true);
+    expect(isAwardRank('준우승')).toBe(true);
+    expect(isAwardRank('공동 3위')).toBe(true);
+    expect(isAwardRank('본선 4강')).toBe(true);
+    expect(isAwardRank('4강전 진출')).toBe(true);
+    expect(isAwardRank('본선 2강')).toBe(true);
+    expect(isAwardRank('본선 8강')).toBe(false);
+    expect(isAwardRank('본선 16강')).toBe(false);
+    expect(isAwardRank('본선 64강')).toBe(false);
+    expect(isAwardRank('본선 128강')).toBe(false);
+    expect(isAwardRank('예선 2조')).toBe(false);
+    expect(isAwardRank('참가')).toBe(false);
+  });
+});
+
+describe('Korean region inference', () => {
+  it('normalizes conservative province, city, and district evidence', () => {
+    expect(inferKoreanRegion('2025 여주쌀배 전국 생활체육 탁구 페스티벌')).toBe('경기도 여주시');
+    expect(inferKoreanRegion('제14회 안동시장배 전국오픈 탁구대회')).toBe('경상북도 안동시');
+    expect(inferKoreanRegion('제13회 인천광역시중구협회장배 탁구대회')).toBe('인천광역시 중구');
+    expect(inferKoreanRegion('전국오픈 탁구대회', '경기도 남자 단식')).toBe('경기도');
+    expect(inferKoreanRegion('2026 충청남도 예산군 탁구협회장배')).toBe('충청남도 예산군');
+    expect(inferKoreanRegion('2026 부천시 전국오픈 탁구대회')).toBe('경기도 부천시');
+    expect(inferKoreanRegion('제3회 가람군 체육회장배 탁구대회')).toBe('가람군');
+    expect(inferKoreanRegion('서울특별시 강남구청장배 탁구대회')).toBe('서울특별시 강남구');
+  });
+
+  it('does not guess from ambiguous or non-regional tournament names', () => {
+    expect(inferKoreanRegion('제13회 남한산성배 생활체육 전국오픈탁구대회')).toBeUndefined();
+    expect(inferKoreanRegion('제7회 윤봉길배 전국오픈 탁구대회')).toBeUndefined();
+  });
+});
+
+describe('division system inference', () => {
+  it('recognizes the four division systems from explicit evidence', () => {
+    expect(inferDivisionSystem('전국오픈 탁구대회')).toBe('open');
+    expect(inferDivisionSystem('통합 6부 개인단식')).toBe('integrated');
+    expect(inferDivisionSystem('여자 4부 개인단식')).toBe('women');
+    expect(inferDivisionSystem('수원시 협회장배')).toBe('regional');
+    expect(inferDivisionSystem('탁구 디비전리그', 'T5')).toBe('division');
+  });
+
+  it('does not treat every women event as a women division system', () => {
+    expect(inferDivisionSystem('전국대회', '여자 단식')).toBe('unknown');
+    expect(parseDivisionSystem('전국오픈')).toBe('open');
+    expect(parseDivisionSystem('디비전부수')).toBe('division');
+  });
+});
+
+describe('record chronology', () => {
+  const record = (id: string, date: string | undefined, lastCheckedAt: string): PlayerRecord => ({
+    id,
+    ...(date ? { date } : {}),
+    tournament: `가상 대회 ${id}`,
+    scale: 'unknown',
+    event: '단식',
+    sourceCode: 'mock',
+    sourceName: '가상 출처',
+    sourceUrl: `https://example.invalid/${id}`,
+    lastCheckedAt,
+  });
+
+  it('sorts by tournament or published date before crawler observation time', () => {
+    const records = [
+      record('old-event-new-crawl', '2025-01-01', '2026-08-12T03:00:00.000Z'),
+      { ...record('new-post', '2026-07-15', '2026-08-10T00:00:00.000Z'), dateBasis: 'published' as const },
+      record('new-event', '2026-08-01', '2026-08-09T00:00:00.000Z'),
+      record('unknown-date', undefined, '2026-08-12T04:00:00.000Z'),
+    ];
+
+    expect(sortPlayerRecordsByLatest(records).map(({ id }) => id)).toEqual([
+      'new-event',
+      'new-post',
+      'old-event-new-crawl',
+      'unknown-date',
+    ]);
+  });
+});
