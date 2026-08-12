@@ -146,6 +146,15 @@ describe('division system inference', () => {
     expect(inferEventDivisionSystem('남자 단식', '수원 지역 전국오픈 탁구대회', '3부')).toBe('open');
     expect(inferEventDivisionSystem('지역혼성 T5', '디비전리그')).toBe('division');
   });
+
+  it('applies explicit tournament overrides before generic inference', () => {
+    expect(inferDivisionSystem('제13회분당구청장기', '남자5부')).toBe('regional');
+    expect(inferDivisionSystem('제14회 분당구청장기 생활체육 탁구대회', '직장1/4부')).toBe('regional');
+    expect(inferDivisionSystem('2023년 제16회 분당구청장기 탁구대회', '직장부', '3부')).toBe('regional');
+    expect(inferEventDivisionSystem('지역남성 3부', '제16회 분당구청장기 탁구대회')).toBe('regional');
+    expect(inferDivisionSystem('제17회 분당구청장기 탁구대회', '직장부', '3부')).toBe('integrated');
+    expect(inferDivisionSystem('2018 분당구 내일은 탁구왕 탁구대회', '남자4부', '오픈')).toBe('open');
+  });
 });
 
 describe('record chronology', () => {

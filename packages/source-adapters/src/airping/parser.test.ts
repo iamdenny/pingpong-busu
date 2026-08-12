@@ -6,6 +6,7 @@ import { parseAirpingSearchHtml } from './parser';
 
 const fixture = readFileSync(resolve(import.meta.dirname, '../../../../fixtures/sources/airping/search-result.html'), 'utf8');
 const regionalOpenFixture = readFileSync(resolve(import.meta.dirname, '../../../../fixtures/sources/airping/regional-open-result.html'), 'utf8');
+const bundangOverrideFixture = readFileSync(resolve(import.meta.dirname, '../../../../fixtures/sources/airping/bundang-division-overrides.html'), 'utf8');
 
 describe('에어핑퐁 parser', () => {
   it('parses synthetic participation and award records without merging identities', () => {
@@ -31,5 +32,12 @@ describe('에어핑퐁 parser', () => {
       divisionSystem: 'integrated',
       divisionValue: '3부',
     });
+  });
+
+  it('applies edition-bound custom tournament division overrides', () => {
+    const records = parseAirpingSearchHtml(bundangOverrideFixture, '홍분당', '2026-08-13T00:00:00.000Z');
+    expect(records).toHaveLength(2);
+    expect(records[0]).toMatchObject({ tournamentName: '2023년 제16회 분당구청장기 탁구대회', divisionSystem: 'regional', divisionValue: '3부' });
+    expect(records[1]).toMatchObject({ tournamentName: '제17회 분당구청장기 탁구대회', divisionSystem: 'integrated', divisionValue: '3부' });
   });
 });

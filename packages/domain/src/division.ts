@@ -1,4 +1,5 @@
 import type { DivisionSystem } from './models';
+import { findTournamentDivisionOverride } from './division-overrides';
 
 export const divisionSystemLabels: Record<DivisionSystem, string> = {
   open: '오픈부수',
@@ -34,6 +35,8 @@ export function parseDivisionSystem(value?: string | null): DivisionSystem | und
 
 export function inferDivisionSystem(...evidence: Array<string | undefined>): DivisionSystem {
   const text = evidence.filter((value): value is string => value !== undefined).join(' ').normalize('NFKC');
+  const override = findTournamentDivisionOverride(...evidence);
+  if (override) return override;
   if (/디비전|(?:^|\s)T[1-7](?=\s|$)/iu.test(text)) return 'division';
   if (/(?:여자|여성)/u.test(text)) return 'women';
   if (/오픈/u.test(text)) return 'open';
@@ -53,6 +56,8 @@ export function inferEventDivisionSystem(
   eventName: string | undefined,
   ...additionalEvidence: Array<string | undefined>
 ): DivisionSystem {
+  const override = findTournamentDivisionOverride(eventName, ...additionalEvidence);
+  if (override) return override;
   const inferred = inferDivisionSystem(eventName, ...additionalEvidence);
   if (inferred === 'division') return inferred;
   if (isIntegratedLocalEvent(eventName)) return 'integrated';
