@@ -59,9 +59,10 @@ version 1 반복 실행은 unchanged, version 2는 content 변경과 revision �
 pnpm crawl:live --query 김탁구 --source astree
 pnpm crawl:live --query 김탁구 --source ttadivision
 pnpm crawl:live --query 김탁구 --source mytt
+pnpm crawl:live --query 김탁구 --source superstar
 ```
 
-`CRAWL_LIVE=true`와 해당 출처별 환경 변수가 없으면 실행하지 않는다. 에어핑퐁·오케이핑퐁은 운영 승낙 전 활성화하지 않는다.
+`CRAWL_LIVE=true`와 해당 출처별 환경 변수가 없으면 실행하지 않는다. 에어핑퐁·오케이핑퐁은 운영 승낙 전 활성화하지 않고, 아이핑은 로그인 세션을 자동화하지 않는다.
 
 ## Supabase
 

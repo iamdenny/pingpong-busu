@@ -28,7 +28,7 @@ describe('summarizeObservedDivisions', () => {
     ])).toEqual([
       { system: 'open', systemLabel: '오픈부수', division: '6부', count: 2 },
       { system: 'integrated', systemLabel: '통합부수', division: '6부', count: 1 },
-      { system: 'women', systemLabel: '여자부수', division: '4부', count: 1 },
+      { system: 'women', systemLabel: '통합부수', division: '여자4부', count: 1 },
       { system: 'division', systemLabel: '디비전부수', division: 'T5', count: 1 },
       { system: 'unknown', systemLabel: '체계 확인 필요', division: '확인 필요', count: 1 },
     ]);

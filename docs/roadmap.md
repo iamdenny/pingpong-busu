@@ -16,6 +16,7 @@ title: '제품 로드맵'
 4. 애즈트리·대한탁구협회 디비전·마이티티 opt-in adapter
 5. 에어핑퐁·오케이핑퐁 parser와 synthetic fixture, 운영 비활성 정책
 6. 출처별 실시간 진행 상태와 compact 부수 요약
+7. 슈퍼스타탁구 공개 개인별 결과 adapter와 아이핑 인증 필요 catalog
 7. GitHub Pages 및 Supabase 배포 workflow
 
 ## 다음 단계

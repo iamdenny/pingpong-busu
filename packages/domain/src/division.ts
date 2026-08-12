@@ -3,11 +3,22 @@ import type { DivisionSystem } from './models';
 export const divisionSystemLabels: Record<DivisionSystem, string> = {
   open: '오픈부수',
   integrated: '통합부수',
-  women: '여자부수',
+  women: '통합부수',
   regional: '지역부수',
   division: '디비전부수',
   unknown: '체계 확인 필요',
 };
+
+export function displayDivisionValue(system: DivisionSystem | undefined, value: string | undefined): string {
+  const observed = value ?? '확인 필요';
+  if (system !== 'women' || observed === '확인 필요' || observed.startsWith('여자')) return observed;
+  return `여자${observed}`;
+}
+
+export function formatDivisionObservation(system: DivisionSystem | undefined, value: string | undefined): string {
+  const observed = displayDivisionValue(system, value);
+  return system ? `${divisionSystemLabels[system]} ${observed}` : observed;
+}
 
 export function parseDivisionSystem(value?: string | null): DivisionSystem | undefined {
   if (!value) return undefined;

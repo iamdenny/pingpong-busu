@@ -7,6 +7,7 @@ import { playerRepository } from '../lib/runtime';
 const statusText = (sourceCode: string, enabled: boolean, adapterMode: 'http' | 'browser' | 'manual'): string => {
   if (enabled) return '검색 중';
   if (adapterMode === 'manual') return '원문 수동 확인';
+  if (sourceCode === 'iping') return '로그인 필요 · 자동수집 안 함';
   if (sourceCode === 'airping' || sourceCode === 'okpingpong') return '수집 허용 확인 중';
   return '연동 준비 중';
 };

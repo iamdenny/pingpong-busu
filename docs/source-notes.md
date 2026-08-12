@@ -16,6 +16,8 @@ title: '출처 메모'
 | ttadivision | <https://ttadivision.sports.or.kr/statistic/moveSearchOteamPlayer.do> | http | production opt-in | ttadivision-1 | 공개 이름 검색, T1~T7·소속팀·지역만 저장. 휴대폰과 RT점수는 저장하지 않음. 서버가 잘못 제공하는 중간 인증서 대신 leaf AIA의 공식 Sectigo DV R36 CA를 추가해 TLS 검증 유지 |
 | okpingpong | <http://okpingpong.co.kr/04match/08.php> | http | parser ready / disabled | okpingpong-2 | 공개 검색 parser와 합성 fixture 완료. 약관상 사전 승낙 없는 정보 복제·제3자 제공 제한으로 운영 자동 연동하지 않음 |
 | mytt | <https://mytt.kr/main/player_list.xhtml> | http | production opt-in | mytt-2 | robots 전체 허용, 비회원 JSF GET/POST 공개 검색. 단기 JSESSIONID는 요청에만 사용하고 저장하지 않음 |
+| superstar | <https://www.superstar.kr/open/Do.jsp?urlSeq=302> | http | production opt-in | superstar-1 | 비회원 이름 GET 검색. 개인별 대회 결과만 저장하고 레이팅·연락처는 제외 |
+| iping | <https://www.iping.club/index.html> | browser | 로그인 필요 / disabled | auth-required-0 | 메인·대회 목록은 공개지만 선수 통합검색은 로그인 화면으로 전환. 인증 자동화 없음 |
 | band | <https://band.us/> | manual | 사용자 출처 목록 제외 | manual-0 | scraping 금지. 향후 정책 검토를 위해 내부 식별자만 유지 |
 
 2026-08-12 애즈트리 robots.txt, 공개 검색 form/result와 이용약관을 확인했습니다. 일반 user-agent에 공개 검색 경로가 금지되어 있지 않고 약관에서 자동 수집 금지 문구를 찾지 못했지만, 이는 영구적 재사용 허가를 뜻하지 않습니다. 실제 응답이나 정책을 확인하지 않은 나머지는 추정이며 사실로 단정하지 않습니다.
@@ -25,3 +27,7 @@ title: '출처 메모'
 2026-08-12 에어핑퐁과 오케이핑퐁은 비회원 공개 검색과 HTML 구조를 확인해 parser를 구현했습니다. 두 사이트 약관에는 서비스에서 얻은 정보를 사전승낙 없이 이용 목적 외로 복제하거나 제3자에게 제공하는 행위를 제한하는 문구가 있어 운영 환경 변수와 DB 상태를 false로 유지합니다.
 
 2026-08-12 마이티티 `robots.txt`는 일반 user-agent 전체 접근을 허용하며, 참가 정보 검색은 로그인 없이 JSF form GET/POST로 동작합니다. browser 자동화 없이 HTTP adapter로 구현했고, 검색에 필요한 `JSESSIONID`와 ViewState는 단일 요청 흐름에서만 사용하며 DB와 출처 URL에 저장하지 않습니다.
+
+2026-08-12 슈퍼스타탁구 `robots.txt`는 `Form.jsp`, `Manager.jsp`, `/ok/`, `Upload.jsp`를 제외하고 공개 `open/Do.jsp?urlSeq=302&userNm=...` 개인별 결과 경로를 막지 않습니다. 비회원 GET 검색에서 고유번호·대회일·대회명·부수·결과를 확인했습니다. parser는 이 결과 표만 읽고 별도 레이팅 표와 화면의 연락처를 수집하지 않습니다.
+
+2026-08-12 아이핑 메인과 대회 목록은 비회원에게 공개되지만, 메인의 `pg=Search&SchVal=...` 선수 검색 요청은 `pg=login`으로 리다이렉트되며 화면에 `로그인이 필요한 서비스입니다`가 표시됩니다. BUSU는 계정·세션·CAPTCHA를 자동화하지 않고 출처 URL과 인증 필요 상태만 표시합니다.

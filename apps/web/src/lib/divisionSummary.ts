@@ -1,4 +1,4 @@
-import { divisionSystemLabels, type DivisionSystem, type PlayerSummary } from '@busu/domain';
+import { displayDivisionValue, divisionSystemLabels, type DivisionSystem, type PlayerSummary } from '@busu/domain';
 
 export interface DivisionSummaryItem {
   system: DivisionSystem;
@@ -22,7 +22,7 @@ export function summarizeObservedDivisions(players: readonly PlayerSummary[]): D
     .map(([key, count]) => {
       const [systemValue, division = '확인 필요'] = key.split('\u0000');
       const system = systemValue as DivisionSystem;
-      return { system, systemLabel: divisionSystemLabels[system], division, count };
+      return { system, systemLabel: divisionSystemLabels[system], division: displayDivisionValue(system, division), count };
     })
     .sort((left, right) => systemOrder.indexOf(left.system) - systemOrder.indexOf(right.system)
       || right.count - left.count

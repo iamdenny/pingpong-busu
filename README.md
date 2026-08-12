@@ -11,13 +11,14 @@ Korean table tennis player rank and tournament record search.
 ## 현재 MVP
 
 - 환경 변수 없이 동작하는 한국어 demo 검색 결과 3건(가상 선수)
-- 검색 결과 상단의 최근 공개 기록 기반 오픈·통합·여자·지역·디비전부수별 추정 분포
+- 검색 결과 상단의 최근 공개 기록 기반 오픈·통합·지역·디비전부수별 추정 분포와 `통합부수 여자6부` 형식의 여자 종목 표기
 - 김탁구 동명이인 2명의 지역·소속 분리
 - 대회일 우선·게시일 보조 최신순 선수 상세 타임라인, 최근 관측 부수, 출처 비교와 독립 갱신 상태
 - 홈에서 운영 source catalog를 작은 요약으로 표시하고, 상세 펼침에서 상태와 원문 URL 제공
 - 검색 시 저장 데이터 유무와 관계없이 활성 출처별로 갱신하고 사이트별 실시간 진행 상태 표시
+- 운영 수집이 비활성인 에어핑퐁·오케이핑퐁은 검색어가 포함된 원문 검색 링크만 제공
 - strict TypeScript domain 정규화, 안정 해시, diff/revision 판정
-- mock adapter와 fixture crawler, synthetic fixture로 검증한 애즈트리·대한탁구협회 디비전·마이티티 HTTP adapter
+- mock adapter와 fixture crawler, synthetic fixture로 검증한 애즈트리·대한탁구협회 디비전·마이티티·슈퍼스타탁구 HTTP adapter
 - Supabase PostgreSQL migration, RLS, synthetic seed, Edge Functions
 - GitHub Actions CI, Pages 배포, 수동 crawler workflow
 
@@ -44,7 +45,7 @@ pnpm test:e2e
 
 `VITE_SUPABASE_URL` 또는 `VITE_SUPABASE_PUBLISHABLE_KEY`가 없거나 `VITE_APP_MODE=demo`이면 자동으로 demo repository를 사용합니다. 기존 프로젝트의 `VITE_SUPABASE_ANON_KEY`도 호환합니다. 화면 상단에 가상 데이터임을 표시합니다. 모든 인물과 대회는 합성 데이터입니다.
 
-로컬 전용 middleware를 사용할 때는 `.env.local`에서 `VITE_DEV_LIVE_SEARCH=true`, `CRAWL_LIVE=true`, `CRAWLER_SOURCE_ASTREE_ENABLED=true`를 함께 설정합니다. 배포된 Supabase Edge Function에서 애즈트리·대한탁구협회 디비전·마이티티를 조회할 때는 `VITE_DEV_LIVE_SEARCH=false`, `VITE_SOURCE_REFRESH_ENABLED=true`로 설정하고 서버에 출처별 플래그를 둡니다. 브라우저가 외부 출처를 직접 호출하지 않으며 service key도 필요하지 않습니다. 동일 이름은 소속별 후보로 분리하고 자동 병합하지 않습니다. `.env.local`은 배포에 포함되지 않습니다.
+로컬 전용 middleware를 사용할 때는 `.env.local`에서 `VITE_DEV_LIVE_SEARCH=true`, `CRAWL_LIVE=true`, `CRAWLER_SOURCE_ASTREE_ENABLED=true`를 함께 설정합니다. 배포된 Supabase Edge Function에서 애즈트리·대한탁구협회 디비전·마이티티·슈퍼스타탁구를 조회할 때는 `VITE_DEV_LIVE_SEARCH=false`, `VITE_SOURCE_REFRESH_ENABLED=true`로 설정하고 서버에 출처별 플래그를 둡니다. 브라우저가 외부 출처를 직접 호출하지 않으며 service key도 필요하지 않습니다. 동일 이름은 소속별 후보로 분리하고 자동 병합하지 않습니다. `.env.local`은 배포에 포함되지 않습니다.
 
 ## Supabase 설정
 
@@ -57,13 +58,15 @@ supabase functions serve
 
 [초기 migration](./supabase/migrations/202608120001_initial_schema.sql)은 테이블, index, public view, RLS를 함께 만듭니다. 브라우저에는 `VITE_SUPABASE_URL`과 publishable key만 둡니다. `SUPABASE_SERVICE_ROLE_KEY` 또는 secret key는 trusted crawler/운영 환경에서만 사용합니다. production 전환은 두 public 값을 설정하고 `VITE_APP_MODE=production`으로 빌드합니다.
 
-Supabase repository는 공개 검색/상세 view와 refresh Edge Function을 사용합니다. [두 번째 migration](./supabase/migrations/202608120002_astree_refresh.sql)이 identity, revision upsert RPC와 상세 view를 추가합니다. Edge 환경에 `CRAWL_LIVE=true`, 활성 출처별 환경 변수, `CRAWLER_USER_AGENT`를 설정하고 DB의 `sources.enabled`도 true로 둬야 실제 요청이 활성화됩니다. 마이티티는 `CRAWLER_SOURCE_MYTT_ENABLED=true`를 사용하며 단기 JSF 세션은 검색 요청에만 쓰고 저장하지 않습니다.
+Supabase repository는 공개 검색/상세 view와 refresh Edge Function을 사용합니다. [두 번째 migration](./supabase/migrations/202608120002_astree_refresh.sql)이 identity, revision upsert RPC와 상세 view를 추가합니다. Edge 환경에 `CRAWL_LIVE=true`, 활성 출처별 환경 변수, `CRAWLER_USER_AGENT`를 설정하고 DB의 `sources.enabled`도 true로 둬야 실제 요청이 활성화됩니다. 마이티티는 단기 JSF 세션을 검색 요청에만 쓰고 저장하지 않으며, 슈퍼스타탁구는 공개 개인별 결과 GET 검색만 사용합니다.
 
 선수 기록은 크롤러 확인 시각이 아니라 `대회일 → 게시일 → 확인 시각` 우선순위로 최신순 정렬합니다. 대회일과 게시일이 모두 없는 기록은 날짜가 있는 기록 뒤에 표시합니다.
 
 입상 기록은 공개 결과가 우승·준우승·1~3위·2강·4강으로 표시된 경우만 집계합니다. 8강 이하, 예선·본선 진출 등은 전체 이력에는 남기되 입상 건수에는 포함하지 않습니다.
 
-부수는 값(`4부`, `A부`, `T5` 등)과 체계(`open`, `integrated`, `women`, `regional`, `division`)를 별도로 저장합니다. 대한탁구협회 디비전은 공개 선수조회에 표시되는 T1~T7 등급을 `division`으로 저장합니다. 참가 종목에 `여자` 또는 `여성`이 있으면 `women`으로 우선 분류합니다. 일반 숫자 부수는 시·군·구 같은 지역명과 무관하게 `integrated`로 분류하고, 대회명·종목명에 `오픈`이 명시된 경우만 `open`으로 분류합니다. `regional`은 지역부수 체계가 명시된 경우에만 사용하며, 부수 값 자체가 없으면 `체계 확인 필요`로 표시합니다.
+검색 결과는 기본 `입상` 탭과 `출전` 탭으로 나눕니다. 4강 이상 입상 기록이 한 건 이상인 후보는 `입상`, 입상 없이 참가 기록만 있는 후보는 `출전`에 표시해 동명이인이 많은 검색에서도 먼저 확인할 대상을 줄입니다.
+
+부수는 값(`4부`, `A부`, `T5` 등)과 체계(`open`, `integrated`, `women`, `regional`, `division`)를 별도로 저장합니다. 대한탁구협회 디비전은 공개 선수조회에 표시되는 T1~T7 등급을 `division`으로 저장합니다. 참가 종목에 `여자` 또는 `여성`이 있으면 내부적으로 `women`으로 우선 분류하지만 화면에는 별도 여자부수 체계가 아니라 `통합부수 여자6부`처럼 표시합니다. 일반 숫자 부수는 시·군·구 같은 지역명과 무관하게 `integrated`로 분류하고, 대회명·종목명에 `오픈`이 명시된 경우만 `open`으로 분류합니다. `regional`은 지역부수 체계가 명시된 경우에만 사용하며, 부수 값 자체가 없으면 `체계 확인 필요`로 표시합니다.
 
 ## Fixture crawler
 
@@ -77,7 +80,7 @@ pnpm crawl:fixture --query 김탁구 --version 2
 
 ## Live crawler 안전 정책
 
-`CRAWL_LIVE=false`가 기본입니다. 현재 production에서는 애즈트리·대한탁구협회 디비전·마이티티 공개 선수조회를 출처별 플래그로 활성화합니다. 에어핑퐁과 오케이핑퐁은 파서·합성 테스트까지 구현했지만 약관상 사전 승낙 없는 복제·제3자 제공 제한 때문에 운영 수집은 비활성화합니다. 디비전 응답의 휴대폰 필드는 검증 단계에서 폐기하며 저장하지 않습니다. 로그인/CAPTCHA/접근제어 우회와 BAND scraping은 구현하지 않으며 밴드는 사용자 검색 출처 목록에서도 제외합니다. 신규 출처는 [출처 추가 안내](./docs/adding-a-source.md)의 등록 절차와 정책 점검을 통과한 뒤 개별적으로 활성화합니다.
+`CRAWL_LIVE=false`가 기본입니다. 현재 production에서는 애즈트리·대한탁구협회 디비전·마이티티·슈퍼스타탁구 공개 선수조회를 출처별 플래그로 활성화합니다. 에어핑퐁과 오케이핑퐁은 파서·합성 테스트와 실행 경로까지 구현했지만 약관상 사전 승낙 없는 복제·제3자 제공 제한 때문에 운영 수집은 비활성화합니다. 아이핑 선수 검색은 비회원 요청을 로그인 화면으로 전환하므로 출처 목록에만 표시하고 자동수집하지 않습니다. 디비전 응답의 휴대폰과 슈퍼스타의 레이팅 표는 저장하지 않습니다. 로그인/CAPTCHA/접근제어 우회와 BAND scraping은 구현하지 않으며 밴드는 사용자 검색 출처 목록에서도 제외합니다. 신규 출처는 [출처 추가 안내](./docs/adding-a-source.md)의 등록 절차와 정책 점검을 통과한 뒤 개별적으로 활성화합니다.
 
 출처가 지역 칼럼을 제공하지 않을 때는 대회명과 종목명에서 `도·특별시·광역시·특별자치도 → 시·특례시·군·구`를 정규표현식으로 추출합니다. AI 판단은 사용하지 않으며, 접미사가 생략된 일부 지역 대회명만 제한된 별칭 사전을 사용합니다. 화면에서는 이를 `기록 기반 지역 추정`으로 표시하며, 동일인 병합이나 공식 거주지 판단에는 사용하지 않습니다.
 
@@ -95,7 +98,7 @@ Supabase backend는 별도 상시 Node 서버가 아니라 managed PostgreSQL과
 apps/web             React/Vite UI와 repository 구현
 packages/domain      정규화, 모델, hash, diff
 packages/crawler-core adapter 계약, 오류, in-memory upsert
-packages/source-adapters mock, 애즈트리 adapter, 나머지 skeleton
+packages/source-adapters 출처별 HTTP adapter, parser와 비활성 skeleton
 supabase             migration, seed, Edge Functions
 scripts              fixture/live CLI와 용량 점검
 docs                 설계·정책·운영 문서

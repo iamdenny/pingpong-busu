@@ -3,3 +3,4 @@ export { parseTtaDivisionSearchResponse } from '../ttadivision/parser';
 export { parseAirpingSearchHtml } from '../airping/parser';
 export { parseOkPingpongSearchHtml } from '../okpingpong/parser';
 export { parseMyttSearchForm, parseMyttSearchHtml } from '../mytt/parser';
+export { parseSuperstarSearchHtml } from '../superstar/parser';

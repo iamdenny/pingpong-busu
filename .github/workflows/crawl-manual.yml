@@ -2,7 +2,7 @@ name: Manual crawl
 on:
   workflow_dispatch:
     inputs:
-      source: { description: Source code, required: true, default: mock, type: choice, options: [mock, airping, astree, ttadivision, okpingpong, mytt] }
+      source: { description: Source code, required: true, default: mock, type: choice, options: [mock, airping, astree, ttadivision, okpingpong, mytt, superstar] }
       query: { description: Player name, required: true, default: 김탁구, type: string }
       live: { description: Enable approved live access, required: true, default: false, type: boolean }
       maxPages: { description: Maximum pages, required: true, default: '1', type: string }
@@ -27,5 +27,9 @@ jobs:
           CRAWL_LIVE: "true"
           CRAWLER_SOURCE_ASTREE_ENABLED: ${{ inputs.source == 'astree' && 'true' || 'false' }}
           CRAWLER_SOURCE_TTADIVISION_ENABLED: ${{ inputs.source == 'ttadivision' && 'true' || 'false' }}
+          CRAWLER_SOURCE_AIRPING_ENABLED: ${{ inputs.source == 'airping' && 'true' || 'false' }}
+          CRAWLER_SOURCE_OKPINGPONG_ENABLED: ${{ inputs.source == 'okpingpong' && 'true' || 'false' }}
+          CRAWLER_SOURCE_MYTT_ENABLED: ${{ inputs.source == 'mytt' && 'true' || 'false' }}
+          CRAWLER_SOURCE_SUPERSTAR_ENABLED: ${{ inputs.source == 'superstar' && 'true' || 'false' }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

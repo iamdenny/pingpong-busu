@@ -39,8 +39,10 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 | Variable | `CRAWLER_SOURCE_ASTREE_ENABLED` | 애즈트리 adapter 스위치. 기본 `false` |
 | Variable | `CRAWLER_SOURCE_TTADIVISION_ENABLED` | 대한탁구협회 디비전 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false` |
 | Variable | `CRAWLER_SOURCE_MYTT_ENABLED` | 마이티티 공개 참가 정보 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false` |
+| Variable | `CRAWLER_SOURCE_SUPERSTAR_ENABLED` | 슈퍼스타탁구 공개 개인별 결과 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false` |
 | Variable | `CRAWLER_SOURCE_AIRPING_ENABLED` | 에어핑퐁 adapter 스위치. 출처 승낙 전 항상 `false` |
 | Variable | `CRAWLER_SOURCE_OKPINGPONG_ENABLED` | 오케이핑퐁 adapter 스위치. 출처 승낙 전 항상 `false` |
+| Variable | `CRAWLER_SOURCE_IPING_ENABLED` | 사용하지 않음. 아이핑 선수 검색은 로그인 필요로 catalog만 유지 |
 | Variable | `CRAWLER_USER_AGENT` | 출처 요청 식별자 |
 | Variable | `CRAWLER_SOURCE_MIN_INTERVAL_MS` | 출처별 최소 호출 간격. 기본 2초 |
 

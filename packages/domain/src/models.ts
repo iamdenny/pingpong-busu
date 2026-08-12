@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const sourceCodes = ['mock', 'airping', 'astree', 'ttadivision', 'okpingpong', 'mytt', 'band'] as const;
+export const sourceCodes = ['mock', 'airping', 'astree', 'ttadivision', 'okpingpong', 'mytt', 'superstar', 'iping', 'band'] as const;
 export const sourceCodeSchema = z.enum(sourceCodes);
 export type SourceCode = z.infer<typeof sourceCodeSchema>;
 export type EventType = 'singles' | 'doubles' | 'team' | 'unknown';

@@ -1,13 +1,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { parseAirpingSearchHtml, parseAstreeSearchHtml, parseMyttSearchForm, parseMyttSearchHtml, parseOkPingpongSearchHtml, parseTtaDivisionSearchResponse } from '../_shared/generated/astree-parser.js';
+import { parseAirpingSearchHtml, parseAstreeSearchHtml, parseMyttSearchForm, parseMyttSearchHtml, parseOkPingpongSearchHtml, parseSuperstarSearchHtml, parseTtaDivisionSearchResponse } from '../_shared/generated/astree-parser.js';
 import { hasValidPublishableApiKey } from '../_shared/auth.ts';
 import { corsHeaders, json } from '../_shared/http.ts';
 import { isRecord, normalizeName } from '../_shared/normalize.ts';
 import { ttaDivisionCa } from '../_shared/tta-ca.ts';
 
-const sourceCodes = ['mock', 'airping', 'astree', 'ttadivision', 'okpingpong', 'mytt', 'band'] as const;
+const sourceCodes = ['mock', 'airping', 'astree', 'ttadivision', 'okpingpong', 'mytt', 'superstar', 'iping', 'band'] as const;
 type SourceCode = typeof sourceCodes[number];
-type LiveSourceCode = Exclude<SourceCode, 'mock' | 'band'>;
+type LiveSourceCode = Exclude<SourceCode, 'mock' | 'iping' | 'band'>;
 interface RefreshInput { name: string; club?: string; region?: string; sourceCodes?: SourceCode[]; force: boolean; }
 
 class SafeSourceError extends Error {
@@ -20,6 +20,7 @@ const sourceFlags: Record<LiveSourceCode, string> = {
   ttadivision: 'CRAWLER_SOURCE_TTADIVISION_ENABLED',
   okpingpong: 'CRAWLER_SOURCE_OKPINGPONG_ENABLED',
   mytt: 'CRAWLER_SOURCE_MYTT_ENABLED',
+  superstar: 'CRAWLER_SOURCE_SUPERSTAR_ENABLED',
 };
 
 const parserVersions: Record<LiveSourceCode, string> = {
@@ -28,6 +29,7 @@ const parserVersions: Record<LiveSourceCode, string> = {
   ttadivision: 'ttadivision-1',
   okpingpong: 'okpingpong-2',
   mytt: 'mytt-2',
+  superstar: 'superstar-1',
 };
 
 function parseInput(value: unknown): RefreshInput {
@@ -109,6 +111,19 @@ async function fetchSimpleHtmlRecords(sourceCode: 'airping' | 'okpingpong', name
     : parseOkPingpongSearchHtml(html, name, fetchedAt)) as Array<Record<string, unknown>>;
 }
 
+async function fetchSuperstarRecords(name: string, fetchedAt: string): Promise<Array<Record<string, unknown>>> {
+  const url = new URL('https://www.superstar.kr/open/Do.jsp');
+  url.searchParams.set('urlSeq', '302');
+  url.searchParams.set('userNm', name);
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(8000),
+    headers: { accept: 'text/html', 'user-agent': Deno.env.get('CRAWLER_USER_AGENT') ?? 'BUSU/0.1' },
+    redirect: 'follow',
+  });
+  assertPublicHtmlResponse(response, '슈퍼스타탁구');
+  return parseSuperstarSearchHtml(await response.text(), name, fetchedAt) as Array<Record<string, unknown>>;
+}
+
 async function fetchMyttRecords(name: string, club: string | undefined, fetchedAt: string): Promise<Array<Record<string, unknown>>> {
   const url = 'https://mytt.kr/main/player_list.xhtml';
   const userAgent = Deno.env.get('CRAWLER_USER_AGENT') ?? 'BUSU/0.1';
@@ -171,7 +186,7 @@ Deno.serve(async (request) => {
   try {
     const input = parseInput(await request.json());
     const normalizedName = normalizeName(input.name);
-    const selected = input.sourceCodes ?? ['mock', 'astree', 'ttadivision', 'mytt'];
+    const selected = input.sourceCodes ?? ['mock', 'astree', 'ttadivision', 'mytt', 'superstar'];
     const results: Array<Record<string, unknown>> = [];
     let refreshId: number | string = crypto.randomUUID();
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -184,8 +199,8 @@ Deno.serve(async (request) => {
         results.push({ sourceCode, status: 'succeeded', inserted: 0, updated: 0, unchanged: 0, synthetic: true });
         continue;
       }
-      if (sourceCode === 'band') {
-        results.push({ sourceCode, status: 'skipped', reason: sourceCode === 'band' ? 'manual_only' : 'source_disabled' });
+      if (sourceCode === 'band' || sourceCode === 'iping') {
+        results.push({ sourceCode, status: 'skipped', reason: sourceCode === 'band' ? 'manual_only' : 'authentication_required' });
         continue;
       }
       const liveSourceCode = sourceCode as LiveSourceCode;
@@ -235,6 +250,8 @@ Deno.serve(async (request) => {
           records.push(...await fetchTtaDivisionRecords(input.name, fetchedAt));
         } else if (sourceCode === 'mytt') {
           records.push(...await fetchMyttRecords(input.name, input.club, fetchedAt));
+        } else if (sourceCode === 'superstar') {
+          records.push(...await fetchSuperstarRecords(input.name, fetchedAt));
         } else {
           records.push(...await fetchSimpleHtmlRecords(sourceCode, input.name, fetchedAt));
         }

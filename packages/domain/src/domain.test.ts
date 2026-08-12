@@ -12,6 +12,7 @@ import {
   isAwardRank,
   inferKoreanRegion,
   inferDivisionSystem,
+  formatDivisionObservation,
   parseDivisionSystem,
   sortPlayerRecordsByLatest,
   type PlayerRecord,
@@ -47,6 +48,13 @@ describe('normalization and hashes', () => {
     delete without.tournamentDate;
     delete without.externalPlayerId;
     expect(createNaturalKeyHash(without)).toHaveLength(16);
+  });
+});
+
+describe('division presentation', () => {
+  it('presents women event divisions as integrated women divisions', () => {
+    expect(formatDivisionObservation('women', '6부')).toBe('통합부수 여자6부');
+    expect(formatDivisionObservation('integrated', '6부')).toBe('통합부수 6부');
   });
 });
 
