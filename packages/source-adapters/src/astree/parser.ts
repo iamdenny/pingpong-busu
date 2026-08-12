@@ -1,4 +1,4 @@
-import { inferDivisionSystem, inferKoreanRegion, normalizePlayerName, normalizeSearchText, stableHash, withRecordHashes, type EventType, type NormalizedRecord } from '@busu/domain';
+import { inferEventDivisionSystem, inferKoreanRegion, normalizePlayerName, normalizeSearchText, stableHash, withRecordHashes, type EventType, type NormalizedRecord } from '@busu/domain';
 import { SourceSchemaChangedError } from '@busu/crawler-core';
 import { normalizeObservedDivision } from '../html';
 import { astreeParsedRowSchema, type AstreeParsedRow } from './schema';
@@ -93,7 +93,7 @@ export function parseAstreeSearchHtml(html: string, expectedName: string, observ
     const sourceIdentityKey = stableHash({ sourceCode: 'astree', normalizedName: normalizedExpectedName, club: normalizeSearchText(row.clubText) });
     return row.events.map((event) => {
       const region = inferKoreanRegion(row.tournamentName, event.eventName);
-      const divisionSystem = inferDivisionSystem(row.tournamentName, event.eventName, event.divisionValue);
+      const divisionSystem = inferEventDivisionSystem(event.eventName, row.tournamentName, event.divisionValue);
       return withRecordHashes({
       sourceCode: 'astree', sourceIdentityKey, playerName: row.playerName, normalizedPlayerName: normalizedExpectedName,
       clubText: row.clubText, tournamentName: row.tournamentName, ...(row.tournamentDate ? { tournamentDate: row.tournamentDate } : {}),

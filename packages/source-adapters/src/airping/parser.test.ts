@@ -5,6 +5,7 @@ import { SourceSchemaChangedError } from '@busu/crawler-core';
 import { parseAirpingSearchHtml } from './parser';
 
 const fixture = readFileSync(resolve(import.meta.dirname, '../../../../fixtures/sources/airping/search-result.html'), 'utf8');
+const regionalOpenFixture = readFileSync(resolve(import.meta.dirname, '../../../../fixtures/sources/airping/regional-open-result.html'), 'utf8');
 
 describe('에어핑퐁 parser', () => {
   it('parses synthetic participation and award records without merging identities', () => {
@@ -19,5 +20,16 @@ describe('에어핑퐁 parser', () => {
   it('separates a schema change from an empty result', () => {
     expect(parseAirpingSearchHtml('<form id="playerSearchForm"></form><ul class="_mc_content_list"><li>검색결과가 없습니다.</li></ul>', '홍라켓', '2026-08-12T00:00:00.000Z')).toEqual([]);
     expect(() => parseAirpingSearchHtml('<html></html>', '홍라켓', '2026-08-12T00:00:00.000Z')).toThrow(SourceSchemaChangedError);
+  });
+
+  it('classifies an internal local event in an open tournament as integrated', () => {
+    const records = parseAirpingSearchHtml(regionalOpenFixture, '신상익', '2026-08-13T00:00:00.000Z');
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      tournamentName: '제8회 수원시 홍재배 전국오픈 탁구대회',
+      eventName: '지역혼성3/4부',
+      divisionSystem: 'integrated',
+      divisionValue: '3부',
+    });
   });
 });

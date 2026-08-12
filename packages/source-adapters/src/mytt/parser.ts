@@ -1,4 +1,4 @@
-import { inferDivisionSystem, inferKoreanRegion, normalizePlayerName, normalizeSearchText, stableHash, withRecordHashes, type NormalizedRecord } from '@busu/domain';
+import { inferEventDivisionSystem, inferKoreanRegion, normalizePlayerName, normalizeSearchText, stableHash, withRecordHashes, type NormalizedRecord } from '@busu/domain';
 import { SourceSchemaChangedError } from '@busu/crawler-core';
 import { eventTypeFromText, extractTableCells, firstIsoDate, normalizeObservedDivision, stripHtml } from '../html';
 import { myttParsedRowSchema, myttSearchFormSchema, type MyttParsedRow } from './schema';
@@ -68,7 +68,7 @@ export function parseMyttSearchHtml(html: string, expectedName: string, observed
       sourceCode: 'mytt', sourceIdentityKey, playerName: row.playerName, normalizedPlayerName: normalizedExpectedName,
       ...(row.clubText ? { clubText: row.clubText } : {}), ...(region ? { region } : {}), tournamentName: row.tournamentName,
       ...(row.tournamentDate ? { tournamentDate: row.tournamentDate } : {}), eventName: row.eventName, eventType: row.eventType,
-      divisionSystem: inferDivisionSystem(row.scale, row.tournamentName, row.eventName, row.divisionValue),
+      divisionSystem: inferEventDivisionSystem(row.eventName, row.scale, row.tournamentName, row.divisionValue),
       ...(row.divisionValue ? { divisionValue: row.divisionValue } : {}), ...(row.rankText ? { rankText: row.rankText } : {}),
       ...(row.partnerText ? { partnerText: row.partnerText } : {}), sourceUrl: MYTT_SEARCH_URL, observedAt,
     });

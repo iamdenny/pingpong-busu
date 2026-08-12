@@ -12,6 +12,7 @@ import {
   isAwardRank,
   inferKoreanRegion,
   inferDivisionSystem,
+  inferEventDivisionSystem,
   formatDivisionObservation,
   parseDivisionSystem,
   parsePlayerSearchQuery,
@@ -135,6 +136,15 @@ describe('division system inference', () => {
     expect(inferDivisionSystem('전국대회', '남자 단식')).toBe('unknown');
     expect(parseDivisionSystem('전국오픈')).toBe('open');
     expect(parseDivisionSystem('디비전부수')).toBe('division');
+  });
+
+  it('treats local event categories inside an open tournament as integrated', () => {
+    expect(inferEventDivisionSystem('지역', '전국오픈 탁구대회', '3부')).toBe('integrated');
+    expect(inferEventDivisionSystem('지역남성 5부', '전국오픈 탁구대회')).toBe('integrated');
+    expect(inferEventDivisionSystem('지역여성6부', '전국오픈 탁구대회')).toBe('integrated');
+    expect(inferEventDivisionSystem('지역혼성3/4부', '전국오픈 탁구대회')).toBe('integrated');
+    expect(inferEventDivisionSystem('남자 단식', '수원 지역 전국오픈 탁구대회', '3부')).toBe('open');
+    expect(inferEventDivisionSystem('지역혼성 T5', '디비전리그')).toBe('division');
   });
 });
 

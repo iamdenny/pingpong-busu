@@ -42,3 +42,19 @@ export function inferDivisionSystem(...evidence: Array<string | undefined>): Div
   if (/(?:\d+|[A-Z])\s*부(?:수)?/iu.test(text)) return 'integrated';
   return 'unknown';
 }
+
+function isIntegratedLocalEvent(eventName: string | undefined): boolean {
+  if (!eventName) return false;
+  const normalized = eventName.normalize('NFKC');
+  return /(?:^|[\s([/·,&+-])지역(?:\s*(?:남성|여성|혼성))?(?=\s*(?:(?:\d+(?:\s*[/／]\s*\d+)?|[A-Z])\s*부|[\s)\]/·,&+-]|$))/iu.test(normalized);
+}
+
+export function inferEventDivisionSystem(
+  eventName: string | undefined,
+  ...additionalEvidence: Array<string | undefined>
+): DivisionSystem {
+  const inferred = inferDivisionSystem(eventName, ...additionalEvidence);
+  if (inferred === 'division') return inferred;
+  if (isIntegratedLocalEvent(eventName)) return 'integrated';
+  return inferred;
+}

@@ -1,4 +1,4 @@
-import { inferDivisionSystem, normalizePlayerName, stableHash, withRecordHashes, type NormalizedRecord } from '@busu/domain';
+import { inferEventDivisionSystem, normalizePlayerName, stableHash, withRecordHashes, type NormalizedRecord } from '@busu/domain';
 import { escapeRegExp, firstIsoDate, normalizeObservedDivision, stripHtml } from '../html';
 import { kakaoCafeSearchResponseSchema, type KakaoCafeDocument } from './schema';
 
@@ -65,7 +65,7 @@ function toRecord(document: KakaoCafeDocument, expectedName: string, observedAt:
     sourcePublishedDate,
     eventName,
     eventType: 'unknown',
-    ...(divisionValue ? { divisionSystem: inferDivisionSystem(nearbyEvidence, divisionValue), divisionValue } : {}),
+    ...(divisionValue ? { divisionSystem: inferEventDivisionSystem(eventName, nearbyEvidence, divisionValue), divisionValue } : {}),
     ...(rankText ? { rankText } : {}),
     sourceUrl: document.url,
     observedAt,

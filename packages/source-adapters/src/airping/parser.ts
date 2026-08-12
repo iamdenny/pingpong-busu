@@ -1,4 +1,4 @@
-import { inferDivisionSystem, inferKoreanRegion, normalizePlayerName, normalizeSearchText, stableHash, withRecordHashes, type NormalizedRecord } from '@busu/domain';
+import { inferEventDivisionSystem, inferKoreanRegion, normalizePlayerName, normalizeSearchText, stableHash, withRecordHashes, type NormalizedRecord } from '@busu/domain';
 import { SourceSchemaChangedError } from '@busu/crawler-core';
 import { airpingParsedRowSchema, type AirpingParsedRow } from './schema';
 import { decodeHtml, escapeRegExp, eventTypeFromText, firstIsoDate, normalizeObservedDivision, stripHtml } from '../html';
@@ -67,7 +67,7 @@ export function parseAirpingSearchHtml(html: string, expectedName: string, obser
         sourceCode: 'airping', sourceIdentityKey, playerName: row.playerName, normalizedPlayerName: normalizedExpectedName,
         ...(row.clubText ? { clubText: row.clubText } : {}), ...(region ? { region } : {}), tournamentName: row.tournamentName,
         ...(row.tournamentDate ? { tournamentDate: row.tournamentDate } : {}), eventName: event.eventName,
-        eventType: event.eventType, divisionSystem: inferDivisionSystem(row.regionEvidence, row.tournamentName, event.eventName, event.divisionValue),
+        eventType: event.eventType, divisionSystem: inferEventDivisionSystem(event.eventName, row.regionEvidence, row.tournamentName, event.divisionValue),
         ...(event.divisionValue ? { divisionValue: event.divisionValue } : {}), ...(event.rankText ? { rankText: event.rankText } : {}),
         ...(event.partnerText ? { partnerText: event.partnerText } : {}), sourceUrl: row.sourceUrl, observedAt,
       });

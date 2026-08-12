@@ -1,4 +1,4 @@
-import { inferDivisionSystem, inferKoreanRegion, normalizePlayerName, normalizeSearchText, stableHash, withRecordHashes, type NormalizedRecord } from '@busu/domain';
+import { inferEventDivisionSystem, inferKoreanRegion, normalizePlayerName, normalizeSearchText, stableHash, withRecordHashes, type NormalizedRecord } from '@busu/domain';
 import { SourceSchemaChangedError } from '@busu/crawler-core';
 import { eventTypeFromText, extractTableCells, firstIsoDate, normalizeObservedDivision, stripHtml } from '../html';
 import { okPingpongParsedRowSchema, type OkPingpongParsedRow } from './schema';
@@ -70,7 +70,7 @@ export function parseOkPingpongSearchHtml(html: string, expectedName: string, ob
       sourceCode: 'okpingpong', sourceIdentityKey, playerName: row.playerName, normalizedPlayerName: normalizedExpectedName,
       ...(row.clubText ? { clubText: row.clubText } : {}), ...(region ? { region } : {}), tournamentName: row.tournamentName,
       ...(row.tournamentDate ? { tournamentDate: row.tournamentDate } : {}), eventName: row.eventName, eventType: row.eventType,
-      divisionSystem: inferDivisionSystem(row.category, row.tournamentName, row.eventName, row.divisionValue),
+      divisionSystem: inferEventDivisionSystem(row.eventName, row.category, row.tournamentName, row.divisionValue),
       ...(row.divisionValue ? { divisionValue: row.divisionValue } : {}), ...(row.rankText ? { rankText: row.rankText } : {}),
       ...(row.partnerText ? { partnerText: row.partnerText } : {}), sourceUrl: stableSourceUrl.toString(), observedAt,
     })];

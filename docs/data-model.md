@@ -20,7 +20,7 @@ title: "데이터 모델"
 
 향후 `correction_requests`는 참여자의 일반 정정·분리 제보와 근거를 받고 관리자가 승인·반려합니다. 승인 결과는 canonical metadata에 반영하되 수집된 원문 기록을 수정하지 않으며, 이전 값·근거 URL·처리자·처리 시각을 감사 이력으로 보존합니다.
 
-`results.division_value`는 `4부`, `A부`, `T5` 같은 관측값이고 `results.division_system`은 `open`, `integrated`, `women`, `regional`, `division`, `unknown` 중 하나입니다. 같은 숫자라도 서로 다른 체계는 합산하지 않습니다. 판정 우선순위는 T1~T7/디비전 → 참가 종목의 여자·여성 → 오픈 명시 → 지역부수 명시 → 일반 숫자·문자 부수의 통합부수입니다. `women`은 여자 종목을 보존하기 위한 내부 subtype이며 사용자 화면에서는 `통합부수 여자6부`처럼 표현합니다. 시·군·구 등 대회 지역은 부수 체계 판정 근거가 아니며 일반 숫자 부수는 `integrated`가 기본입니다. 부수 값 자체가 없거나 해석할 수 없는 값은 `unknown`으로 보존합니다.
+`results.division_value`는 `4부`, `A부`, `T5` 같은 관측값이고 `results.division_system`은 `open`, `integrated`, `women`, `regional`, `division`, `unknown` 중 하나입니다. 같은 숫자라도 서로 다른 체계는 합산하지 않습니다. 판정 우선순위는 T1~T7/디비전 → 종목 내부의 지역 구분(`지역`, `지역남성`, `지역여성`, `지역혼성`) → 참가 종목의 여자·여성 → 오픈 명시 → 지역부수 명시 → 일반 숫자·문자 부수의 통합부수입니다. 종목 내부 지역 구분은 대회명에 `오픈`이 있더라도 `integrated`로 저장합니다. `women`은 그 지역 구분이 없는 여자 종목을 보존하기 위한 내부 subtype이며 사용자 화면에서는 `통합부수 여자6부`처럼 표현합니다. 시·군·구 등 대회 지역은 부수 체계 판정 근거가 아니며 일반 숫자 부수는 `integrated`가 기본입니다. 부수 값 자체가 없거나 해석할 수 없는 값은 `unknown`으로 보존합니다.
 
 출처가 누락값을 `NULL`, `NULL부`, `undefined`, `none`, `N/A`로 보낼 때는 `division_value`를 저장하지 않습니다. 기존 sentinel 값도 migration으로 null 처리하며, 방어적 UI 표기는 `통합부수 확인 필요`처럼 표현해 `여자NULL부`를 만들지 않습니다.
 

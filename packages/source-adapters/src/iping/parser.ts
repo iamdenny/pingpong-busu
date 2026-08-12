@@ -1,5 +1,5 @@
 import {
-  inferDivisionSystem,
+  inferEventDivisionSystem,
   inferKoreanRegion,
   normalizePlayerName,
   normalizeSearchText,
@@ -133,7 +133,7 @@ export function parseIpingSearchHtml(
       tournamentDate: row.tournamentDate,
       eventName: row.eventName,
       eventType: row.eventType,
-      divisionSystem: inferDivisionSystem(row.tournamentScale, row.tournamentName, row.eventName, row.divisionValue),
+      divisionSystem: inferEventDivisionSystem(row.eventName, row.tournamentScale, row.tournamentName, row.divisionValue),
       ...(row.divisionValue ? { divisionValue: row.divisionValue } : {}),
       ...(row.rankText ? { rankText: row.rankText } : {}),
       sourceUrl: row.sourceUrl,

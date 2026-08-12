@@ -1,4 +1,4 @@
-import { inferDivisionSystem, inferKoreanRegion, normalizePlayerName, stableHash, withRecordHashes, type NormalizedRecord } from '@busu/domain';
+import { inferEventDivisionSystem, inferKoreanRegion, normalizePlayerName, stableHash, withRecordHashes, type NormalizedRecord } from '@busu/domain';
 import { SourceSchemaChangedError } from '@busu/crawler-core';
 import { decodeHtml, eventTypeFromText, extractTableCells, firstIsoDate, normalizeObservedDivision, stripHtml } from '../html';
 import { superstarParsedRowSchema, type SuperstarParsedRow } from './schema';
@@ -72,7 +72,7 @@ export function parseSuperstarSearchHtml(html: string, expectedName: string, obs
       tournamentDate: row.tournamentDate,
       eventName: row.eventName,
       eventType: row.eventType,
-      divisionSystem: inferDivisionSystem(row.tournamentName, row.eventName, row.divisionValue),
+      divisionSystem: inferEventDivisionSystem(row.eventName, row.tournamentName, row.divisionValue),
       ...(row.divisionValue ? { divisionValue: row.divisionValue } : {}),
       ...(row.rankText ? { rankText: row.rankText } : {}),
       sourceUrl: stableSourceUrl.toString(),
