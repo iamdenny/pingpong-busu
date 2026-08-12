@@ -4,7 +4,7 @@ import type { PlayerRepository, PlayerSearchInput, RefreshRequest, RefreshRespon
 
 const summarySchema = z.object({
   id: z.string(), name: z.string(), normalizedName: z.string(), region: z.string().optional(), club: z.string().optional(),
-  recentObservedDivision: z.string().optional(), recentObservedDivisionSystem: divisionSystemSchema.optional(), resultCount: z.number(), sourceCount: z.number(), lastCheckedAt: z.string(),
+  recentObservedDivision: z.string().optional(), recentObservedDivisionSystem: divisionSystemSchema.optional(), resultCount: z.number(), awardResults: z.array(z.object({ rank: z.string(), date: z.string().optional() })).optional(), sourceCount: z.number(), lastCheckedAt: z.string(),
   identityStatus: z.enum(['unreviewed', 'likely', 'verified', 'disputed']), dataKind: z.literal('live').optional(),
 });
 
@@ -23,14 +23,17 @@ export class DevLivePlayerRepository implements PlayerRepository {
   async searchPlayers(input: PlayerSearchInput): Promise<PlayerSummary[]> {
     const response = await fetch(`/api/dev/players?query=${encodeURIComponent(input.query)}`);
     if (!response.ok) throw new Error('개발용 저장 결과를 불러오지 못했습니다.');
-    return z.array(summarySchema).parse(await response.json()).map((row) => ({
-      id: row.id, name: row.name, normalizedName: row.normalizedName,
-      ...(row.region ? { region: row.region } : {}), ...(row.club ? { club: row.club } : {}),
-      ...(row.recentObservedDivision ? { recentObservedDivision: row.recentObservedDivision } : {}),
-      ...(row.recentObservedDivisionSystem ? { recentObservedDivisionSystem: row.recentObservedDivisionSystem } : {}),
-      resultCount: row.resultCount, sourceCount: row.sourceCount, lastCheckedAt: row.lastCheckedAt,
-      identityStatus: row.identityStatus, ...(row.dataKind ? { dataKind: row.dataKind } : {}),
-    }));
+    return z.array(summarySchema).parse(await response.json()).filter((row) => !input.region || row.region?.includes(input.region)).map((row) => {
+      const awardResults = row.awardResults?.map((award) => ({ rank: award.rank, ...(award.date ? { date: award.date } : {}) }));
+      return {
+        id: row.id, name: row.name, normalizedName: row.normalizedName,
+        ...(row.region ? { region: row.region } : {}), ...(row.club ? { club: row.club } : {}),
+        ...(row.recentObservedDivision ? { recentObservedDivision: row.recentObservedDivision } : {}),
+        ...(row.recentObservedDivisionSystem ? { recentObservedDivisionSystem: row.recentObservedDivisionSystem } : {}),
+        resultCount: row.resultCount, ...(awardResults ? { awardResults } : {}), sourceCount: row.sourceCount, lastCheckedAt: row.lastCheckedAt,
+        identityStatus: row.identityStatus, ...(row.dataKind ? { dataKind: row.dataKind } : {}),
+      };
+    });
   }
   async getPlayer(id: string): Promise<PlayerDetail | null> {
     const response = await fetch(`/api/dev/players/${encodeURIComponent(id)}`);

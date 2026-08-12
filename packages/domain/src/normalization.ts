@@ -5,6 +5,11 @@ export interface ParsedPlayerName {
   divisionCandidate?: string;
 }
 
+export interface ParsedPlayerSearchQuery {
+  name: string;
+  region?: string;
+}
+
 const collapseWhitespace = (value: string): string => value.normalize('NFKC').trim().replace(/\s+/gu, ' ');
 
 export const normalizeSearchText = (value: string): string =>
@@ -12,6 +17,12 @@ export const normalizeSearchText = (value: string): string =>
 
 export const normalizePlayerName = normalizeSearchText;
 export const normalizeClubName = normalizeSearchText;
+
+export function parsePlayerSearchQuery(value: string): ParsedPlayerSearchQuery {
+  const [name = '', ...regionParts] = collapseWhitespace(value).split(' ');
+  const region = regionParts.join(' ').trim();
+  return { name, ...(region ? { region } : {}) };
+}
 
 export function parsePlayerName(value: string): ParsedPlayerName {
   const original = collapseWhitespace(value);

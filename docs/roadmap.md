@@ -17,14 +17,15 @@ title: '제품 로드맵'
 5. 에어핑퐁·오케이핑퐁 parser와 synthetic fixture, 운영 비활성 정책
 6. 출처별 실시간 진행 상태와 compact 부수 요약
 7. 슈퍼스타탁구 공개 개인별 결과 adapter와 아이핑 인증 필요 catalog
-7. GitHub Pages 및 Supabase 배포 workflow
+8. 이름+지역 동명이인 검색, 입상/출전 탭, 입상 등수·날짜 요약
+9. GitHub Pages 및 Supabase 배포 workflow
 
 ## 다음 단계
 
 1. 공개 refresh에 gateway rate limit, quota, 운영 metric 추가
 2. 출처 정책·parser health 정기 점검과 실패 알림
-3. 관리자용 동명이인 merge/split 검토와 감사 이력
-4. 정정 요청 접수와 abuse control
+3. 참여자 정정·분리 제보와 근거 제출
+4. 관리자 승인·반려, 동명이인 merge/split과 감사 이력
 5. 대회 규정 근거를 이용한 최소 출전 가능 부수 검증 엔진
 6. 운영자 CSV 업로드와 provenance 검증
 

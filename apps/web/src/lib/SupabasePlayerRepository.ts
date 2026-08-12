@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { divisionSystemSchema, isAwardRank, normalizePlayerName, sortPlayerRecordsByLatest, sourceCodeSchema, type PlayerDetail, type PlayerRecord, type PlayerSummary, type SourceComparison } from '@busu/domain';
 import type { PlayerRepository, PlayerSearchInput, RefreshRequest } from './repository';
 
-const summarySchema = z.object({ id: z.coerce.string(), canonical_name: z.string(), normalized_name: z.string(), primary_region: z.string().nullable(), primary_club: z.string().nullable(), recent_observed_division: z.string().nullable(), recent_observed_division_system: divisionSystemSchema.nullish(), result_count: z.number(), source_count: z.number(), last_checked_at: z.string(), identity_status: z.enum(['unreviewed', 'likely', 'verified', 'disputed']) });
+const summarySchema = z.object({ id: z.coerce.string(), canonical_name: z.string(), normalized_name: z.string(), primary_region: z.string().nullable(), primary_club: z.string().nullable(), recent_observed_division: z.string().nullable(), recent_observed_division_system: divisionSystemSchema.nullish(), result_count: z.number(), award_results: z.array(z.object({ rank: z.string(), date: z.string().nullable() })).nullish(), source_count: z.number(), last_checked_at: z.string(), identity_status: z.enum(['unreviewed', 'likely', 'verified', 'disputed']) });
 const resultSchema = z.object({
   id: z.coerce.string(), tournament_name_text: z.string(), event_name: z.string(), event_type: z.enum(['singles', 'doubles', 'team', 'unknown']).nullable(),
   division_system: divisionSystemSchema.nullish(), division_value: z.string().nullable(), rank_text: z.string().nullable(), club_text: z.string().nullable(), source_url: z.string().url(),
@@ -20,7 +20,8 @@ const sourceStatusSchema = z.object({
 });
 
 function toSummary(row: z.infer<typeof summarySchema>): PlayerSummary {
-  return { id: row.id, name: row.canonical_name, normalizedName: row.normalized_name, ...(row.primary_region ? { region: row.primary_region } : {}), ...(row.primary_club ? { club: row.primary_club } : {}), ...(row.recent_observed_division ? { recentObservedDivision: row.recent_observed_division } : {}), ...(row.recent_observed_division_system ? { recentObservedDivisionSystem: row.recent_observed_division_system } : {}), resultCount: row.result_count, sourceCount: row.source_count, lastCheckedAt: row.last_checked_at, identityStatus: row.identity_status, dataKind: 'live' };
+  const awardResults = row.award_results?.map((award) => ({ rank: award.rank, ...(award.date ? { date: award.date } : {}) }));
+  return { id: row.id, name: row.canonical_name, normalizedName: row.normalized_name, ...(row.primary_region ? { region: row.primary_region } : {}), ...(row.primary_club ? { club: row.primary_club } : {}), ...(row.recent_observed_division ? { recentObservedDivision: row.recent_observed_division } : {}), ...(row.recent_observed_division_system ? { recentObservedDivisionSystem: row.recent_observed_division_system } : {}), resultCount: row.result_count, ...(awardResults?.length ? { awardResults } : {}), sourceCount: row.source_count, lastCheckedAt: row.last_checked_at, identityStatus: row.identity_status, dataKind: 'live' };
 }
 
 type ResultRow = z.infer<typeof resultSchema>;
@@ -50,7 +51,9 @@ export class SupabasePlayerRepository implements PlayerRepository {
   }
   async searchPlayers(input: PlayerSearchInput): Promise<PlayerSummary[]> {
     const query = normalizePlayerName(input.query).replaceAll('%', '');
-    const { data, error } = await this.client.from('public_player_search').select('*').ilike('normalized_name', `${query}%`).limit(30);
+    let request = this.client.from('public_player_search').select('*').ilike('normalized_name', `${query}%`);
+    if (input.region) request = request.ilike('primary_region', `%${input.region.replaceAll('%', '').replaceAll('_', '')}%`);
+    const { data, error } = await request.limit(30);
     if (error) throw error;
     return z.array(summarySchema).parse(data).map(toSummary);
   }

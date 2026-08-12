@@ -8,6 +8,11 @@ export const divisionSystemCodes = ['open', 'integrated', 'women', 'regional', '
 export const divisionSystemSchema = z.enum(divisionSystemCodes);
 export type DivisionSystem = z.infer<typeof divisionSystemSchema>;
 
+export interface AwardResultSummary {
+  rank: string;
+  date?: string;
+}
+
 export interface SourceStatus {
   sourceCode: SourceCode;
   displayName: string;
@@ -51,6 +56,7 @@ export interface PlayerSummary {
   recentObservedDivision?: string;
   recentObservedDivisionSystem?: DivisionSystem;
   resultCount: number;
+  awardResults?: AwardResultSummary[];
   sourceCount: number;
   lastCheckedAt: string;
   identityStatus: 'unreviewed' | 'likely' | 'verified' | 'disputed';

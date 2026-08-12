@@ -12,7 +12,11 @@ title: '데이터 모델'
 
 기록 시간축은 대회 개최일 `tournaments.held_on`을 우선합니다. 게시판형 출처가 대회일을 제공하지 않으면 `results.source_published_on`을 사용하고, 공개 view의 `sort_date`는 두 값을 이 순서로 합성합니다. 크롤러의 `last_checked_at`은 동일 날짜의 보조 정렬 기준일 뿐 경기·게시 시점을 대신하지 않습니다.
 
-`results.rank_text`가 우승·준우승·1~3위·2강·4강을 나타낼 때만 입상으로 집계합니다. 8강 이하와 예선·본선 진출은 참가 이력으로 보존하지만 `public_player_search.result_count` 및 화면의 입상 필터에는 포함하지 않습니다. 애플리케이션의 `isAwardRank`와 DB의 `is_award_rank`는 같은 판정 기준을 사용합니다.
+`results.rank_text`가 우승·준우승·1~3위·2강·4강을 나타낼 때만 입상으로 집계합니다. 8강 이하와 예선·본선 진출은 참가 이력으로 보존하지만 `public_player_search.result_count` 및 화면의 입상 필터에는 포함하지 않습니다. `public_player_search.award_results`는 입상 등수와 `대회일 → 게시일` 기준 날짜를 최신순 JSON 배열로 제공합니다. 애플리케이션의 `isAwardRank`와 DB의 `is_award_rank`는 같은 판정 기준을 사용합니다.
+
+`public_player_search.primary_region`은 `이름 지역` 검색의 부분 일치 필터에 사용합니다. 지역어는 외부 출처의 선수명 검색어에 포함하지 않습니다. 지역은 공개 대회 기록 기반 추정값이므로 동일인 자동 병합이나 거주지 판단의 단독 근거로 쓰지 않습니다.
+
+향후 `correction_requests`는 참여자의 정정·분리 제보와 근거를 받고 관리자가 승인·반려합니다. 승인 결과는 canonical metadata에 반영하되 수집된 원문 기록을 수정하지 않으며, 이전 값·근거 URL·처리자·처리 시각을 감사 이력으로 보존합니다.
 
 `results.division_value`는 `4부`, `A부`, `T5` 같은 관측값이고 `results.division_system`은 `open`, `integrated`, `women`, `regional`, `division`, `unknown` 중 하나입니다. 같은 숫자라도 서로 다른 체계는 합산하지 않습니다. 판정 우선순위는 T1~T7/디비전 → 참가 종목의 여자·여성 → 오픈 명시 → 지역부수 명시 → 일반 숫자·문자 부수의 통합부수입니다. `women`은 여자 종목을 보존하기 위한 내부 subtype이며 사용자 화면에서는 `통합부수 여자6부`처럼 표현합니다. 시·군·구 등 대회 지역은 부수 체계 판정 근거가 아니며 일반 숫자 부수는 `integrated`가 기본입니다. 부수 값 자체가 없거나 해석할 수 없는 값은 `unknown`으로 보존합니다.
 

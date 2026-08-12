@@ -33,7 +33,7 @@ function summaries(details: readonly PlayerDetail[]): PlayerSummary[] {
     ...(player.region ? { region: player.region } : {}), ...(player.club ? { club: player.club } : {}),
     ...(player.recentObservedDivision ? { recentObservedDivision: player.recentObservedDivision } : {}),
     ...(player.recentObservedDivisionSystem ? { recentObservedDivisionSystem: player.recentObservedDivisionSystem } : {}),
-    resultCount: player.resultCount, sourceCount: player.sourceCount, lastCheckedAt: player.lastCheckedAt,
+    resultCount: player.resultCount, ...(player.awardResults ? { awardResults: player.awardResults } : {}), sourceCount: player.sourceCount, lastCheckedAt: player.lastCheckedAt,
     identityStatus: player.identityStatus, dataKind: 'live',
   }));
 }

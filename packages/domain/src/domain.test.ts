@@ -14,6 +14,7 @@ import {
   inferDivisionSystem,
   formatDivisionObservation,
   parseDivisionSystem,
+  parsePlayerSearchQuery,
   sortPlayerRecordsByLatest,
   type PlayerRecord,
   type RecordHashInput,
@@ -105,6 +106,14 @@ describe('Korean region inference', () => {
   it('does not guess from ambiguous or non-regional tournament names', () => {
     expect(inferKoreanRegion('제13회 남한산성배 생활체육 전국오픈탁구대회')).toBeUndefined();
     expect(inferKoreanRegion('제7회 윤봉길배 전국오픈 탁구대회')).toBeUndefined();
+  });
+});
+
+describe('player search query', () => {
+  it('separates a player name from an optional region filter', () => {
+    expect(parsePlayerSearchQuery('김미진')).toEqual({ name: '김미진' });
+    expect(parsePlayerSearchQuery(' 김미진   용인 ')).toEqual({ name: '김미진', region: '용인' });
+    expect(parsePlayerSearchQuery('김미진 경기도 용인시')).toEqual({ name: '김미진', region: '경기도 용인시' });
   });
 });
 

@@ -1,4 +1,4 @@
-import { normalizeSearchText, sortPlayerRecordsByLatest, type SourceStatus } from '@busu/domain';
+import { isAwardRank, normalizeSearchText, sortPlayerRecordsByLatest, type SourceStatus } from '@busu/domain';
 import type { PlayerRepository, PlayerSearchInput, RefreshRequest, RefreshResponse, RefreshStatus } from '../lib/repository';
 import { demoPlayers } from './data';
 
@@ -16,7 +16,7 @@ export class DemoPlayerRepository implements PlayerRepository {
   }
   async searchPlayers(input: PlayerSearchInput) {
     const query = normalizeSearchText(input.query);
-    return demoPlayers.filter((player) => [player.normalizedName, normalizeSearchText(player.club ?? ''), normalizeSearchText(player.region ?? '')].some((value) => value.startsWith(query)) && (!input.region || player.region === input.region) && (!input.club || player.club === input.club) && (!input.sourceCode || player.sources.some((source) => source.sourceCode === input.sourceCode))).map((player) => ({ id:player.id,name:player.name,normalizedName:player.normalizedName,...(player.region?{region:player.region}:{}),...(player.club?{club:player.club}:{}),...(player.recentObservedDivision?{recentObservedDivision:player.recentObservedDivision}:{}),...(player.recentObservedDivisionSystem?{recentObservedDivisionSystem:player.recentObservedDivisionSystem}:{}),resultCount:player.resultCount,sourceCount:player.sourceCount,lastCheckedAt:player.lastCheckedAt,identityStatus:player.identityStatus }));
+    return demoPlayers.filter((player) => [player.normalizedName, normalizeSearchText(player.club ?? ''), normalizeSearchText(player.region ?? '')].some((value) => value.startsWith(query)) && (!input.region || player.region?.includes(input.region)) && (!input.club || player.club === input.club) && (!input.sourceCode || player.sources.some((source) => source.sourceCode === input.sourceCode))).map((player) => ({ id:player.id,name:player.name,normalizedName:player.normalizedName,...(player.region?{region:player.region}:{}),...(player.club?{club:player.club}:{}),...(player.recentObservedDivision?{recentObservedDivision:player.recentObservedDivision}:{}),...(player.recentObservedDivisionSystem?{recentObservedDivisionSystem:player.recentObservedDivisionSystem}:{}),resultCount:player.resultCount,awardResults:player.records.filter((record) => isAwardRank(record.rank)).flatMap((record) => record.rank ? [{ rank: record.rank, ...(record.date ? { date: record.date } : {}) }] : []),sourceCount:player.sourceCount,lastCheckedAt:player.lastCheckedAt,identityStatus:player.identityStatus }));
   }
   async getPlayer(id: string) {
     const player = demoPlayers.find((candidate) => candidate.id === id);

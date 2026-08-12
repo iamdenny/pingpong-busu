@@ -19,6 +19,11 @@ export function recordsToPlayerDetails(records: readonly NormalizedRecord[], sou
     if (!latest) throw new Error('record group cannot be empty');
     const lastCheckedAt = sorted.map((record) => record.observedAt).sort().at(-1) ?? latest.observedAt;
     const awards = sorted.filter((record) => isAwardRank(record.rankText));
+    const awardResults = awards.flatMap((record) => {
+      if (!record.rankText) return [];
+      const date = normalizedRecordDate(record);
+      return [{ rank: record.rankText, ...(date ? { date } : {}) }];
+    });
     const latestDate = normalizedRecordDate(latest);
     return {
       id: `${sourceCode}-${identityKey}`,
@@ -29,6 +34,7 @@ export function recordsToPlayerDetails(records: readonly NormalizedRecord[], sou
       ...(latest.divisionValue ? { recentObservedDivision: latest.divisionValue } : {}),
       ...(latest.divisionSystem ? { recentObservedDivisionSystem: latest.divisionSystem } : {}),
       resultCount: awards.length,
+      awardResults,
       sourceCount: 1,
       lastCheckedAt,
       identityStatus: 'unreviewed',
