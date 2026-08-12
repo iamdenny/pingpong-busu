@@ -171,12 +171,13 @@ export function PlayerDetailPage() {
               <caption>{player.name} 선수의 대회 기록 · 최신순</caption>
               <thead>
                 <tr>
-                  <th>날짜</th>
-                  <th>대회·종목</th>
-                  <th>당시 소속</th>
-                  <th>당시 부수</th>
-                  <th>결과</th>
-                  <th>출처</th>
+                  <th scope="col">날짜</th>
+                  <th scope="col">대회</th>
+                  <th scope="col">종목</th>
+                  <th scope="col">당시 소속</th>
+                  <th scope="col">당시 부수</th>
+                  <th scope="col">결과</th>
+                  <th scope="col">출처</th>
                 </tr>
               </thead>
               <tbody>
@@ -196,8 +197,8 @@ export function PlayerDetailPage() {
                     </td>
                     <td>
                       <strong>{record.tournament}</strong>
-                      <small>{record.event}</small>
                     </td>
+                    <td className="record-event-name">{record.event}</td>
                     <td>{record.club ?? "-"}</td>
                     <td>
                       {record.divisionSystem ? (
@@ -238,10 +239,12 @@ export function PlayerDetailPage() {
                   <span className="record-date-unknown">날짜 미상</span>
                 )}
                 <h3>{record.tournament}</h3>
-                <p>
-                  {record.event} · {record.club}
-                </p>
+                <p>{record.club ?? "소속 미상"}</p>
                 <dl>
+                  <div className="record-event-detail">
+                    <dt>종목</dt>
+                    <dd>{record.event}</dd>
+                  </div>
                   <div>
                     <dt>당시 부수</dt>
                     <dd>

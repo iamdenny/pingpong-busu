@@ -1094,6 +1094,11 @@ p {
   display: block;
   color: var(--muted);
 }
+.record-event-name,
+.record-event-detail dd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .record-table-wrap a,
 .record-cards a {
   display: inline-flex;
@@ -1315,6 +1320,10 @@ p {
   .record-cards dd {
     margin: 0;
     font-weight: 800;
+  }
+  .record-cards .record-event-detail {
+    grid-column: 1 / -1;
+    padding-block-end: 0.6rem;
   }
   .section-heading {
     align-items: flex-start;

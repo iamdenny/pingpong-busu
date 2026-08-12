@@ -37,5 +37,8 @@ describe("PlayerDetailPage metadata", () => {
       "content",
       "https://busu.iamdenny.com/#/players/kim-seoul",
     );
+    expect(screen.getAllByText("남자 단식")).not.toHaveLength(0);
+    expect(screen.getAllByText("개인 단식")).not.toHaveLength(0);
+    expect(screen.getAllByText("혼합 복식")).not.toHaveLength(0);
   });
 });
