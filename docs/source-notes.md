@@ -17,7 +17,7 @@ title: '출처 메모'
 | okpingpong | <http://okpingpong.co.kr/04match/08.php> | http | parser ready / disabled | okpingpong-2 | 공개 검색 parser와 합성 fixture 완료. 약관상 사전 승낙 없는 정보 복제·제3자 제공 제한으로 운영 자동 연동하지 않음 |
 | mytt | <https://mytt.kr/main/player_list.xhtml> | http | production opt-in | mytt-2 | robots 전체 허용, 비회원 JSF GET/POST 공개 검색. 단기 JSESSIONID는 요청에만 사용하고 저장하지 않음 |
 | superstar | <https://www.superstar.kr/open/Do.jsp?urlSeq=302> | http | production opt-in | superstar-1 | 비회원 이름 GET 검색. 개인별 대회 결과만 저장하고 레이팅·연락처는 제외 |
-| iping | <https://www.iping.club/index.html> | browser | 로그인 필요 / disabled | auth-required-0 | 메인·대회 목록은 공개지만 선수 통합검색은 로그인 화면으로 전환. 인증 자동화 없음 |
+| iping | <https://www.iping.club/index.html> | browser | 로그인 필요 / disabled | auth-required-0 | 메인·대회 목록은 공개지만 선수 통합검색은 로그인 화면으로 전환. 전용 계정·출처 허용·로그인 흐름 검증 전 인증 자동화 없음 |
 | band | <https://band.us/> | manual | 사용자 출처 목록 제외 | manual-0 | scraping 금지. 향후 정책 검토를 위해 내부 식별자만 유지 |
 
 2026-08-12 애즈트리 robots.txt, 공개 검색 form/result와 이용약관을 확인했습니다. 일반 user-agent에 공개 검색 경로가 금지되어 있지 않고 약관에서 자동 수집 금지 문구를 찾지 못했지만, 이는 영구적 재사용 허가를 뜻하지 않습니다. 실제 응답이나 정책을 확인하지 않은 나머지는 추정이며 사실로 단정하지 않습니다.
@@ -30,4 +30,4 @@ title: '출처 메모'
 
 2026-08-12 슈퍼스타탁구 `robots.txt`는 `Form.jsp`, `Manager.jsp`, `/ok/`, `Upload.jsp`를 제외하고 공개 `open/Do.jsp?urlSeq=302&userNm=...` 개인별 결과 경로를 막지 않습니다. 비회원 GET 검색에서 고유번호·대회일·대회명·부수·결과를 확인했습니다. parser는 이 결과 표만 읽고 별도 레이팅 표와 화면의 연락처를 수집하지 않습니다.
 
-2026-08-12 아이핑 메인과 대회 목록은 비회원에게 공개되지만, 메인의 `pg=Search&SchVal=...` 선수 검색 요청은 `pg=login`으로 리다이렉트되며 화면에 `로그인이 필요한 서비스입니다`가 표시됩니다. BUSU는 계정·세션·CAPTCHA를 자동화하지 않고 출처 URL과 인증 필요 상태만 표시합니다.
+2026-08-12 아이핑 메인과 대회 목록은 비회원에게 공개되지만, 메인의 `pg=Search&SchVal=...` 선수 검색 요청은 `pg=login`으로 리다이렉트되며 화면에 `로그인이 필요한 서비스입니다`가 표시됩니다. 현재 BUSU는 출처 URL과 인증 필요 상태만 표시합니다. 향후 인증 연동을 검토하려면 개인 주계정이 아닌 전용 최소권한 계정, 출처의 수집 허용, 로그인 POST·세션 쿠키·CAPTCHA/MFA 여부를 먼저 확인합니다. 자격증명은 브라우저나 `VITE_`에 두지 않고 Supabase Edge Secrets에 보관하며, GitHub Actions secret은 배포 시 런타임 secret을 설정하는 전달 수단으로만 사용합니다.

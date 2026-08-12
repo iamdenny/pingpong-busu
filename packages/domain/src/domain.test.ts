@@ -56,6 +56,8 @@ describe('division presentation', () => {
   it('presents women event divisions as integrated women divisions', () => {
     expect(formatDivisionObservation('women', '6부')).toBe('통합부수 여자6부');
     expect(formatDivisionObservation('integrated', '6부')).toBe('통합부수 6부');
+    expect(formatDivisionObservation('women', 'NULL부')).toBe('통합부수 확인 필요');
+    expect(formatDivisionObservation('women', 'null')).toBe('통합부수 확인 필요');
   });
 });
 

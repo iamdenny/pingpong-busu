@@ -1,5 +1,6 @@
 import { inferDivisionSystem, inferKoreanRegion, normalizePlayerName, normalizeSearchText, stableHash, withRecordHashes, type EventType, type NormalizedRecord } from '@busu/domain';
 import { SourceSchemaChangedError } from '@busu/crawler-core';
+import { normalizeObservedDivision } from '../html';
 import { astreeParsedRowSchema, type AstreeParsedRow } from './schema';
 
 const BASE_URL = 'https://astree.co.kr/bbs/board.php';
@@ -50,8 +51,7 @@ function parseEvents(cellHtml: string, playerName: string): AstreeParsedRow['eve
     const rankText = stripHtml(rankMatch?.[2] ?? '');
     const fullText = stripHtml(content);
     const divisionMatch = new RegExp(`${escapeRegExp(playerName)}\\s*\\(([^)]+)\\)`, 'u').exec(fullText);
-    const divisionRaw = divisionMatch?.[1]?.trim();
-    const divisionValue = divisionRaw === undefined ? undefined : /부$/u.test(divisionRaw) ? divisionRaw : `${divisionRaw}부`;
+    const divisionValue = normalizeObservedDivision(divisionMatch?.[1]);
     const eventType = eventTypeFrom(href, eventName);
     const partnerText = eventType === 'singles' ? undefined : fullText.replace(eventName, '').replace(rankText, '').trim();
     return {

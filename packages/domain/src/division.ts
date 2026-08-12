@@ -10,7 +10,8 @@ export const divisionSystemLabels: Record<DivisionSystem, string> = {
 };
 
 export function displayDivisionValue(system: DivisionSystem | undefined, value: string | undefined): string {
-  const observed = value ?? '확인 필요';
+  const normalized = value?.normalize('NFKC').trim();
+  const observed = !normalized || /^(?:NULL|UNDEFINED|NONE|N\/?A)(?:부)?$/iu.test(normalized) ? '확인 필요' : normalized;
   if (system !== 'women' || observed === '확인 필요' || observed.startsWith('여자')) return observed;
   return `여자${observed}`;
 }

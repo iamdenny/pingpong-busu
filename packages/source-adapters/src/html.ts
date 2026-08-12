@@ -37,7 +37,7 @@ export function eventTypeFromText(value: string): 'singles' | 'doubles' | 'team'
 
 export function normalizeObservedDivision(value?: string): string | undefined {
   const normalized = value?.normalize('NFKC').replace(/\s+/gu, '').trim();
-  if (!normalized || normalized === '-') return undefined;
+  if (!normalized || normalized === '-' || /^(?:NULL|UNDEFINED|NONE|N\/?A)(?:부)?$/iu.test(normalized)) return undefined;
   if (/^(?:T[1-7]|.*부)$/iu.test(normalized)) return normalized.toUpperCase();
   if (/^(?:\d+|ACE|A|B|C|희망|초심)$/iu.test(normalized)) return `${normalized.toUpperCase()}부`;
   return normalized;
