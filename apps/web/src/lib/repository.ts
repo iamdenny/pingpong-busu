@@ -27,6 +27,8 @@ export interface RefreshSourceResult {
   found?: number | undefined;
   reason?: string | undefined;
   errorCode?: string | undefined;
+  message?: string | undefined;
+  retryAfterMs?: number | undefined;
 }
 export interface RefreshResponse {
   refreshId: string;

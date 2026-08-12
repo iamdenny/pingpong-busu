@@ -25,6 +25,12 @@ import {
   isSourceRefreshEnabled,
   playerRepository,
 } from "../lib/runtime";
+import {
+  asRateLimitError,
+  requireRefreshWithoutRateLimit,
+  shouldRetrySourceRefresh,
+  sourceRefreshRetryDelay,
+} from "../lib/sourceRefreshRetry";
 
 const identityText = {
   unreviewed: "동일인 검토 전",
@@ -42,7 +48,7 @@ function AwardResultSummary({
   results,
   resultCount,
 }: {
-  results: readonly AwardResultSummary[] | undefined,
+  results: readonly AwardResultSummary[] | undefined;
   resultCount: number;
 }) {
   if (!results?.length) return <>{resultCount}건</>;
@@ -136,18 +142,29 @@ export function SearchResultsPage() {
           sourceCodes: [source.sourceCode],
           force: true,
         });
+        requireRefreshWithoutRateLimit(response, source.sourceCode);
         void queryClient.invalidateQueries({ queryKey: ["players", query] });
         return response;
       },
       enabled: shouldRefresh,
       staleTime: 0,
       gcTime: 0,
-      retry: false,
+      retry: shouldRetrySourceRefresh,
+      retryDelay: sourceRefreshRetryDelay,
     })),
   });
   const refreshViews: SourceRefreshView[] = activeSources.map(
     (source, index) => {
       const sourceQuery = refreshQueries[index];
+      const retryError = asRateLimitError(sourceQuery?.failureReason);
+      if (retryError && !sourceQuery?.isError)
+        return {
+          sourceCode: source.sourceCode,
+          sourceName: source.displayName,
+          state: "waiting",
+          reason: "source_rate_limited",
+          retryAt: retryError.retryAt,
+        };
       if (!sourceQuery || sourceQuery.isPending || sourceQuery.isFetching)
         return {
           sourceCode: source.sourceCode,
@@ -159,6 +176,12 @@ export function SearchResultsPage() {
           sourceCode: source.sourceCode,
           sourceName: source.displayName,
           state: "failed",
+          errorCode: asRateLimitError(sourceQuery.error)
+            ? "source_rate_limited"
+            : "source_request_failed",
+          message: asRateLimitError(sourceQuery.error)
+            ? "자동 재시도 후에도 호출 제한이 해제되지 않았습니다."
+            : "BUSU 서버의 출처 조회 요청을 완료하지 못했습니다.",
         };
       const outcome = sourceQuery.data?.sources.find(
         (item) => item.sourceCode === source.sourceCode,
@@ -168,6 +191,8 @@ export function SearchResultsPage() {
           sourceCode: source.sourceCode,
           sourceName: source.displayName,
           state: "failed",
+          errorCode: outcome?.errorCode ?? "source_refresh_failed",
+          message: outcome?.message ?? "출처 응답을 확인하지 못했습니다.",
         };
       if (outcome.status === "skipped")
         return {
@@ -175,6 +200,7 @@ export function SearchResultsPage() {
           sourceName: source.displayName,
           state: "skipped",
           ...(outcome.reason ? { reason: outcome.reason } : {}),
+          ...(outcome.message ? { message: outcome.message } : {}),
         };
       return {
         sourceCode: source.sourceCode,

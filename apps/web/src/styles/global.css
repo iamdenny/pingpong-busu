@@ -961,15 +961,28 @@ p {
   padding: 0.55rem 0.65rem;
   font-size: 0.8rem;
 }
-.source-refresh-progress li span {
+.source-refresh-progress__source {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
 }
-.source-refresh-progress li strong {
+.source-refresh-progress__result {
+  display: grid;
+  justify-items: end;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.source-refresh-progress__result strong {
   color: #475569;
   font-size: 0.73rem;
+  text-align: right;
+}
+.source-refresh-progress__result small {
+  max-width: 18rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.3;
   text-align: right;
 }
 .source-refresh-progress .status-dot--refreshing {

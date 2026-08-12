@@ -45,7 +45,7 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 | Variable | `CRAWLER_SOURCE_OKPINGPONG_ENABLED`  | 오케이핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                           |
 | Variable | `CRAWLER_SOURCE_IPING_ENABLED`       | 아이핑 인증형 adapter 스위치. 전용 계정 Secret 설정 전 기본 `false`                                        |
 | Variable | `CRAWLER_USER_AGENT`                 | 출처 요청 식별자                                                                                           |
-| Variable | `CRAWLER_SOURCE_MIN_INTERVAL_MS`     | 출처별 최소 호출 간격. 기본 2초                                                                            |
+| Variable | `CRAWLER_SOURCE_MIN_INTERVAL_MS`     | 출처·정규화 검색어별 최소 호출 간격. 기본 2초                                                              |
 | Secret   | `KAKAO_REST_API_KEY`                 | 카카오 공식 Daum 카페 검색 API 키. 브라우저와 로그에 노출하지 않음                                         |
 | Secret   | `IPING_USERNAME`                     | 아이핑 조회 전용 최소권한 계정 ID. Supabase Edge 런타임에만 전달                                           |
 | Secret   | `IPING_PASSWORD`                     | 아이핑 조회 전용 계정 비밀번호. Supabase Edge 런타임에만 전달                                              |
@@ -54,7 +54,7 @@ GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BA
 
 PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키와 아이핑 자격증명은 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 아이핑을 켤 때는 두 Secret을 먼저 등록한 뒤 `CRAWLER_SOURCE_IPING_ENABLED=true`, 마지막으로 DB `sources.enabled=true` 순서로 활성화합니다. 어느 하나라도 없으면 요청하지 않습니다.
 
-Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 출처별 최소 호출 간격을 적용합니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
+Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 `출처 + 정규화 검색어`별 최소 호출 간격을 적용하며 `source_request_throttles`에는 이 중복 방지 시각만 저장합니다. 제한 응답의 `retryAfterMs` 또는 외부 출처의 `Retry-After`가 있으면 프런트가 남은 시간을 표시하고 최대 2회 재시도합니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
 
 ## 동명이인 제보 검토
 
