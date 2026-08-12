@@ -27,7 +27,7 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 1. 프로젝트 연결과 migration dry-run
 2. `supabase db push`로 미적용 migration 적용
 3. crawler 안전 플래그를 Edge Function secrets에 동기화
-4. `refresh-player`, `refresh-status` Edge Function 배포
+4. `refresh-player`, `refresh-status`, `submit-identity-claim` Edge Function 배포
 
 GitHub의 `production` environment에 아래 값을 설정합니다.
 
@@ -55,6 +55,23 @@ GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BA
 PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키와 아이핑 자격증명은 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 아이핑을 켤 때는 두 Secret을 먼저 등록한 뒤 `CRAWLER_SOURCE_IPING_ENABLED=true`, 마지막으로 DB `sources.enabled=true` 순서로 활성화합니다. 어느 하나라도 없으면 요청하지 않습니다.
 
 Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 출처별 최소 호출 간격을 적용합니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
+
+## 동명이인 제보 검토
+
+참여자 제보는 `submit-identity-claim`이 같은 정규화 이름의 후보인지 서버에서 다시 확인한 뒤 `identity_claims.status=pending`으로 저장합니다. 사용자가 정한 숫자 4자리 원문은 저장하지 않고 Edge Function에서 서버 HMAC으로 즉시 변환합니다. 동일 확인값은 24시간에 최대 3건, 전체 제보는 10분에 최대 30건으로 제한하고 숨겨진 honeypot 필드가 채워진 자동 제출은 저장하지 않습니다.
+
+운영자는 Supabase Studio의 SQL Editor에서 service role만 읽을 수 있는 `identity_claim_review_queue`를 확인합니다. 후보별 원문 출처와 소속·지역을 별도로 대조한 후 다음처럼 상태를 변경합니다.
+
+```sql
+update public.identity_claims
+set status = 'approved',
+    reviewed_by = 'iamdenny',
+    review_note = '출처와 소속 이력을 확인함'
+where id = '<claim-id>'
+  and status = 'pending';
+```
+
+반려는 `status='rejected'`로 기록합니다. 상태 변경 trigger가 이전·다음 상태와 처리 정보를 `identity_claim_reviews`에 남깁니다. 승인은 검토 완료 표시일 뿐 선수를 자동 병합하지 않으며, canonical merge/split은 별도 운영 기능이 구현되기 전까지 수행하지 않습니다.
 
 [source catalog migration](../supabase/migrations/202608120003_source_catalog.sql)은 production DB에 기본 source 메타데이터를 생성하고, 후속 migration이 검증을 마친 출처를 개별 활성화합니다. 합성 선수와 대회 데이터는 `seed.sql`에 남아 있어 `db push` production 배포에는 포함되지 않습니다.
 

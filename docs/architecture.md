@@ -88,4 +88,6 @@ Deno Edge 환경은 workspace import를 그대로 배포하지 않는다. `pnpm 
 
 정적 `index.html`은 홈용 기본 title, description, canonical, Open Graph와 Twitter 메타데이터를 제공한다. React 라우트는 검색어 또는 로드된 선수 데이터에 맞춰 동일 메타데이터를 갱신하고 홈으로 돌아오면 기본값으로 복원한다. 다만 fragment는 HTTP 요청에 포함되지 않으므로 자바스크립트를 실행하지 않는 링크 미리보기 봇에는 검색·상세별 동적 값이 전달되지 않는다. 해당 요구가 생기면 서버에서 OG HTML을 생성하는 공유 URL을 별도 경계로 둔다.
 
+동명이인 참여 제보는 검색 결과의 같은 정규화 이름 후보에서만 시작한다. 브라우저는 선택한 공개 선수 ID, 사용자가 정한 숫자 4자리, 선택적 참고사항만 `submit-identity-claim`에 전달한다. Edge Function은 후보 이름을 재검증하고 숫자 원문을 서버 HMAC으로 변환한 뒤 service role 전용 RPC로 저장한다. public RLS 정책은 제보 table을 읽거나 직접 쓰는 권한을 주지 않는다. 제보 상태는 항상 검토 대기로 시작하며 identity merge와 분리된 경계다.
+
 디렉터리별 변경 영향은 [codemap](codemap.md), 기능 계약은 [제품 스펙](product-spec.md)을 참고한다.

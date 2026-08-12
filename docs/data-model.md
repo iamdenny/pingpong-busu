@@ -1,14 +1,14 @@
 ---
-summary: '선수 identity, 대회 결과, 부수 체계, 시간축과 revision 저장 규칙을 설명한다.'
+summary: "선수 identity, 대회 결과, 부수 체계, 시간축과 revision 저장 규칙을 설명한다."
 read_when:
   - Supabase schema나 public view를 변경할 때
   - 부수·입상·동명이인 데이터 규칙을 확인할 때
-title: '데이터 모델'
+title: "데이터 모델"
 ---
 
 # 데이터 모델
 
-`sources`는 adapter 상태, `players`와 `clubs`는 검토된 canonical entity, `source_player_identities`는 출처별 후보를 담습니다. 이름 하나만으로 identity를 연결하지 않습니다. `tournaments`와 `results`는 정규화된 기록이며 `result_revisions`는 실제 내용 변경만 보존합니다. `source_refreshes`는 조회 요약, `refresh_jobs`는 비동기/browser 작업입니다. `correction_requests`와 `rule_sets`는 후속 기능의 schema입니다.
+`sources`는 adapter 상태, `players`와 `clubs`는 검토된 canonical entity, `source_player_identities`는 출처별 후보를 담습니다. 이름 하나만으로 identity를 연결하지 않습니다. `tournaments`와 `results`는 정규화된 기록이며 `result_revisions`는 실제 내용 변경만 보존합니다. `source_refreshes`는 조회 요약, `refresh_jobs`는 비동기/browser 작업입니다. `identity_claims`와 `identity_claim_candidates`는 참여자가 선택한 동일인 후보 묶음을, `identity_claim_reviews`는 관리자 상태 변경 감사 이력을 담습니다. `correction_requests`와 `rule_sets`는 후속 기능의 schema입니다.
 
 기록 시간축은 대회 개최일 `tournaments.held_on`을 우선합니다. 게시판형 출처가 대회일을 제공하지 않으면 `results.source_published_on`을 사용하고, 공개 view의 `sort_date`는 두 값을 이 순서로 합성합니다. 크롤러의 `last_checked_at`은 동일 날짜의 보조 정렬 기준일 뿐 경기·게시 시점을 대신하지 않습니다.
 
@@ -16,7 +16,9 @@ title: '데이터 모델'
 
 `public_player_search.primary_region`은 `이름 지역` 검색의 부분 일치 필터에 사용합니다. 지역어는 외부 출처의 선수명 검색어에 포함하지 않습니다. 지역은 공개 대회 기록 기반 추정값이므로 동일인 자동 병합이나 거주지 판단의 단독 근거로 쓰지 않습니다.
 
-향후 `correction_requests`는 참여자의 정정·분리 제보와 근거를 받고 관리자가 승인·반려합니다. 승인 결과는 canonical metadata에 반영하되 수집된 원문 기록을 수정하지 않으며, 이전 값·근거 URL·처리자·처리 시각을 감사 이력으로 보존합니다.
+`identity_claims.verification_hash`는 정규화 이름과 참여자가 정한 숫자 4자리를 서버 전용 key로 HMAC한 값입니다. 코드 원문, 휴대폰 번호, 생년월일은 저장하지 않습니다. `candidate_fingerprint`는 선택된 공개 선수 ID 정렬값의 SHA-256이며 중복 제보 판정에만 사용합니다. 제보는 항상 `pending`으로 생성되고 같은 정규화 이름의 후보만 연결할 수 있으며, 자동 merge를 실행하지 않습니다. 관리자 상태 변경은 trigger가 `identity_claim_reviews`에 이전·다음 상태와 처리자를 남깁니다. `identity_claim_review_queue`는 service role만 조회할 수 있습니다.
+
+향후 `correction_requests`는 참여자의 일반 정정·분리 제보와 근거를 받고 관리자가 승인·반려합니다. 승인 결과는 canonical metadata에 반영하되 수집된 원문 기록을 수정하지 않으며, 이전 값·근거 URL·처리자·처리 시각을 감사 이력으로 보존합니다.
 
 `results.division_value`는 `4부`, `A부`, `T5` 같은 관측값이고 `results.division_system`은 `open`, `integrated`, `women`, `regional`, `division`, `unknown` 중 하나입니다. 같은 숫자라도 서로 다른 체계는 합산하지 않습니다. 판정 우선순위는 T1~T7/디비전 → 참가 종목의 여자·여성 → 오픈 명시 → 지역부수 명시 → 일반 숫자·문자 부수의 통합부수입니다. `women`은 여자 종목을 보존하기 위한 내부 subtype이며 사용자 화면에서는 `통합부수 여자6부`처럼 표현합니다. 시·군·구 등 대회 지역은 부수 체계 판정 근거가 아니며 일반 숫자 부수는 `integrated`가 기본입니다. 부수 값 자체가 없거나 해석할 수 없는 값은 `unknown`으로 보존합니다.
 

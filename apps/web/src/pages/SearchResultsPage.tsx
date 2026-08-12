@@ -12,6 +12,7 @@ import {
   parsePlayerSearchQuery,
   type AwardResultSummary,
 } from "@busu/domain";
+import { IdentityClaimDialog } from "../components/IdentityClaimDialog";
 import { PageMetadata } from "../components/PageMetadata";
 import { SearchForm } from "../components/SearchForm";
 import {
@@ -169,10 +170,11 @@ export function SearchResultsPage() {
     },
   );
 
-  const duplicate =
-    (result.data?.filter(
+  const identityCandidates =
+    result.data?.filter(
       (player) => player.normalizedName === result.data[0]?.normalizedName,
-    ).length ?? 0) > 1;
+    ) ?? [];
+  const duplicate = identityCandidates.length > 1;
   const waitingForLive =
     shouldRefresh &&
     (sourceStatuses.isLoading ||
@@ -306,9 +308,12 @@ export function SearchResultsPage() {
         </div>
       )}
       {duplicate && (
-        <div className="warning" role="status">
-          같은 이름의 선수가 여러 명 있습니다. 이름 뒤에 지역을 함께 입력하거나
-          소속을 확인해 주세요.
+        <div className="identity-warning warning">
+          <span role="status">
+            같은 이름의 선수가 여러 명 있습니다. 이름 뒤에 지역을 함께
+            입력하거나 소속을 확인해 주세요.
+          </span>
+          <IdentityClaimDialog candidates={identityCandidates} />
         </div>
       )}
       {result.isLoading && (

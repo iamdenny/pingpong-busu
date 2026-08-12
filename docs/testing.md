@@ -48,6 +48,7 @@ pnpm build
 | --- | --- |
 | 부수·입상·지역 규칙 | domain unit + 영향을 받는 parser fixture |
 | 검색 결과/상세 UI | component test + desktop/mobile 미리보기 |
+| 동명이인 구분 제보 | component test + 원문 코드 비저장 확인 + migration dry-run |
 | Supabase view/RPC | 새 migration + 공개 view 응답 확인 |
 | Edge Function | auth test + local/remote 호출 결과 |
 | 출처 활성화 | 정책 문서 + synthetic fixture + opt-in live test |
@@ -58,5 +59,6 @@ pnpm build
 - 부수 요약이 compact 2행 표로 보이고 mobile에서 페이지 전체 가로 overflow가 없는가
 - 실제 공개 기록과 가상 데이터 badge가 구분되는가
 - 동명이인 경고, 지역 추정 표현, 원문 링크가 보이는가
+- 동명이인 구분 dialog가 닫힌 뒤 선택값과 비공개 코드가 남지 않는가
 - 출처 조회 중·성공·실패 상태가 개별적으로 갱신되는가
 - 키보드 focus와 semantic heading/table 구조가 유지되는가

@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.refresh-status]
 verify_jwt = false
+
+[functions.submit-identity-claim]
+verify_jwt = false

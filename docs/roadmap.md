@@ -1,9 +1,9 @@
 ---
-summary: 'BUSU MVP 이후의 출처 확대, identity 검토, 규칙 엔진과 운영 기능 순서를 제시한다.'
+summary: "BUSU MVP 이후의 출처 확대, identity 검토, 규칙 엔진과 운영 기능 순서를 제시한다."
 read_when:
   - 다음 개발 우선순위를 정할 때
   - 현재 구현과 장기 범위를 구분할 때
-title: '제품 로드맵'
+title: "제품 로드맵"
 ---
 
 # 제품 로드맵
@@ -25,8 +25,8 @@ title: '제품 로드맵'
 
 1. 공개 refresh에 gateway rate limit, quota, 운영 metric 추가
 2. 출처 정책·parser health 정기 점검과 실패 알림
-3. 참여자 정정·분리 제보와 근거 제출
-4. 관리자 승인·반려, 동명이인 merge/split과 감사 이력
+3. 일반 소속·지역 정정 제보와 근거 URL 제출
+4. 관리자 인증 UI와 승인된 동명이인 merge/split 실행
 5. 대회 규정 근거를 이용한 최소 출전 가능 부수 검증 엔진
 6. 운영자 CSV 업로드와 provenance 검증
 
