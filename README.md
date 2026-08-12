@@ -11,6 +11,7 @@ Korean table tennis player rank and tournament record search.
 ## 현재 MVP
 
 - 탁구 라켓과 부수 단계를 결합한 BUSU 심볼, 브라우저 파비콘과 홈 헤더 브랜딩
+- 홈·검색 결과·선수 상세별 의미 있는 title, description, canonical, Open Graph와 Twitter 메타데이터
 - 환경 변수 없이 동작하는 한국어 demo 검색 결과 3건(가상 선수)
 - 검색 결과 상단의 최근 공개 기록 기반 오픈·통합·지역·디비전부수별 추정 분포와 `통합부수 여자6부` 형식의 여자 종목 표기
 - 김탁구 동명이인 2명의 지역·소속 분리
@@ -91,7 +92,9 @@ pnpm crawl:fixture --query 김탁구 --version 2
 
 ## GitHub Pages
 
-Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니다. 현재 커스텀 도메인 `http://busu.iamdenny.com/`은 asset base `/`로 배포합니다. production repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. `http://iamdenny.com/pingpong-busu/`은 커스텀 도메인으로 이동하는 이전 진입점입니다. publishable key는 브라우저 공개용 값이며, service role/secret key는 Pages workflow에 넣지 않습니다.
+Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니다. 현재 커스텀 도메인 `https://busu.iamdenny.com/`은 asset base `/`로 배포하고 HTTP 요청은 HTTPS로 전환합니다. production repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. `http://iamdenny.com/pingpong-busu/`은 커스텀 도메인으로 이동하는 이전 진입점입니다. publishable key는 브라우저 공개용 값이며, service role/secret key는 Pages workflow에 넣지 않습니다.
+
+정적 HTML에는 홈의 기본 OG 메타데이터가 포함되고, React가 실행되면 검색어와 선수 상세 데이터에 맞게 title·description·canonical·Open Graph·Twitter 메타데이터를 갱신합니다. 현재 `HashRouter` 기반 GitHub Pages에서는 URL fragment가 서버로 전달되지 않으므로 자바스크립트를 실행하지 않는 SNS 미리보기 봇은 검색·상세 주소에서도 홈 기본 메타데이터를 표시할 수 있습니다. 검색·상세별 서버 생성 미리보기가 필요하면 별도 OG 렌더링 endpoint 또는 SSR 호스팅을 추가해야 합니다.
 
 ## 서버 배포
 

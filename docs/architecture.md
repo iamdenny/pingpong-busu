@@ -1,9 +1,9 @@
 ---
-summary: 'BUSU 웹, domain, source adapter, Supabase의 런타임 경계와 데이터 흐름을 설명한다.'
+summary: "BUSU 웹, domain, source adapter, Supabase의 런타임 경계와 데이터 흐름을 설명한다."
 read_when:
   - 시스템 구조와 의존성 방향을 이해할 때
   - 검색 또는 갱신 흐름을 변경할 때
-title: '아키텍처'
+title: "아키텍처"
 ---
 
 # 아키텍처
@@ -29,13 +29,13 @@ flowchart LR
 
 ## Workspace 책임
 
-| Workspace | 책임 | 의존 방향 |
-| --- | --- | --- |
-| `apps/web` | 라우팅, 화면, TanStack Query, repository 선택 | domain을 소비 |
-| `packages/domain` | 모델, 이름·지역·부수·입상·정렬·hash 순수 규칙 | 다른 workspace에 의존하지 않음 |
-| `packages/crawler-core` | `SourceAdapter` 계약, 오류, in-memory revision 판정 | domain을 소비 |
-| `packages/source-adapters` | 출처 fetch/parse/Zod 검증 | domain과 crawler-core를 소비 |
-| `supabase` | schema/RLS/views/RPC, Edge orchestration | generated parser bundle을 소비 |
+| Workspace                  | 책임                                                | 의존 방향                      |
+| -------------------------- | --------------------------------------------------- | ------------------------------ |
+| `apps/web`                 | 라우팅, 화면, TanStack Query, repository 선택       | domain을 소비                  |
+| `packages/domain`          | 모델, 이름·지역·부수·입상·정렬·hash 순수 규칙       | 다른 workspace에 의존하지 않음 |
+| `packages/crawler-core`    | `SourceAdapter` 계약, 오류, in-memory revision 판정 | domain을 소비                  |
+| `packages/source-adapters` | 출처 fetch/parse/Zod 검증                           | domain과 crawler-core를 소비   |
+| `supabase`                 | schema/RLS/views/RPC, Edge orchestration            | generated parser bundle을 소비 |
 
 순환 의존성을 만들지 않는다. UI가 출처 HTML을 해석하거나 parser가 React 타입을 알게 하지 않는다.
 
@@ -84,6 +84,8 @@ Deno Edge 환경은 workspace import를 그대로 배포하지 않는다. `pnpm 
 
 ## 라우팅과 정적 호스팅
 
-로컬 개발의 기본 asset base는 `/pingpong-busu/`이고, GitHub Pages 커스텀 도메인 `http://busu.iamdenny.com/`의 production build는 `VITE_APP_BASE_PATH=/`를 사용한다. `HashRouter`를 사용해 정적 호스팅의 직접 새로고침 404를 피한다. desktop과 mobile은 같은 semantic DOM을 유지하되 상세 기록 표현만 table/card로 바꾼다.
+로컬 개발의 기본 asset base는 `/pingpong-busu/`이고, GitHub Pages 커스텀 도메인 `https://busu.iamdenny.com/`의 production build는 `VITE_APP_BASE_PATH=/`를 사용한다. `HashRouter`를 사용해 정적 호스팅의 직접 새로고침 404를 피한다. desktop과 mobile은 같은 semantic DOM을 유지하되 상세 기록 표현만 table/card로 바꾼다.
+
+정적 `index.html`은 홈용 기본 title, description, canonical, Open Graph와 Twitter 메타데이터를 제공한다. React 라우트는 검색어 또는 로드된 선수 데이터에 맞춰 동일 메타데이터를 갱신하고 홈으로 돌아오면 기본값으로 복원한다. 다만 fragment는 HTTP 요청에 포함되지 않으므로 자바스크립트를 실행하지 않는 링크 미리보기 봇에는 검색·상세별 동적 값이 전달되지 않는다. 해당 요구가 생기면 서버에서 OG HTML을 생성하는 공유 URL을 별도 경계로 둔다.
 
 디렉터리별 변경 영향은 [codemap](codemap.md), 기능 계약은 [제품 스펙](product-spec.md)을 참고한다.
