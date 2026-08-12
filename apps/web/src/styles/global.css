@@ -224,6 +224,59 @@ p {
   text-decoration: underline;
   min-height: 48px;
 }
+.recent-searches {
+  max-width: 760px;
+  margin: 0.65rem auto 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid #dbe5f5;
+  text-align: left;
+}
+.recent-searches__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.recent-searches h2 {
+  margin: 0;
+  font-size: 0.86rem;
+  letter-spacing: -0.01em;
+}
+.recent-searches__header button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  min-height: 36px;
+  padding: 0 0.25rem;
+  font-size: 0.78rem;
+  text-decoration: underline;
+}
+.recent-searches ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.recent-searches li button {
+  border: 1px solid #cddcff;
+  border-radius: 999px;
+  background: #f7faff;
+  color: var(--primary-dark);
+  min-height: 38px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 700;
+}
+.recent-searches li button:hover {
+  border-color: var(--primary);
+  background: #eef4ff;
+}
+.recent-searches > p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
 .source-overview {
   background: #eef4ff;
   border: 1px solid #cddcff;

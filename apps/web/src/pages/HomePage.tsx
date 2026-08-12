@@ -1,8 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Database, ScanSearch, Users } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageMetadata } from "../components/PageMetadata";
 import { SearchForm } from "../components/SearchForm";
+import {
+  clearRecentSearches,
+  loadRecentSearches,
+  rememberRecentSearch,
+} from "../lib/recentSearches";
 import { playerRepository } from "../lib/runtime";
 
 const homeTitle = "BUSU · 탁구 선수 부수·입상 기록 통합검색";
@@ -26,6 +32,7 @@ const statusText = (
 
 export function HomePage() {
   const navigate = useNavigate();
+  const [recentSearches, setRecentSearches] = useState(loadRecentSearches);
   const sources = useQuery({
     queryKey: ["source-statuses"],
     queryFn: () => playerRepository.listSourceStatuses(),
@@ -33,6 +40,15 @@ export function HomePage() {
   });
   const activeSourceCount =
     sources.data?.filter((source) => source.enabled).length ?? 0;
+  const openSearch = (query: string) => {
+    rememberRecentSearch(query);
+    void navigate(`/search?q=${encodeURIComponent(query)}`);
+  };
+  const clearSearchHistory = () => {
+    clearRecentSearches();
+    setRecentSearches([]);
+  };
+
   return (
     <div className="home-page">
       <PageMetadata title={homeTitle} description={homeDescription} />
@@ -55,17 +71,34 @@ export function HomePage() {
         <div className="examples">
           예시 검색어:{" "}
           {exampleQueries.map((query) => (
-            <button
-              key={query}
-              type="button"
-              onClick={() =>
-                navigate(`/search?q=${encodeURIComponent(query)}`)
-              }
-            >
+            <button key={query} type="button" onClick={() => openSearch(query)}>
               {query}
             </button>
           ))}
         </div>
+        {recentSearches.length > 0 && (
+          <section
+            className="recent-searches"
+            aria-labelledby="recent-searches-title"
+          >
+            <div className="recent-searches__header">
+              <h2 id="recent-searches-title">최근 검색어</h2>
+              <button type="button" onClick={clearSearchHistory}>
+                전체 삭제
+              </button>
+            </div>
+            <ul role="list">
+              {recentSearches.map((query) => (
+                <li key={query}>
+                  <button type="button" onClick={() => openSearch(query)}>
+                    {query}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p>최근 10개를 이 브라우저에만 저장합니다.</p>
+          </section>
+        )}
       </section>
       {sources.data && (
         <details className="source-overview">
