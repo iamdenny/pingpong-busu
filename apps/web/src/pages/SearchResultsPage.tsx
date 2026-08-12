@@ -38,20 +38,39 @@ const awardDateFormatter = new Intl.DateTimeFormat("ko-KR", {
   day: "numeric",
 });
 
-function formatAwardResults(
+function AwardResultSummary({
+  results,
+  resultCount,
+}: {
   results: readonly AwardResultSummary[] | undefined,
-  resultCount: number,
-): string {
-  if (!results?.length) return `${resultCount}건`;
-  const shown = results
-    .slice(0, 2)
-    .map((result) =>
-      result.date
-        ? `${result.rank} (${awardDateFormatter.format(new Date(`${result.date}T00:00:00`))})`
-        : result.rank,
-    );
+  resultCount: number;
+}) {
+  if (!results?.length) return <>{resultCount}건</>;
+  const shown = results.slice(0, 2);
   const remaining = Math.max(0, resultCount - shown.length);
-  return `${shown.join(" · ")}${remaining > 0 ? ` · 외 ${remaining}건` : ""}`;
+
+  return (
+    <span className="award-result-summary__list">
+      {shown.map((result, index) => (
+        <span
+          className="award-result-summary__item"
+          key={`${result.rank}-${result.date ?? "unknown"}-${index}`}
+        >
+          <strong>{result.rank}</strong>
+          {result.date && (
+            <time dateTime={result.date}>
+              {awardDateFormatter.format(new Date(`${result.date}T00:00:00`))}
+            </time>
+          )}
+        </span>
+      ))}
+      {remaining > 0 && (
+        <span className="award-result-summary__remaining">
+          외 {remaining}건
+        </span>
+      )}
+    </span>
+  );
 }
 
 function directSearchUrl(
@@ -408,10 +427,10 @@ export function SearchResultsPage() {
                     <Trophy size={15} /> 입상 성적 · 날짜
                   </dt>
                   <dd className="award-result-summary">
-                    {formatAwardResults(
-                      player.awardResults,
-                      player.resultCount,
-                    )}
+                    <AwardResultSummary
+                      results={player.awardResults}
+                      resultCount={player.resultCount}
+                    />
                   </dd>
                 </div>
                 <div>

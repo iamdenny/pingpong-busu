@@ -939,6 +939,28 @@ p {
   font-size: 0.9rem;
   line-height: 1.45;
 }
+.award-result-summary__list {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+.award-result-summary__item {
+  display: grid;
+  gap: 0.05rem;
+}
+.award-result-summary__item time {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.award-result-summary__remaining {
+  align-self: flex-end;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
 .back-link {
   display: inline-flex;
   align-items: center;

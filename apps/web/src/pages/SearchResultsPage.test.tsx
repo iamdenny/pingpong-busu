@@ -45,11 +45,17 @@ describe("SearchResultsPage", () => {
       "https://busu.iamdenny.com/#/search?q=%EA%B9%80%ED%83%81%EA%B5%AC",
     );
     expect(screen.getByText("2건")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /우승 \(2026\. 7\. 20\.\).*3위 \(2026\. 4\. 6\.\).*외 1건/,
-      ),
-    ).toBeInTheDocument();
+    const awardSummary = screen.getByText("우승").closest("dd");
+    expect(awardSummary).not.toBeNull();
+    expect(within(awardSummary!).getByText("3위")).toBeInTheDocument();
+    const awardDates = awardSummary!.querySelectorAll("time");
+    expect(awardDates).toHaveLength(2);
+    expect(awardDates[0]).toHaveAttribute("datetime", "2026-07-20");
+    expect(awardDates[0]?.parentElement).toHaveClass(
+      "award-result-summary__item",
+    );
+    expect(awardDates[1]).toHaveAttribute("datetime", "2026-04-06");
+    expect(within(awardSummary!).getByText("외 1건")).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
         name: "김탁구 서울 스핀탁구클럽 상세 기록 보기",
