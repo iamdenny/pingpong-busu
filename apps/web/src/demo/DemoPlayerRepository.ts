@@ -11,6 +11,7 @@ export class DemoPlayerRepository implements PlayerRepository {
       { sourceCode: 'okpingpong', displayName: '오케이핑퐁', baseUrl: 'http://okpingpong.co.kr/', adapterMode: 'http', enabled: false, parserVersion: 'okpingpong-2' },
       { sourceCode: 'mytt', displayName: '마이티티', baseUrl: 'https://mytt.kr/', adapterMode: 'http', enabled: true, parserVersion: 'mytt-2' },
       { sourceCode: 'superstar', displayName: '슈퍼스타탁구', baseUrl: 'https://www.superstar.kr/open/Do.jsp?urlSeq=302', adapterMode: 'http', enabled: true, parserVersion: 'superstar-1' },
+      { sourceCode: 'yongintt', displayName: '용인탁구협회 다음 카페', baseUrl: 'https://cafe.daum.net/yongintt', adapterMode: 'http', enabled: false, parserVersion: 'yongintt-1' },
       { sourceCode: 'iping', displayName: '아이핑', baseUrl: 'https://www.iping.club/index.html', adapterMode: 'browser', enabled: false, parserVersion: 'auth-required-0' },
     ];
   }

@@ -60,9 +60,12 @@ pnpm crawl:live --query 김탁구 --source astree
 pnpm crawl:live --query 김탁구 --source ttadivision
 pnpm crawl:live --query 김탁구 --source mytt
 pnpm crawl:live --query 김탁구 --source superstar
+pnpm crawl:live --query 임대현 --source yongintt
+pnpm crawl:live --query 김탁구 --source airping
+pnpm crawl:live --query 김탁구 --source okpingpong
 ```
 
-`CRAWL_LIVE=true`와 해당 출처별 환경 변수가 없으면 실행하지 않는다. 에어핑퐁·오케이핑퐁은 운영 승낙 전 활성화하지 않고, 아이핑은 로그인 세션을 자동화하지 않는다.
+`CRAWL_LIVE=true`와 해당 출처별 환경 변수가 없으면 실행하지 않는다. `yongintt`는 trusted 환경의 `KAKAO_REST_API_KEY`도 필요하다. 에어핑퐁·오케이핑퐁은 승인된 공개 검색 범위만 사용하고, 아이핑은 로그인 세션을 자동화하지 않는다.
 
 ## Supabase
 

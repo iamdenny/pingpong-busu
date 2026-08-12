@@ -1,11 +1,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { parseAirpingSearchHtml, parseAstreeSearchHtml, parseMyttSearchForm, parseMyttSearchHtml, parseOkPingpongSearchHtml, parseSuperstarSearchHtml, parseTtaDivisionSearchResponse } from '../_shared/generated/astree-parser.js';
+import { parseAirpingSearchHtml, parseAstreeSearchHtml, parseMyttSearchForm, parseMyttSearchHtml, parseOkPingpongSearchHtml, parseSuperstarSearchHtml, parseTtaDivisionSearchResponse, parseYonginCafeSearchResponse } from '../_shared/generated/astree-parser.js';
 import { hasValidPublishableApiKey } from '../_shared/auth.ts';
 import { corsHeaders, json } from '../_shared/http.ts';
 import { isRecord, normalizeName } from '../_shared/normalize.ts';
 import { ttaDivisionCa } from '../_shared/tta-ca.ts';
 
-const sourceCodes = ['mock', 'airping', 'astree', 'ttadivision', 'okpingpong', 'mytt', 'superstar', 'iping', 'band'] as const;
+const sourceCodes = ['mock', 'airping', 'astree', 'ttadivision', 'okpingpong', 'mytt', 'superstar', 'yongintt', 'iping', 'band'] as const;
 type SourceCode = typeof sourceCodes[number];
 type LiveSourceCode = Exclude<SourceCode, 'mock' | 'iping' | 'band'>;
 interface RefreshInput { name: string; club?: string; region?: string; sourceCodes?: SourceCode[]; force: boolean; }
@@ -21,6 +21,7 @@ const sourceFlags: Record<LiveSourceCode, string> = {
   okpingpong: 'CRAWLER_SOURCE_OKPINGPONG_ENABLED',
   mytt: 'CRAWLER_SOURCE_MYTT_ENABLED',
   superstar: 'CRAWLER_SOURCE_SUPERSTAR_ENABLED',
+  yongintt: 'CRAWLER_SOURCE_YONGINTT_ENABLED',
 };
 
 const parserVersions: Record<LiveSourceCode, string> = {
@@ -30,6 +31,7 @@ const parserVersions: Record<LiveSourceCode, string> = {
   okpingpong: 'okpingpong-2',
   mytt: 'mytt-2',
   superstar: 'superstar-1',
+  yongintt: 'yongintt-1',
 };
 
 function parseInput(value: unknown): RefreshInput {
@@ -122,6 +124,26 @@ async function fetchSuperstarRecords(name: string, fetchedAt: string): Promise<A
   });
   assertPublicHtmlResponse(response, '슈퍼스타탁구');
   return parseSuperstarSearchHtml(await response.text(), name, fetchedAt) as Array<Record<string, unknown>>;
+}
+
+async function fetchYonginCafeRecords(name: string, fetchedAt: string): Promise<Array<Record<string, unknown>>> {
+  const apiKey = Deno.env.get('KAKAO_REST_API_KEY');
+  if (!apiKey) throw new SafeSourceError('source_not_configured', '카카오 REST API 키가 설정되지 않았습니다.');
+  const url = new URL('https://dapi.kakao.com/v2/search/cafe');
+  url.searchParams.set('query', `${name} 대회`);
+  url.searchParams.set('sort', 'recency');
+  url.searchParams.set('page', '1');
+  url.searchParams.set('size', '50');
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(8000),
+    headers: { accept: 'application/json', authorization: `KakaoAK ${apiKey}`, 'user-agent': Deno.env.get('CRAWLER_USER_AGENT') ?? 'BUSU/0.1' },
+  });
+  if (response.status === 401 || response.status === 403) throw new SafeSourceError('source_auth_failed', '카카오 REST API 인증을 확인해 주세요.');
+  if (response.status === 429) throw new SafeSourceError('source_rate_limited', '카카오 무료 검색 쿼터 또는 요청 제한에 도달했습니다.');
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!(response.headers.get('content-type') ?? '').toLocaleLowerCase().includes('application/json')) throw new Error('카카오 카페 검색 구조 변경');
+  const parsed = parseYonginCafeSearchResponse(await response.json(), name, fetchedAt) as { records: Array<Record<string, unknown>> };
+  return parsed.records;
 }
 
 async function fetchMyttRecords(name: string, club: string | undefined, fetchedAt: string): Promise<Array<Record<string, unknown>>> {
@@ -252,6 +274,8 @@ Deno.serve(async (request) => {
           records.push(...await fetchMyttRecords(input.name, input.club, fetchedAt));
         } else if (sourceCode === 'superstar') {
           records.push(...await fetchSuperstarRecords(input.name, fetchedAt));
+        } else if (sourceCode === 'yongintt') {
+          records.push(...await fetchYonginCafeRecords(input.name, fetchedAt));
         } else {
           records.push(...await fetchSimpleHtmlRecords(sourceCode, input.name, fetchedAt));
         }

@@ -1,2 +1,2 @@
 import { render, screen } from '@testing-library/react'; import { MemoryRouter } from 'react-router-dom'; import { describe, expect, it } from 'vitest'; import { Layout } from './Layout';
-describe('Layout',()=>{it('shows the demo mode banner',()=>{render(<MemoryRouter><Layout/></MemoryRouter>);expect(screen.getByText('현재 화면은 개발용 가상 데이터입니다.')).toBeInTheDocument();});});
+describe('Layout',()=>{it('shows the demo mode banner and data policy',()=>{render(<MemoryRouter><Layout/></MemoryRouter>);expect(screen.getByText('현재 화면은 개발용 가상 데이터입니다.')).toBeInTheDocument();expect(screen.getByText('공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후 반영합니다.')).toBeInTheDocument();expect(screen.queryByText('라이선스는 아직 결정되지 않음')).not.toBeInTheDocument();});});

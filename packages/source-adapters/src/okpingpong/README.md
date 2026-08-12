@@ -1,3 +1,3 @@
 # 오케이핑퐁 adapter
 
-공개 선수 검색 표의 `rowspan` 구조를 정규화하는 `okpingpong-2` 파서와 HTTP adapter입니다. 이용약관이 사전 승낙 없는 정보 복제·제3자 제공을 제한하므로 운영 DB와 환경 변수는 비활성 상태로 유지합니다. 출처 운영자의 명시적 허가가 확인되면 별도 migration으로 활성화합니다.
+공개 선수 검색 표의 `rowspan` 구조를 정규화하는 `okpingpong-2` 파서와 HTTP adapter입니다. 2026-08-12 저장소 운영자가 수집 승낙 완료를 확인해 production opt-in source로 전환했습니다. 원문 URL과 선수 대회 기록만 저장하며 서버·DB의 독립 스위치로 즉시 중지할 수 있습니다.

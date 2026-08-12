@@ -14,11 +14,12 @@ title: '제품 로드맵'
 2. demo 검색·동명이인 후보·선수 상세 수직 기능
 3. Supabase schema/RLS/public views/RPC/Edge Functions
 4. 애즈트리·대한탁구협회 디비전·마이티티 opt-in adapter
-5. 에어핑퐁·오케이핑퐁 parser와 synthetic fixture, 운영 비활성 정책
+5. 에어핑퐁·오케이핑퐁 parser와 synthetic fixture, 승인 후 운영 활성화
 6. 출처별 실시간 진행 상태와 compact 부수 요약
 7. 슈퍼스타탁구 공개 개인별 결과 adapter와 아이핑 인증 필요 catalog
 8. 이름+지역 동명이인 검색, 입상/출전 탭, 입상 등수·날짜 요약
 9. GitHub Pages 및 Supabase 배포 workflow
+10. 카카오 공식 무료 검색 API 기반 용인탁구협회 다음 카페 adapter
 
 ## 다음 단계
 
@@ -31,7 +32,6 @@ title: '제품 로드맵'
 
 ## 보류
 
-- 출처 승낙 전 에어핑퐁·오케이핑퐁 운영 수집
 - BAND scraping
 - 공식 부수 확정 표현
 - 광고·결제·회원가입

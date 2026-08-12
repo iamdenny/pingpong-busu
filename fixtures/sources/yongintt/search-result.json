@@ -1,0 +1,37 @@
+{
+  "meta": { "total_count": 4, "pageable_count": 4, "is_end": true },
+  "documents": [
+    {
+      "title": "2026-07-20 <b>용인시 탁구대회</b> 입상 및 승급자",
+      "contents": "여자 6부 <b>김라켓</b> 선수 4강 입상, 차기 대회부터 5부로 승급합니다.",
+      "url": "https://cafe.daum.net/yongintt/IBLf/26",
+      "cafename": "합성 용인탁구협회",
+      "thumbnail": "",
+      "datetime": "2026-07-25T11:00:00.000+09:00"
+    },
+    {
+      "title": "2025 하반기 승급자 안내",
+      "contents": "<b>김라켓</b> 선수 승급을 안내합니다.",
+      "url": "https://cafe.daum.net/yongintt/IBLf/20",
+      "cafename": "합성 용인탁구협회",
+      "thumbnail": "",
+      "datetime": "2025-11-04T09:30:00.000+09:00"
+    },
+    {
+      "title": "다른 지역 탁구대회",
+      "contents": "<b>김라켓</b> 우승",
+      "url": "https://cafe.daum.net/anothercafe/result/1",
+      "cafename": "합성 다른 카페",
+      "thumbnail": "",
+      "datetime": "2026-08-01T12:00:00.000+09:00"
+    },
+    {
+      "title": "용인 친선 탁구대회",
+      "contents": "동명이 아닌 김다른 선수의 참가 기록입니다.",
+      "url": "https://cafe.daum.net/yongintt/IC8s/99",
+      "cafename": "합성 용인탁구협회",
+      "thumbnail": "",
+      "datetime": "2026-08-02T12:00:00.000+09:00"
+    }
+  ]
+}
