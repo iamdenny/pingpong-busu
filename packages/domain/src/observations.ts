@@ -7,6 +7,7 @@ import type {
 export function isAwardRank(rankText?: string): boolean {
   if (rankText === undefined) return false;
   const normalized = rankText.normalize("NFKC").replace(/\s+/gu, "");
+  if (/(?:예선|조별)/u.test(normalized)) return false;
   return (
     normalized.includes("우승") ||
     /(?:^|[^0-9])[123]위(?:$|[^0-9])/u.test(normalized) ||

@@ -7,6 +7,7 @@ import { parseAirpingSearchHtml } from './parser';
 const fixture = readFileSync(resolve(import.meta.dirname, '../../../../fixtures/sources/airping/search-result.html'), 'utf8');
 const regionalOpenFixture = readFileSync(resolve(import.meta.dirname, '../../../../fixtures/sources/airping/regional-open-result.html'), 'utf8');
 const bundangOverrideFixture = readFileSync(resolve(import.meta.dirname, '../../../../fixtures/sources/airping/bundang-division-overrides.html'), 'utf8');
+const sourceEvidenceFixture = readFileSync(resolve(import.meta.dirname, '../../../../fixtures/sources/airping/source-evidence-boundary.html'), 'utf8');
 
 describe('에어핑퐁 parser', () => {
   it('parses synthetic participation and award records without merging identities', () => {
@@ -39,5 +40,16 @@ describe('에어핑퐁 parser', () => {
     expect(records).toHaveLength(2);
     expect(records[0]).toMatchObject({ tournamentName: '2023년 제16회 분당구청장기 탁구대회', divisionSystem: 'regional', divisionValue: '3부' });
     expect(records[1]).toMatchObject({ tournamentName: '제17회 분당구청장기 탁구대회', divisionSystem: 'integrated', divisionValue: '3부' });
+  });
+
+  it('preserves suspicious-looking source affiliation and preliminary rank as raw evidence', () => {
+    const records = parseAirpingSearchHtml(sourceEvidenceFixture, '홍근거', '2026-08-13T00:00:00.000Z');
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      playerName: '홍근거',
+      clubText: '82개판5분전',
+      rankText: '예선 12조 3위',
+      tournamentName: '2026 출처 근거 경계 합성 대회',
+    });
   });
 });

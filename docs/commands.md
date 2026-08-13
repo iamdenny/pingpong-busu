@@ -83,6 +83,12 @@ npx --yes supabase@latest functions deploy refresh-status --project-ref <project
 
 `202608130001_reversible_player_merges.sql`, `202608130002_bounded_source_retries.sql`, `202608130003_division_observation_counts.sql`은 이 순서로 적용한다. 운영 확인과 관리자 병합·원복 RPC 예시는 [운영 문서](operations.md)를 따른다.
 
+로컬 DB에서 출처 관측 경계와 TypeScript/SQL 입상 truth table의 동등성을 확인할 때는 reset 후 트랜잭션 검증을 실행한다.
+
+```bash
+docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/source-observation-boundary.sql
+```
+
 DB 용량 확인:
 
 ```bash
