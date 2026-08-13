@@ -69,9 +69,9 @@ describe("IdentityEditHistory", () => {
     expect(screen.getByText("파워 드라이브")).toBeInTheDocument();
     expect(screen.getByText("루프 드라이브 최강자")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "되돌리기" }));
-    await user.type(
+    await user.selectOptions(
       screen.getByLabelText("되돌리는 근거"),
-      "서로 다른 지역의 동명이인 기록임을 확인했습니다.",
+      "wrong-alias-assignment",
     );
     expect(
       screen.queryByLabelText("편집 확인 코드 4자리"),
@@ -86,7 +86,7 @@ describe("IdentityEditHistory", () => {
     expect(revert).toHaveBeenCalledWith({
       operationId: "00000000-0000-4000-8000-000000000001",
       editorId,
-      reason: "서로 다른 지역의 동명이인 기록임을 확인했습니다.",
+      reason: "wrong-alias-assignment",
     });
     expect(
       await screen.findByText("기록 연결을 되돌렸습니다."),

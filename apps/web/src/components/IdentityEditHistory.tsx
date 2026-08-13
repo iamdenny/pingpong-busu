@@ -23,7 +23,7 @@ export function IdentityEditHistory({
 }: IdentityEditHistoryProps) {
   const queryClient = useQueryClient();
   const [revertOperationId, setRevertOperationId] = useState<string>();
-  const [reason, setReason] = useState("");
+  const [reasonCode, setReasonCode] = useState("wrong-person-grouping");
   const [website, setWebsite] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>();
@@ -40,7 +40,7 @@ export function IdentityEditHistory({
     onSuccess: (response) => {
       setRevertedOperationId(response.operationId);
       setRevertOperationId(undefined);
-      setReason("");
+      setReasonCode("wrong-person-grouping");
       setConfirmed(false);
       void queryClient.invalidateQueries({ queryKey: ["players"] });
       void queryClient.invalidateQueries({
@@ -56,7 +56,7 @@ export function IdentityEditHistory({
 
   const startRevert = (operationId: string) => {
     setRevertOperationId(operationId);
-    setReason("");
+    setReasonCode("wrong-person-grouping");
     setWebsite("");
     setConfirmed(false);
     setErrorMessage(undefined);
@@ -66,11 +66,6 @@ export function IdentityEditHistory({
   const submitRevert = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!revertOperationId) return;
-    const trimmedReason = reason.trim();
-    if (trimmedReason.length < 10) {
-      setErrorMessage("되돌리는 근거를 10자 이상 입력해 주세요.");
-      return;
-    }
     if (!confirmed) {
       setErrorMessage("기록이 다시 분리된다는 안내를 확인해 주세요.");
       return;
@@ -88,7 +83,7 @@ export function IdentityEditHistory({
     revertEdit.mutate({
       operationId: revertOperationId,
       editorId,
-      reason: trimmedReason,
+      reason: reasonCode,
       ...(website ? { website } : {}),
     });
   };
@@ -185,23 +180,22 @@ export function IdentityEditHistory({
                         이 편집에서 나눈 별칭과 기록 연결을 모두 이전 상태로
                         되돌립니다.
                       </p>
-                      <label
-                        htmlFor={`identity-revert-reason-${entry.operationId}`}
-                      >
+                      <label htmlFor={`identity-revert-reason-${entry.operationId}`}>
                         되돌리는 근거
                       </label>
-                      <textarea
+                      <select
                         id={`identity-revert-reason-${entry.operationId}`}
-                        name="reason"
-                        minLength={10}
-                        maxLength={500}
-                        required
-                        value={reason}
+                        name="reasonCode"
+                        value={reasonCode}
                         onChange={(event) => {
-                          setReason(event.target.value);
+                          setReasonCode(event.target.value);
                           setErrorMessage(undefined);
                         }}
-                      />
+                      >
+                        <option value="wrong-person-grouping">다른 사람 기록이 함께 묶임</option>
+                        <option value="wrong-alias-assignment">기록이 잘못된 별칭에 배정됨</option>
+                        <option value="insufficient-public-evidence">공개 기록 근거가 부족함</option>
+                      </select>
                       <p className="identity-editor-note">
                         비밀번호나 이전 편집 코드는 필요하지 않습니다. 되돌린
                         근거와 결과도 공개 이력에 남습니다.

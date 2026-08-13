@@ -60,6 +60,7 @@ describe("IdentityClaimDialog", () => {
     ).mockResolvedValue([
       {
         candidateId: "candidate-seoul",
+        status: "loaded",
         records: [
           {
             id: "record-seoul",
@@ -76,6 +77,7 @@ describe("IdentityClaimDialog", () => {
       },
       {
         candidateId: "candidate-busan",
+        status: "loaded",
         records: [
           {
             id: "record-busan",
@@ -159,6 +161,7 @@ describe("IdentityClaimDialog", () => {
         },
       ],
       editorId,
+      note: "public-record-comparison",
     });
   });
 
@@ -196,6 +199,7 @@ describe("IdentityClaimDialog", () => {
     ).mockResolvedValue(
       manyCandidates.map((candidate) => ({
         candidateId: candidate.id,
+        status: "loaded" as const,
         records: [],
       })),
     );
@@ -242,6 +246,7 @@ describe("IdentityClaimDialog", () => {
         },
       ],
       editorId,
+      note: "public-record-comparison",
     });
   }, 15_000);
 });

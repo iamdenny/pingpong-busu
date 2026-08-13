@@ -81,6 +81,7 @@ const resultSchema = z.object({
 const candidateResultSchema = resultSchema.extend({
   player_public_id: z.coerce.string(),
 });
+type CandidateResultRow = z.infer<typeof candidateResultSchema>;
 const sourceStatusSchema = z.object({
   code: sourceCodeSchema,
   display_name: z.string(),
@@ -296,12 +297,29 @@ export class SupabasePlayerRepository implements PlayerRepository {
   ): Promise<IdentityCandidateEvidence[]> {
     if (candidateIds.length === 0) return [];
     const uniqueIds = [...new Set(candidateIds)];
-    const { data, error } = await this.client.rpc(
-      "list_identity_candidate_evidence",
-      { p_player_public_ids: uniqueIds },
+    const batches = Array.from(
+      { length: Math.ceil(uniqueIds.length / 100) },
+      (_, index) => uniqueIds.slice(index * 100, (index + 1) * 100),
     );
-    if (error) throw error;
-    const rows = z.array(candidateResultSchema).parse(data);
+    const rows: CandidateResultRow[] = [];
+    const failedCandidateIds = new Set<string>();
+    const fetchBatch = async (batch: readonly string[]) => {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const { data, error } = await this.client.rpc(
+          "list_identity_candidate_evidence",
+          { p_player_public_ids: batch },
+        );
+        if (!error) return z.array(candidateResultSchema).parse(data);
+      }
+      for (const candidateId of batch) failedCandidateIds.add(candidateId);
+      return [];
+    };
+    for (let index = 0; index < batches.length; index += 3) {
+      const batchRows = await Promise.all(
+        batches.slice(index, index + 3).map(fetchBatch),
+      );
+      rows.push(...batchRows.flat());
+    }
     const recordsByCandidate = new Map<string, PlayerRecord[]>();
     for (const row of rows) {
       const records = recordsByCandidate.get(row.player_public_id) ?? [];
@@ -310,6 +328,9 @@ export class SupabasePlayerRepository implements PlayerRepository {
     }
     return uniqueIds.map((candidateId) => ({
       candidateId,
+      status: failedCandidateIds.has(candidateId)
+        ? ("error" as const)
+        : ("loaded" as const),
       records: sortPlayerRecordsByLatest(
         recordsByCandidate.get(candidateId) ?? [],
       ).slice(0, 2),

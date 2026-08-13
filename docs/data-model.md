@@ -20,6 +20,8 @@ title: "데이터 모델"
 
 `players.homonym_nickname`은 `power-drive`처럼 검수된 code만 저장합니다. 사용자 화면은 이를 `파워 드라이브` 같은 한국어 별칭으로 표시하며, 별칭은 동명이인 기록 구분자일 뿐 실제 플레이 스타일·실력·부수·공식 등급이 아닙니다. 같은 정규화 이름의 활성 선수끼리는 별칭 code가 중복되지 않습니다. 자유 입력 별칭을 저장하지 않아 욕설과 개인정보 유입을 차단합니다.
 
+`identity_community_request_budgets`는 gateway 요청 원점과 익명 편집자 ID를 각각 서버 HMAC한 scope를 요청 단계에서 원자적으로 잠그고, 전체 scope는 실제 편집·원복 트랜잭션 안에서 성공할 때만 차감합니다. 따라서 무효 요청은 해당 요청자 예산에는 반영되지만 전체 사용자 예산을 고갈시키지 않습니다. 공개 이력의 변경·원복 근거는 검수된 구조화 사유만 저장하고 자유 입력은 저장하지 않습니다. 후보 총수에는 상한을 두지 않되 근거 조회 RPC는 100건씩 분할합니다.
+
 참여 편집은 별칭 그룹 안에 후보가 둘 이상일 때 `identity_merge_operations`, `identity_merge_operation_players`, `identity_merge_operation_identities`에 병합 전 선수 상태·출처 identity 연결·match 상태를 저장합니다. 한 명뿐인 그룹도 partition member snapshot으로 이전 별칭과 identity 상태를 보존합니다. 원본 `players`, `source_player_identities`, `results` 행은 삭제하지 않습니다. 연결된 source 선수는 `players.merged_into_player_id`로 검색에서 숨기고 출처 identity만 그룹 대표 선수로 연결합니다. `list_identity_edit_history`는 HMAC을 제외한 편집 근거·후보별 별칭·상태를 공개합니다. 원복은 후속 분류와 현재 연결 충돌이 없을 때 한 partition의 모든 merge를 역순으로 해제하고 이전 별칭과 상태를 정확히 복구합니다.
 
 향후 `correction_requests`는 참여자의 일반 소속·지역 정정과 근거를 받는 공개 편집 흐름으로 확장합니다. 수집된 원문 기록은 수정하지 않으며 이전 값·근거 URL·익명 처리자·처리 시각을 감사 이력으로 보존합니다.

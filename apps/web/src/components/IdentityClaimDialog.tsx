@@ -43,7 +43,7 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   const [assignmentByCandidate, setAssignmentByCandidate] = useState<
     Readonly<Record<string, string>>
   >({});
-  const [note, setNote] = useState("");
+  const [reasonCode, setReasonCode] = useState("public-record-comparison");
   const [website, setWebsite] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>();
@@ -69,7 +69,7 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
     staleTime: 5 * 60 * 1000,
   });
   const evidenceByCandidate = new Map(
-    evidence.data?.map((item) => [item.candidateId, item.records] as const),
+    evidence.data?.map((item) => [item.candidateId, item] as const),
   );
   const usedNicknameCodes = new Set(groups.map((group) => group.nickname));
   const assignedCount = Object.values(assignmentByCandidate).filter(
@@ -141,7 +141,7 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
     setGroups(initialGroups());
     nextGroupIdRef.current = 3;
     setAssignmentByCandidate({});
-    setNote("");
+    setReasonCode("public-record-comparison");
     setWebsite("");
     setConfirmed(false);
     setErrorMessage(undefined);
@@ -232,11 +232,15 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
     const request = playerRepository.applyIdentityEdit({
       groups: assignedGroups,
       editorId,
-      ...(note.trim() ? { note: note.trim() } : {}),
+      note: reasonCode,
       ...(website ? { website } : {}),
     });
     void request
       .then((response) => {
+        void queryClient.invalidateQueries({ queryKey: ["players"] });
+        void queryClient.invalidateQueries({
+          queryKey: ["identity-edit-history"],
+        });
         setReferenceId(response.referenceId);
         setAppliedGroupCount(response.groupCount);
         setSubmissionState("success");
@@ -380,7 +384,8 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
               {candidates.map((candidate) => {
                 const evidenceId =
                   "identity-candidate-evidence-" + candidate.id;
-                const records = evidenceByCandidate.get(candidate.id) ?? [];
+                const candidateEvidence = evidenceByCandidate.get(candidate.id);
+                const records = candidateEvidence?.records ?? [];
                 const selectedGroupId =
                   assignmentByCandidate[candidate.id] ?? "";
                 return (
@@ -454,6 +459,8 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                         <small>최근 출전 기록 확인 중…</small>
                       ) : evidence.isError ? (
                         <small>최근 출전 기록을 불러오지 못했습니다.</small>
+                      ) : candidateEvidence?.status === "error" ? (
+                        <small>이 후보의 최근 출전 기록 조회에 실패했습니다.</small>
                       ) : records.length === 0 ? (
                         <small>확인 가능한 출전 기록이 없습니다.</small>
                       ) : (
@@ -492,22 +499,18 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
             </p>
 
             <div className="identity-claim-field">
-              <label htmlFor="identity-claim-note">
-                구분 근거 <small>(선택)</small>
-              </label>
-              <p id="identity-claim-note-hint">
-                대회·종목·소속처럼 구분에 도움이 되는 내용만 적어 주세요. 공개
-                이력에 표시되므로 연락처 등 개인정보는 적지 마세요.
-              </p>
-              <textarea
-                id="identity-claim-note"
-                name="note"
-                minLength={10}
-                maxLength={500}
-                aria-describedby="identity-claim-note-hint"
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-              />
+              <label htmlFor="identity-claim-reason">구분 근거</label>
+              <select
+                id="identity-claim-reason"
+                name="reasonCode"
+                value={reasonCode}
+                onChange={(event) => setReasonCode(event.target.value)}
+              >
+                <option value="public-record-comparison">공개 대회 기록 비교</option>
+                <option value="club-and-region-comparison">소속·지역 기록 비교</option>
+                <option value="event-history-comparison">출전 종목 이력 비교</option>
+              </select>
+              <p>개인정보가 공개 이력에 남지 않도록 정해진 근거만 선택합니다.</p>
             </div>
 
             <div className="identity-claim-honeypot" inert>

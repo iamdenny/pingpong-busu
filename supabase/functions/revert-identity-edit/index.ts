@@ -8,6 +8,11 @@ const uuidPattern =
 const legacyPrivateCodePattern = /^\d{4}$/u;
 const sensitiveReasonPattern =
   /(?:01[016789][ -]?\d{3,4}[ -]?\d{4})|(?:[\w.+-]+@[\w.-]+\.[a-z]{2,})/iu;
+const revertReasonCodes = new Set([
+  "wrong-person-grouping",
+  "wrong-alias-assignment",
+  "insufficient-public-evidence",
+]);
 const encoder = new TextEncoder();
 
 interface RevertInput {
@@ -39,6 +44,7 @@ function parseRevertInput(value: unknown): RevertInput {
       (!legacyPrivateCode || !legacyPrivateCodePattern.test(legacyPrivateCode))) ||
     reason.length < 10 ||
     reason.length > 500 ||
+    !revertReasonCodes.has(reason) ||
     sensitiveReasonPattern.test(reason)
   )
     throw new Error("invalid_identity_edit_revert");
@@ -98,9 +104,29 @@ Deno.serve(async (request) => {
       ? `busu/anonymous-editor/v1\u0000${input.editorId}`
       : `busu/identity-edit-revert/v1\u0000${input.operationId}\u0000${input.legacyPrivateCode}`;
     const actorHash = await hmacHex(serviceRoleKey, editorToken);
+    const requestOrigin =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("cf-connecting-ip")?.trim() ||
+      "unknown";
+    const requestOriginHash = await hmacHex(
+      serviceRoleKey,
+      `busu/community-request-origin/v1\u0000${requestOrigin}`,
+    );
     const client = createClient(url, serviceRoleKey, {
       auth: { persistSession: false },
     });
+    const { error: budgetError } = await client.rpc(
+      "claim_identity_community_request_internal",
+      {
+        p_editor_hash: actorHash,
+        p_origin_hash: requestOriginHash,
+      },
+    );
+    if (budgetError) {
+      if (budgetError.message.includes("identity_community_rate_limited"))
+        return json({ error: "rate_limited" }, 429);
+      return json({ error: "identity_edit_revert_failed" }, 500);
+    }
     const { data, error } = await client.rpc(
       "revert_identity_edit_community_internal",
       {
@@ -110,6 +136,8 @@ Deno.serve(async (request) => {
       },
     );
     if (error) {
+      if (error.message.includes("identity_community_rate_limited"))
+        return json({ error: "rate_limited" }, 429);
       if (error.message.includes("identity_edit_revert_not_allowed"))
         return json({ error: "revert_not_allowed" }, 403);
       if (

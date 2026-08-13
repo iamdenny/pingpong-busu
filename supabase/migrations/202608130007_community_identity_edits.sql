@@ -282,6 +282,66 @@ begin
 end;
 $$;
 
+create table public.identity_community_request_budgets (
+  scope text not null check (scope in ('global', 'origin', 'editor')),
+  identity_hash text not null check (
+    identity_hash = 'global' or identity_hash ~ '^[0-9a-f]{64}$'
+  ),
+  window_started_at timestamptz not null default now(),
+  request_count integer not null default 0 check (request_count >= 0),
+  last_requested_at timestamptz not null default now(),
+  primary key (scope, identity_hash)
+);
+
+alter table public.identity_community_request_budgets enable row level security;
+
+revoke all on public.identity_community_request_budgets
+from public, anon, authenticated;
+
+create or replace function public.claim_identity_global_request_internal()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_budget public.identity_community_request_budgets%rowtype;
+begin
+  insert into public.identity_community_request_budgets(scope, identity_hash)
+  values ('global', 'global')
+  on conflict do nothing;
+
+  select budget.*
+  into v_budget
+  from public.identity_community_request_budgets budget
+  where budget.scope = 'global'
+    and budget.identity_hash = 'global'
+  for update;
+
+  if v_budget.window_started_at > now() - interval '10 minutes'
+    and v_budget.request_count >= 30
+  then
+    raise exception 'identity_community_rate_limited';
+  end if;
+
+  update public.identity_community_request_budgets budget
+  set request_count = case
+        when budget.window_started_at <= now() - interval '10 minutes' then 1
+        else budget.request_count + 1
+      end,
+      window_started_at = case
+        when budget.window_started_at <= now() - interval '10 minutes' then now()
+        else budget.window_started_at
+      end,
+      last_requested_at = now()
+  where budget.scope = 'global'
+    and budget.identity_hash = 'global';
+end;
+$$;
+
+revoke all on function public.claim_identity_global_request_internal()
+from public, anon, authenticated;
+
 create or replace function public.apply_identity_edit_internal(
   p_player_public_ids uuid[],
   p_verification_hash text,
@@ -316,6 +376,10 @@ begin
     raise exception 'invalid_identity_edit';
   end if;
 
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('identity-fingerprint:' || p_candidate_fingerprint, 0)
+  );
+
   select operation.id,
     claim.id,
     target.public_id
@@ -339,6 +403,26 @@ begin
       'target_player_public_id', v_target_player_public_id
     );
   end if;
+
+  select count(*),
+    count(distinct player.normalized_name),
+    min(player.normalized_name)
+  into v_candidate_count,
+    v_name_count,
+    v_normalized_name
+  from public.players player
+  where player.public_id = any(p_player_public_ids)
+    and player.merged_into_player_id is null;
+
+  if v_candidate_count <> array_length(p_player_public_ids, 1)
+    or v_name_count <> 1
+  then
+    raise exception 'identity_edit_candidates_mismatch';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('identity-name:' || v_normalized_name, 0)
+  );
 
   select count(*),
     count(distinct player.normalized_name),
@@ -411,6 +495,8 @@ begin
     from public.players player
     where player.public_id = any(p_player_public_ids);
   end if;
+
+  perform public.claim_identity_global_request_internal();
 
   select player.public_id
   into v_target_player_public_id
@@ -658,7 +744,8 @@ as $$
           result.id desc
       ) evidence_order
     from public.public_results result
-    where result.player_public_id = any(p_player_public_ids)
+    where cardinality(p_player_public_ids) between 1 and 100
+      and result.player_public_id = any(p_player_public_ids)
   ) evidence
   where evidence.evidence_order <= 2
   order by evidence.player_public_id,

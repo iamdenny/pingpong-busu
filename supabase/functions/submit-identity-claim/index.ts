@@ -8,6 +8,11 @@ const uuidPattern =
 const legacyPrivateCodePattern = /^\d{4}$/u;
 const sensitiveNotePattern =
   /(?:01[016789][ -]?\d{3,4}[ -]?\d{4})|(?:[\w.+-]+@[\w.-]+\.[a-z]{2,})/iu;
+const identityReasonCodes = new Set([
+  "public-record-comparison",
+  "club-and-region-comparison",
+  "event-history-comparison",
+]);
 const homonymNicknameCodes = new Set([
   "power-drive",
   "loop-drive-champion",
@@ -113,7 +118,7 @@ function parseCommonInput(
     (note.length < 10 || note.length > 500)
   )
     throw new Error("invalid_identity_claim");
-  if (note && sensitiveNotePattern.test(note))
+  if (note && (!identityReasonCodes.has(note) || sensitiveNotePattern.test(note)))
     throw new Error("sensitive_note_rejected");
   const website =
     typeof value.website === "string" ? value.website.trim() : undefined;
@@ -219,9 +224,29 @@ Deno.serve(async (request) => {
       ? `busu/anonymous-editor/v1\u0000${input.editorId}`
       : `busu/legacy-private-code/v1\u0000${input.legacyPrivateCode}`;
     const verificationHash = await hmacHex(serviceRoleKey, editorToken);
+    const requestOrigin =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("cf-connecting-ip")?.trim() ||
+      "unknown";
+    const requestOriginHash = await hmacHex(
+      serviceRoleKey,
+      `busu/community-request-origin/v1\u0000${requestOrigin}`,
+    );
     const client = createClient(url, serviceRoleKey, {
       auth: { persistSession: false },
     });
+    const { error: budgetError } = await client.rpc(
+      "claim_identity_community_request_internal",
+      {
+        p_editor_hash: verificationHash,
+        p_origin_hash: requestOriginHash,
+      },
+    );
+    if (budgetError) {
+      if (budgetError.message.includes("identity_community_rate_limited"))
+        return json({ error: "rate_limited" }, 429);
+      return json({ error: "identity_edit_failed" }, 500);
+    }
 
     if (input.mode === "partition") {
       const sortedGroups = input.groups
@@ -244,7 +269,10 @@ Deno.serve(async (request) => {
         },
       );
       if (error) {
-        if (error.message.includes("identity_partition_rate_limited"))
+        if (
+          error.message.includes("identity_partition_rate_limited") ||
+          error.message.includes("identity_community_rate_limited")
+        )
           return json({ error: "rate_limited" }, 429);
         if (error.message.includes("identity_partition_candidates_mismatch"))
           return json({ error: "candidate_name_mismatch" }, 400);
@@ -285,7 +313,10 @@ Deno.serve(async (request) => {
       p_reason: input.note ?? null,
     });
     if (error) {
-      if (error.message.includes("identity_edit_rate_limited"))
+      if (
+        error.message.includes("identity_edit_rate_limited") ||
+        error.message.includes("identity_community_rate_limited")
+      )
         return json({ error: "rate_limited" }, 429);
       if (
         error.message.includes("identity_edit_candidates_mismatch") ||

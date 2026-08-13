@@ -43,6 +43,18 @@ describe("community identity edit migration", () => {
     expect(partitionMigration).toContain("'파워 드라이브'");
     expect(partitionMigration).toContain("'루프 드라이브 최강자'");
     expect(partitionMigration).toContain("identity_partition_members");
+    expect(partitionMigration).toContain(
+      "claim_identity_community_request_internal",
+    );
+    expect(migration).toContain("claim_identity_global_request_internal");
+    expect(migration).toContain(
+      "'identity-fingerprint:' || p_candidate_fingerprint",
+    );
+    expect(partitionMigration).toContain("pg_advisory_xact_lock");
+    expect(partitionMigration).toContain("'identity-name:' || v_normalized_name");
+    expect(partitionMigration).toContain(
+      "'identity-name:' || v_operation.normalized_name",
+    );
     expect(submitEdgeFunction).not.toMatch(
       /allCandidateIds\.length\s*>\s*\d+/u,
     );
@@ -70,6 +82,12 @@ describe("community identity edit migration", () => {
       "revert_identity_edit_community_internal",
     );
     expect(revertEdgeFunction).toContain("value.editorId");
+    expect(revertEdgeFunction).toContain(
+      "claim_identity_community_request_internal",
+    );
+    expect(migration).toContain(
+      "cardinality(p_player_public_ids) between 1 and 100",
+    );
     expect(migration).not.toMatch(
       /grant\s+(?:insert|update|delete).*identity_/iu,
     );

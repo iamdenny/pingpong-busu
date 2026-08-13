@@ -157,6 +157,7 @@ export class DemoPlayerRepository implements PlayerRepository {
       );
       return {
         candidateId,
+        status: "loaded" as const,
         records: player
           ? sortPlayerRecordsByLatest(player.records).slice(0, 2)
           : [],

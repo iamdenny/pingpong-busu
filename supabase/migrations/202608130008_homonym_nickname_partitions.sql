@@ -102,6 +102,79 @@ revoke all on public.identity_partition_operations,
   public.identity_partition_members
 from public, anon, authenticated;
 
+create or replace function public.claim_identity_community_request_internal(
+  p_editor_hash text,
+  p_origin_hash text
+) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if p_editor_hash !~ '^[0-9a-f]{64}$'
+    or p_origin_hash !~ '^[0-9a-f]{64}$'
+  then
+    raise exception 'invalid_identity_community_request';
+  end if;
+
+  insert into public.identity_community_request_budgets(scope, identity_hash)
+  values ('origin', p_origin_hash), ('editor', p_editor_hash)
+  on conflict do nothing;
+
+  perform budget.scope
+  from public.identity_community_request_budgets budget
+  where (budget.scope, budget.identity_hash) in (
+    ('origin', p_origin_hash),
+    ('editor', p_editor_hash)
+  )
+  order by budget.scope, budget.identity_hash
+  for update;
+
+  if exists (
+    select 1
+    from public.identity_community_request_budgets budget
+    where (budget.scope = 'origin'
+        and budget.identity_hash = p_origin_hash
+        and budget.window_started_at > now() - interval '10 minutes'
+        and budget.request_count >= 10)
+      or (budget.scope = 'editor'
+        and budget.identity_hash = p_editor_hash
+        and budget.window_started_at > now() - interval '24 hours'
+        and budget.request_count >= 6)
+  ) then
+    raise exception 'identity_community_rate_limited';
+  end if;
+
+  update public.identity_community_request_budgets budget
+  set request_count = case
+        when budget.window_started_at <= now() - case budget.scope
+          when 'editor' then interval '24 hours'
+          else interval '10 minutes'
+        end then 1
+        else budget.request_count + 1
+      end,
+      window_started_at = case
+        when budget.window_started_at <= now() - case budget.scope
+          when 'editor' then interval '24 hours'
+          else interval '10 minutes'
+        end then now()
+        else budget.window_started_at
+      end,
+      last_requested_at = now()
+  where (budget.scope, budget.identity_hash) in (
+    ('origin', p_origin_hash),
+    ('editor', p_editor_hash)
+  );
+end;
+$$;
+
+revoke all on function public.claim_identity_community_request_internal(
+  text, text
+) from public, anon, authenticated;
+grant execute on function public.claim_identity_community_request_internal(
+  text, text
+) to service_role;
+
 create or replace function public.homonym_nickname_label(
   p_code text
 ) returns text
@@ -179,6 +252,10 @@ begin
     raise exception 'invalid_identity_partition';
   end if;
 
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_fingerprint, 0)
+  );
+
   if exists (
     select 1
     from jsonb_array_elements(p_groups) group_item(value)
@@ -237,6 +314,30 @@ begin
       'group_count', jsonb_array_length(p_groups)
     );
   end if;
+
+  select count(*),
+    count(distinct player.normalized_name),
+    min(player.normalized_name)
+  into v_recent_count,
+    v_name_count,
+    v_normalized_name
+  from public.players player
+  where player.public_id in (
+    select candidate.value::uuid
+    from jsonb_array_elements(p_groups) group_item(value)
+    cross join lateral jsonb_array_elements_text(
+      group_item.value->'player_public_ids'
+    ) candidate(value)
+  )
+    and player.merged_into_player_id is null;
+
+  if v_recent_count <> v_candidate_count or v_name_count <> 1 then
+    raise exception 'identity_partition_candidates_mismatch';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('identity-name:' || v_normalized_name, 0)
+  );
 
   perform player.id
   from public.players player
@@ -308,10 +409,13 @@ begin
     raise exception 'identity_partition_rate_limited';
   end if;
 
-  v_reason := coalesce(
-    nullif(trim(p_reason), ''),
-    '참여자가 공개 대회 기록을 탁구 별칭으로 구분함'
-  );
+  perform public.claim_identity_global_request_internal();
+
+  v_reason := case p_reason
+    when 'club-and-region-comparison' then '공개 소속·지역 기록 비교'
+    when 'event-history-comparison' then '공개 출전 종목 이력 비교'
+    else '공개 대회 기록 비교'
+  end;
 
   insert into public.identity_partition_operations(
     normalized_name,
@@ -470,6 +574,22 @@ begin
   select operation.*
   into v_operation
   from public.identity_partition_operations operation
+  where operation.id = p_operation_id;
+
+  if not found or v_operation.status <> 'applied' then
+    raise exception 'identity_edit_revert_not_allowed';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(
+      'identity-name:' || v_operation.normalized_name,
+      0
+    )
+  );
+
+  select operation.*
+  into v_operation
+  from public.identity_partition_operations operation
   where operation.id = p_operation_id
   for update;
 
@@ -527,7 +647,11 @@ begin
   set status = 'reverted',
     reverted_at = now(),
     reverted_by = p_actor_hash,
-    revert_reason = trim(p_reason)
+    revert_reason = case p_reason
+      when 'wrong-alias-assignment' then '기록이 잘못된 별칭에 배정됨'
+      when 'insufficient-public-evidence' then '공개 기록 근거가 부족함'
+      else '다른 사람 기록이 함께 묶임'
+    end
   where id = p_operation_id;
 
   return p_operation_id;
@@ -552,6 +676,7 @@ set search_path = ''
 as $$
 declare
   v_operation_id uuid;
+  v_normalized_name text;
 begin
   if p_operation_id is null
     or p_actor_hash !~ '^[0-9a-f]{64}$'
@@ -559,6 +684,34 @@ begin
   then
     raise exception 'invalid_identity_edit_revert';
   end if;
+
+  select operation_name.normalized_name
+  into v_normalized_name
+  from (
+    select partition.normalized_name
+    from public.identity_partition_operations partition
+    where partition.id = p_operation_id
+      and partition.status = 'applied'
+    union all
+    select target.normalized_name
+    from public.identity_merge_operations merge_operation
+    join public.players target on target.id = merge_operation.target_player_id
+    where merge_operation.id = p_operation_id
+      and merge_operation.status = 'applied'
+      and merge_operation.identity_claim_id is not null
+      and merge_operation.performed_by like 'community:%'
+  ) operation_name
+  limit 1;
+
+  if v_normalized_name is null then
+    raise exception 'identity_edit_revert_not_allowed';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('identity-name:' || v_normalized_name, 0)
+  );
+
+  perform public.claim_identity_global_request_internal();
 
   if exists (
     select 1

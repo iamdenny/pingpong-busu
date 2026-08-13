@@ -172,6 +172,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
         const player = await this.getPlayer(candidateId);
         return {
           candidateId,
+          status: "loaded" as const,
           records: player?.records.slice(0, 2) ?? [],
         };
       }),

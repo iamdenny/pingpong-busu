@@ -95,6 +95,7 @@ export interface RevertIdentityEditResponse {
 export interface IdentityCandidateEvidence {
   candidateId: string;
   records: PlayerRecord[];
+  status: "loaded" | "error";
 }
 export interface PlayerRepository {
   listSourceStatuses(): Promise<SourceStatus[]>;

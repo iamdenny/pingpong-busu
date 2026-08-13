@@ -68,7 +68,7 @@ test("reduced motion keeps search navigation usable", async ({ page }) => {
     page.getByRole("heading", { name: "“김탁구” 선수" }),
   ).toBeVisible();
   const animationState = await page
-    .locator(".candidate-motion-item")
+    .locator(".candidate-list")
     .first()
     .evaluate((element) => ({
       activeAnimations: element.getAnimations().length,
