@@ -54,6 +54,7 @@ pnpm docs-check:scan
 
 ```bash
 docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/reversible-player-merge.sql
+docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/source-observation-boundary.sql
 ```
 
 ## 기능별 최소 검증

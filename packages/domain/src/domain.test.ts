@@ -148,7 +148,9 @@ describe("diff and identity", () => {
     expect(isAwardRank("우승")).toBe(true);
     expect(isAwardRank("준우승")).toBe(true);
     expect(isAwardRank("공동 3위")).toBe(true);
+    expect(isAwardRank("본선 공동 3위")).toBe(true);
     expect(isAwardRank("본선 4강")).toBe(true);
+    expect(isAwardRank("본선 ４강")).toBe(true);
     expect(isAwardRank("4강전 진출")).toBe(true);
     expect(isAwardRank("본선 2강")).toBe(true);
     expect(isAwardRank("본선 8강")).toBe(false);
@@ -156,6 +158,8 @@ describe("diff and identity", () => {
     expect(isAwardRank("본선 64강")).toBe(false);
     expect(isAwardRank("본선 128강")).toBe(false);
     expect(isAwardRank("예선 2조")).toBe(false);
+    expect(isAwardRank("예선 12조 3위")).toBe(false);
+    expect(isAwardRank("조별 1위")).toBe(false);
     expect(isAwardRank("참가")).toBe(false);
   });
 });
