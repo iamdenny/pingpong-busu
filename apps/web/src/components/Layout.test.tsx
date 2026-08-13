@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
+import { appVersion } from "../lib/appVersion";
 import { Layout } from "./Layout";
 
 describe("Layout", () => {
@@ -25,7 +26,7 @@ describe("Layout", () => {
         "공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후 반영합니다.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("버전 개발")).toBeInTheDocument();
+    expect(screen.getByText(`버전 ${appVersion}`)).toBeInTheDocument();
     expect(
       screen.queryByText("라이선스는 아직 결정되지 않음"),
     ).not.toBeInTheDocument();
@@ -38,6 +39,6 @@ describe("Layout", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.queryByText("버전 개발")).not.toBeInTheDocument();
+    expect(document.querySelector(".app-version")).not.toBeInTheDocument();
   });
 });
