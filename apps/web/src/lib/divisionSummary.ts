@@ -1,4 +1,9 @@
-import { displayDivisionValue, divisionSystemLabels, type DivisionSystem, type PlayerSummary } from '@busu/domain';
+import {
+  displayDivisionValue,
+  divisionSystemLabels,
+  type DivisionSystem,
+  type PlayerSummary,
+} from "@busu/domain";
 
 export interface DivisionSummaryItem {
   system: DivisionSystem;
@@ -7,24 +12,53 @@ export interface DivisionSummaryItem {
   count: number;
 }
 
-const systemOrder: DivisionSystem[] = ['open', 'integrated', 'women', 'regional', 'division', 'unknown'];
+const systemOrder: DivisionSystem[] = [
+  "open",
+  "integrated",
+  "women",
+  "regional",
+  "division",
+  "unknown",
+];
 
-export function summarizeObservedDivisions(players: readonly PlayerSummary[]): DivisionSummaryItem[] {
+export function summarizeObservedDivisions(
+  players: readonly PlayerSummary[],
+): DivisionSummaryItem[] {
   const counts = new Map<string, number>();
   for (const player of players) {
-    const system = player.recentObservedDivisionSystem ?? 'unknown';
-    const division = player.recentObservedDivision ?? '확인 필요';
+    const system = player.recentObservedDivisionSystem ?? "unknown";
+    const division = player.recentObservedDivision ?? "확인 필요";
     const key = `${system}\u0000${division}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
   return [...counts.entries()]
     .map(([key, count]) => {
-      const [systemValue, division = '확인 필요'] = key.split('\u0000');
+      const [systemValue, division = "확인 필요"] = key.split("\u0000");
       const system = systemValue as DivisionSystem;
-      return { system, systemLabel: divisionSystemLabels[system], division: displayDivisionValue(system, division), count };
+      return {
+        system,
+        systemLabel: divisionSystemLabels[system],
+        division: displayDivisionValue(system, division),
+        count,
+      };
     })
-    .sort((left, right) => systemOrder.indexOf(left.system) - systemOrder.indexOf(right.system)
-      || right.count - left.count
-      || left.division.localeCompare(right.division, 'ko-KR', { numeric: true }));
+    .sort(
+      (left, right) =>
+        systemOrder.indexOf(left.system) - systemOrder.indexOf(right.system) ||
+        right.count - left.count ||
+        left.division.localeCompare(right.division, "ko-KR", { numeric: true }),
+    );
+}
+
+export function matchesObservedDivision(
+  player: PlayerSummary,
+  summary: Pick<DivisionSummaryItem, "system" | "division">,
+): boolean {
+  const system = player.recentObservedDivisionSystem ?? "unknown";
+  const division = displayDivisionValue(
+    system,
+    player.recentObservedDivision ?? "확인 필요",
+  );
+  return system === summary.system && division === summary.division;
 }

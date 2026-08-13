@@ -1,6 +1,6 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, MapPin, Trophy, Waypoints } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Link,
   useLocation,
@@ -19,7 +19,11 @@ import {
   SourceRefreshProgress,
   type SourceRefreshView,
 } from "../components/SourceRefreshProgress";
-import { summarizeObservedDivisions } from "../lib/divisionSummary";
+import {
+  matchesObservedDivision,
+  summarizeObservedDivisions,
+  type DivisionSummaryItem,
+} from "../lib/divisionSummary";
 import {
   isDevLiveMode,
   isSourceRefreshEnabled,
@@ -105,6 +109,12 @@ export function SearchResultsPage() {
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
   const [resultTab, setResultTab] = useState<"awards" | "entries">("awards");
+  const [divisionSelection, setDivisionSelection] = useState<{
+    query: string;
+    system: DivisionSummaryItem["system"];
+    division: string;
+  } | null>(null);
+  const candidateListRef = useRef<HTMLElement>(null);
   const query = params.get("q")?.trim() ?? "";
   const playerSearch = parsePlayerSearchQuery(query);
   const result = useQuery({
@@ -227,10 +237,28 @@ export function SearchResultsPage() {
         (source) => source.state === "waiting" || source.state === "refreshing",
       ));
   const divisionSummary = summarizeObservedDivisions(result.data ?? []);
-  const awardCandidates =
-    result.data?.filter((player) => player.resultCount > 0) ?? [];
-  const entryCandidates =
-    result.data?.filter((player) => player.resultCount === 0) ?? [];
+  const selectedDivision =
+    divisionSelection?.query === query
+      ? divisionSummary.find(
+          (item) =>
+            item.system === divisionSelection.system &&
+            item.division === divisionSelection.division,
+        )
+      : undefined;
+  const selectedDivisionKey = selectedDivision
+    ? `${query}\u0000${selectedDivision.system}\u0000${selectedDivision.division}`
+    : null;
+  const divisionCandidates = selectedDivision
+    ? (result.data ?? []).filter((player) =>
+        matchesObservedDivision(player, selectedDivision),
+      )
+    : (result.data ?? []);
+  const awardCandidates = divisionCandidates.filter(
+    (player) => player.resultCount > 0,
+  );
+  const entryCandidates = divisionCandidates.filter(
+    (player) => player.resultCount === 0,
+  );
   const activeResultTab =
     resultTab === "awards"
       ? awardCandidates.length > 0 || entryCandidates.length === 0
@@ -241,6 +269,9 @@ export function SearchResultsPage() {
         : "awards";
   const shownCandidates =
     activeResultTab === "awards" ? awardCandidates : entryCandidates;
+  const candidateListLabel = selectedDivision
+    ? `${selectedDivision.systemLabel} ${selectedDivision.division} 선수 검색 결과 목록`
+    : `${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`;
   const searchLabel =
     `${playerSearch.name}${playerSearch.region ? ` ${playerSearch.region}` : ""}`.trim();
   const pageTitle = searchLabel
@@ -249,6 +280,37 @@ export function SearchResultsPage() {
   const pageDescription = searchLabel
     ? `${searchLabel} 선수의 최근 관측 부수, 대회 출전·4강 이상 입상 기록과 원문 출처를 확인하세요.`
     : "탁구 선수 이름과 지역으로 최근 관측 부수, 대회 출전·입상 기록과 원문 출처를 검색하세요.";
+
+  useEffect(() => {
+    if (!selectedDivisionKey) return;
+    candidateListRef.current?.scrollIntoView?.({ block: "start" });
+    candidateListRef.current?.focus({ preventScroll: true });
+  }, [selectedDivisionKey]);
+
+  function selectDivision(summary: DivisionSummaryItem) {
+    const matchingPlayers = (result.data ?? []).filter((player) =>
+      matchesObservedDivision(player, summary),
+    );
+    setDivisionSelection({
+      query,
+      system: summary.system,
+      division: summary.division,
+    });
+    setResultTab(
+      matchingPlayers.some((player) => player.resultCount > 0)
+        ? "awards"
+        : "entries",
+    );
+  }
+
+  function clearDivisionSelection() {
+    setDivisionSelection(null);
+    setResultTab(
+      (result.data ?? []).some((player) => player.resultCount > 0)
+        ? "awards"
+        : "entries",
+    );
+  }
 
   return (
     <div className="page">
@@ -259,6 +321,7 @@ export function SearchResultsPage() {
         initialQuery={query}
         onSearch={(value) => {
           setResultTab("awards");
+          setDivisionSelection(null);
           void navigate(`/search?q=${encodeURIComponent(value)}`);
         }}
       />
@@ -297,10 +360,22 @@ export function SearchResultsPage() {
               </thead>
               <tbody>
                 <tr>
-                  {divisionSummary.map(({ system, division, count }) => (
-                    <td key={`${system}-${division}`}>
-                      <strong>{division}</strong>
-                      <span>{count}건</span>
+                  {divisionSummary.map((summary) => (
+                    <td key={`${summary.system}-${summary.division}`}>
+                      <button
+                        type="button"
+                        className="division-overview__filter"
+                        aria-controls="candidate-results"
+                        aria-pressed={
+                          selectedDivision?.system === summary.system &&
+                          selectedDivision.division === summary.division
+                        }
+                        aria-label={`${summary.systemLabel} ${summary.division} ${summary.count}건 결과 보기`}
+                        onClick={() => selectDivision(summary)}
+                      >
+                        <strong>{summary.division}</strong>
+                        <span>{summary.count}건</span>
+                      </button>
                     </td>
                   ))}
                 </tr>
@@ -376,31 +451,53 @@ export function SearchResultsPage() {
         </div>
       )}
       {!result.isLoading && (result.data?.length ?? 0) > 0 && (
-        <div className="result-tabs" role="tablist" aria-label="검색 결과 구분">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeResultTab === "awards"}
-            disabled={awardCandidates.length === 0}
-            onClick={() => setResultTab("awards")}
+        <>
+          {selectedDivision && (
+            <div className="division-result-filter">
+              <span role="status">
+                <strong>
+                  {selectedDivision.systemLabel} {selectedDivision.division}
+                </strong>{" "}
+                {divisionCandidates.length}건만 표시 중
+              </span>
+              <button type="button" onClick={clearDivisionSelection}>
+                부수 필터 해제
+              </button>
+            </div>
+          )}
+          <div
+            className="result-tabs"
+            role="tablist"
+            aria-label="검색 결과 구분"
           >
-            입상 <strong>{awardCandidates.length}건</strong>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeResultTab === "entries"}
-            disabled={entryCandidates.length === 0}
-            onClick={() => setResultTab("entries")}
-          >
-            출전 <strong>{entryCandidates.length}건</strong>
-          </button>
-        </div>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeResultTab === "awards"}
+              disabled={awardCandidates.length === 0}
+              onClick={() => setResultTab("awards")}
+            >
+              입상 <strong>{awardCandidates.length}건</strong>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeResultTab === "entries"}
+              disabled={entryCandidates.length === 0}
+              onClick={() => setResultTab("entries")}
+            >
+              출전 <strong>{entryCandidates.length}건</strong>
+            </button>
+          </div>
+        </>
       )}
       <section
+        id="candidate-results"
+        ref={candidateListRef}
         className="candidate-list"
-        aria-label={`${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`}
+        aria-label={candidateListLabel}
         role="tabpanel"
+        tabIndex={-1}
       >
         {shownCandidates.map((player) => (
           <Link
