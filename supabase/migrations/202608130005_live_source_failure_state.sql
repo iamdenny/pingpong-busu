@@ -144,22 +144,6 @@ begin
 end;
 $$;
 
-create or replace function public.record_source_refresh_success(
-  p_source_code text,
-  p_parser_version text
-) returns void
-language sql
-security definer
-set search_path = public, pg_temp
-as $$
-  update public.sources
-  set last_success_at = now(),
-      last_error_code = null,
-      parser_version = left(coalesce(p_parser_version, parser_version), 100),
-      updated_at = now()
-  where code = p_source_code;
-$$;
-
 revoke all on function public.claim_source_request(text, text, integer)
   from public, anon, authenticated;
 grant execute on function public.claim_source_request(text, text, integer)
@@ -170,14 +154,7 @@ revoke all on function public.record_source_refresh_failure(text, text)
 grant execute on function public.record_source_refresh_failure(text, text)
   to service_role;
 
-revoke all on function public.record_source_refresh_success(text, text)
-  from public, anon, authenticated;
-grant execute on function public.record_source_refresh_success(text, text)
-  to service_role;
-
 comment on function public.claim_source_request(text, text, integer) is
   'Claims a source/query request with a bounded cooldown; iPing also has a six-request account budget per minute without source-wide serialization.';
 comment on function public.record_source_refresh_failure(text, text) is
   'Persists only an allow-listed source error code; raw errors and response content are never accepted.';
-comment on function public.record_source_refresh_success(text, text) is
-  'Clears the persisted source error after a successful refresh.';
