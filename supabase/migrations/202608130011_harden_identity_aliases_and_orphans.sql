@@ -17,6 +17,8 @@ check (
     char_length(homonym_nickname) between 2 and 20
     and homonym_nickname = regexp_replace(btrim(homonym_nickname), '\\s+', ' ', 'g')
     and homonym_nickname !~ '[<>[:cntrl:]]'
+    and homonym_nickname !~* '01[016789][ -]?[0-9]{3,4}[ -]?[0-9]{4}'
+    and homonym_nickname !~* '[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}'
     and homonym_nickname !~ '(19|20)[0-9]{2}[./-]?(0[1-9]|1[0-2])[./-]?(0[1-9]|[12][0-9]|3[01])'
     and homonym_nickname !~ '[0-9]{6}-?[1-4][0-9]{6}'
     and homonym_nickname !~ '(로|길|동|읍|면|리)[[:space:]]*[0-9]+(-[0-9]+)?'
@@ -41,6 +43,8 @@ as $$
     when p_code is not null
       and char_length(btrim(p_code)) between 2 and 20
       and p_code !~ '[<>[:cntrl:]]'
+      and p_code !~* '01[016789][ -]?[0-9]{3,4}[ -]?[0-9]{4}'
+      and p_code !~* '[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}'
       and p_code !~ '(19|20)[0-9]{2}[./-]?(0[1-9]|1[0-2])[./-]?(0[1-9]|[12][0-9]|3[01])'
       and p_code !~ '[0-9]{6}-?[1-4][0-9]{6}'
       and p_code !~ '(로|길|동|읍|면|리)[[:space:]]*[0-9]+(-[0-9]+)?'

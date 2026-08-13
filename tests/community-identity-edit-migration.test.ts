@@ -96,6 +96,8 @@ describe("community identity edit migration", () => {
     );
     expect(customNicknameMigration).toContain("(19|20)[0-9]{2}");
     expect(customNicknameMigration).toContain("(로|길|동|읍|면|리)");
+    expect(customNicknameMigration).toContain("01[016789][ -]?");
+    expect(customNicknameMigration).toContain("+@[[:alnum:].-]+");
     expect(hardeningMigration).toContain(
       "pg_catalog.hashtextextended(p_fingerprint, 0)",
     );
@@ -105,6 +107,8 @@ describe("community identity edit migration", () => {
     expect(hardeningMigration).toContain(
       "create or replace view public.public_player_search",
     );
+    expect(hardeningMigration).toContain("01[016789][ -]?");
+    expect(hardeningMigration).toContain("+@[[:alnum:].-]+");
     expect(submitEdgeFunction).not.toMatch(
       /allCandidateIds\.length\s*>\s*\d+/u,
     );

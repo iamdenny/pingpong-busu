@@ -31,8 +31,12 @@ describe("homonym nicknames", () => {
     expect(isHomonymNickname("5030")).toBe(false);
     expect(containsSensitiveHomonymNickname("홍길동19900101")).toBe(true);
     expect(containsSensitiveHomonymNickname("성남동 123-4")).toBe(true);
+    expect(containsSensitiveHomonymNickname("홍길동 010-1234-5678")).toBe(true);
+    expect(containsSensitiveHomonymNickname("denny@example.com")).toBe(true);
     expect(isHomonymNickname("홍길동19900101")).toBe(false);
     expect(isHomonymNickname("성남동 123-4")).toBe(false);
+    expect(isHomonymNickname("홍길동 010-1234-5678")).toBe(false);
+    expect(isHomonymNickname("denny@example.com")).toBe(false);
     expect(isHomonymNickname("<script>")).toBe(false);
     expect(isHomonymNickname("가".repeat(21))).toBe(false);
   });

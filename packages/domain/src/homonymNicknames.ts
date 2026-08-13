@@ -93,6 +93,8 @@ const legacyNicknameLabels = new Map<string, string>([
 const nicknameCharactersPattern = /^[\p{L}\p{N} ._·-]+$/u;
 const nicknameLetterPattern = /\p{L}/u;
 const nicknameSensitiveTextPatterns = [
+  /01[016789][ -]?\d{3,4}[ -]?\d{4}/u,
+  /[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu,
   /(?:19|20)\d{2}[./-]?(?:0[1-9]|1[0-2])[./-]?(?:0[1-9]|[12]\d|3[01])/u,
   /\d{6}-?[1-4]\d{6}/u,
   /(?:로|길|동|읍|면|리)\s*\d+(?:-\d+)?/u,
