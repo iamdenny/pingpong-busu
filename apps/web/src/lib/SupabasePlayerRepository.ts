@@ -3,21 +3,30 @@ import { z } from "zod";
 import {
   divisionSystemSchema,
   isAwardRank,
+  isHomonymNicknameCode,
   normalizePlayerName,
   sortPlayerRecordsByLatest,
   sourceCodeSchema,
   type PlayerDetail,
   type PlayerRecord,
   type PlayerSummary,
+  type HomonymNicknameCode,
   type SourceComparison,
 } from "@busu/domain";
 import type {
   IdentityCandidateEvidence,
-  IdentityClaimInput,
+  IdentityEditHistoryEntry,
+  IdentityEditInput,
   PlayerRepository,
   PlayerSearchInput,
   RefreshRequest,
+  RevertIdentityEditInput,
 } from "./repository";
+
+const homonymNicknameSchema = z.custom<HomonymNicknameCode>(
+  (value) => typeof value === "string" && isHomonymNicknameCode(value),
+  "알 수 없는 동명이인 별칭입니다.",
+);
 
 const divisionObservationSchema = z.object({
   system: divisionSystemSchema,
@@ -42,6 +51,7 @@ const summarySchema = z.object({
   source_count: z.number(),
   last_checked_at: z.string(),
   identity_status: z.enum(["unreviewed", "likely", "verified", "disputed"]),
+  homonym_nickname: homonymNicknameSchema.nullish(),
 });
 const resultSchema = z.object({
   id: z.coerce.string(),
@@ -71,6 +81,7 @@ const resultSchema = z.object({
 const candidateResultSchema = resultSchema.extend({
   player_public_id: z.coerce.string(),
 });
+type CandidateResultRow = z.infer<typeof candidateResultSchema>;
 const sourceStatusSchema = z.object({
   code: sourceCodeSchema,
   display_name: z.string(),
@@ -78,6 +89,27 @@ const sourceStatusSchema = z.object({
   adapter_mode: z.enum(["http", "browser", "manual"]),
   enabled: z.boolean(),
   parser_version: z.string(),
+});
+const identityEditCandidateSchema = z.object({
+  player_id: z.coerce.string(),
+  name: z.string(),
+  region: z.string().nullable(),
+  club: z.string().nullable(),
+  group_nickname: homonymNicknameSchema.nullish(),
+});
+const identityEditHistorySchema = z.object({
+  operation_id: z.coerce.string(),
+  reference_id: z.string().min(1),
+  normalized_name: z.string(),
+  status: z.enum(["applied", "reverted"]),
+  target_player_id: z.coerce.string(),
+  target_player_name: z.string(),
+  reason: z.string(),
+  created_at: z.string(),
+  reverted_at: z.string().nullable(),
+  revert_reason: z.string().nullable(),
+  can_revert: z.boolean(),
+  candidates: z.array(identityEditCandidateSchema),
 });
 
 function toSummary(row: z.infer<typeof summarySchema>): PlayerSummary {
@@ -111,6 +143,7 @@ function toSummary(row: z.infer<typeof summarySchema>): PlayerSummary {
     sourceCount: row.source_count,
     lastCheckedAt: row.last_checked_at,
     identityStatus: row.identity_status,
+    ...(row.homonym_nickname ? { homonymNickname: row.homonym_nickname } : {}),
     dataKind: "live",
   };
 }
@@ -174,18 +207,27 @@ export class SupabasePlayerRepository implements PlayerRepository {
   }
   async searchPlayers(input: PlayerSearchInput): Promise<PlayerSummary[]> {
     const query = normalizePlayerName(input.query).replaceAll("%", "");
-    let request = this.client
-      .from("public_player_search")
-      .select("*")
-      .ilike("normalized_name", `${query}%`);
-    if (input.region)
-      request = request.ilike(
-        "primary_region",
-        `%${input.region.replaceAll("%", "").replaceAll("_", "")}%`,
-      );
-    const { data, error } = await request.limit(30);
-    if (error) throw error;
-    return z.array(summarySchema).parse(data).map(toSummary);
+    const pageSize = 200;
+    const rows: z.infer<typeof summarySchema>[] = [];
+    for (let offset = 0; ; offset += pageSize) {
+      let request = this.client
+        .from("public_player_search")
+        .select("*")
+        .ilike("normalized_name", `${query}%`)
+        .order("id")
+        .range(offset, offset + pageSize - 1);
+      if (input.region)
+        request = request.ilike(
+          "primary_region",
+          `%${input.region.replaceAll("%", "").replaceAll("_", "")}%`,
+        );
+      const { data, error } = await request;
+      if (error) throw error;
+      const page = z.array(summarySchema).parse(data);
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows.map(toSummary);
   }
   async getPlayer(id: string): Promise<PlayerDetail | null> {
     const [summaryResponse, recordsResponse] = await Promise.all([
@@ -254,16 +296,30 @@ export class SupabasePlayerRepository implements PlayerRepository {
     candidateIds: readonly string[],
   ): Promise<IdentityCandidateEvidence[]> {
     if (candidateIds.length === 0) return [];
-    const uniqueIds = [...new Set(candidateIds)].slice(0, 30);
-    const { data, error } = await this.client
-      .from("public_results")
-      .select("*")
-      .in("player_public_id", uniqueIds)
-      .order("sort_date", { ascending: false, nullsFirst: false })
-      .order("last_checked_at", { ascending: false })
-      .limit(1_000);
-    if (error) throw error;
-    const rows = z.array(candidateResultSchema).parse(data);
+    const uniqueIds = [...new Set(candidateIds)];
+    const batches = Array.from(
+      { length: Math.ceil(uniqueIds.length / 100) },
+      (_, index) => uniqueIds.slice(index * 100, (index + 1) * 100),
+    );
+    const rows: CandidateResultRow[] = [];
+    const failedCandidateIds = new Set<string>();
+    const fetchBatch = async (batch: readonly string[]) => {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const { data, error } = await this.client.rpc(
+          "list_identity_candidate_evidence",
+          { p_player_public_ids: batch },
+        );
+        if (!error) return z.array(candidateResultSchema).parse(data);
+      }
+      for (const candidateId of batch) failedCandidateIds.add(candidateId);
+      return [];
+    };
+    for (let index = 0; index < batches.length; index += 3) {
+      const batchRows = await Promise.all(
+        batches.slice(index, index + 3).map(fetchBatch),
+      );
+      rows.push(...batchRows.flat());
+    }
     const recordsByCandidate = new Map<string, PlayerRecord[]>();
     for (const row of rows) {
       const records = recordsByCandidate.get(row.player_public_id) ?? [];
@@ -272,6 +328,9 @@ export class SupabasePlayerRepository implements PlayerRepository {
     }
     return uniqueIds.map((candidateId) => ({
       candidateId,
+      status: failedCandidateIds.has(candidateId)
+        ? ("error" as const)
+        : ("loaded" as const),
       records: sortPlayerRecordsByLatest(
         recordsByCandidate.get(candidateId) ?? [],
       ).slice(0, 2),
@@ -325,7 +384,7 @@ export class SupabasePlayerRepository implements PlayerRepository {
       })
       .parse(data);
   }
-  async submitIdentityClaim(input: IdentityClaimInput) {
+  async applyIdentityEdit(input: IdentityEditInput) {
     const { data, error } = await this.client.functions.invoke(
       "submit-identity-claim",
       { body: input },
@@ -335,7 +394,57 @@ export class SupabasePlayerRepository implements PlayerRepository {
       .object({
         accepted: z.boolean(),
         referenceId: z.string().min(1),
-        status: z.literal("pending"),
+        operationId: z.string().uuid(),
+        status: z.literal("applied"),
+        groupCount: z.number().int().min(2),
+      })
+      .parse(data);
+  }
+  async listIdentityEditHistory(
+    normalizedName: string,
+  ): Promise<IdentityEditHistoryEntry[]> {
+    const { data, error } = await this.client.rpc(
+      "list_identity_edit_history",
+      { p_normalized_name: normalizePlayerName(normalizedName) },
+    );
+    if (error) throw error;
+    return z
+      .array(identityEditHistorySchema)
+      .parse(data)
+      .map((entry) => ({
+        operationId: entry.operation_id,
+        referenceId: entry.reference_id,
+        normalizedName: entry.normalized_name,
+        status: entry.status,
+        targetPlayerId: entry.target_player_id,
+        targetPlayerName: entry.target_player_name,
+        reason: entry.reason,
+        createdAt: entry.created_at,
+        ...(entry.reverted_at ? { revertedAt: entry.reverted_at } : {}),
+        ...(entry.revert_reason ? { revertReason: entry.revert_reason } : {}),
+        canRevert: entry.can_revert,
+        candidates: entry.candidates.map((candidate) => ({
+          playerId: candidate.player_id,
+          name: candidate.name,
+          ...(candidate.region ? { region: candidate.region } : {}),
+          ...(candidate.club ? { club: candidate.club } : {}),
+          ...(candidate.group_nickname
+            ? { groupNickname: candidate.group_nickname }
+            : {}),
+        })),
+      }));
+  }
+  async revertIdentityEdit(input: RevertIdentityEditInput) {
+    const { data, error } = await this.client.functions.invoke(
+      "revert-identity-edit",
+      { body: input },
+    );
+    if (error) throw error;
+    return z
+      .object({
+        reverted: z.boolean(),
+        operationId: z.string().uuid(),
+        status: z.literal("reverted"),
       })
       .parse(data);
   }

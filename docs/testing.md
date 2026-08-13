@@ -55,6 +55,7 @@ pnpm docs-check:scan
 ```bash
 docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/reversible-player-merge.sql
 docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/source-observation-boundary.sql
+docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/community-identity-edit.sql
 ```
 
 ## 기능별 최소 검증
@@ -64,8 +65,8 @@ docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sq
 | 부수·입상·지역 규칙   | domain unit + 영향을 받는 parser fixture                                                                       |
 | 부수별 입상·참가 요약 | domain aggregation + public view migration contract + repository/component test                                |
 | 검색 결과/상세 UI     | component test + desktop/mobile 미리보기                                                                       |
-| 동명이인 구분 제보    | component test + 원문 코드 비저장 확인 + migration dry-run                                                     |
-| 동명이인 병합·원복    | migration dry-run + source identity 연결/복구 + 후속 작업 충돌 확인                                            |
+| 동명이인 참여 편집    | 10건 초과 별칭 그룹 배정 component test + catalog 중복 방지 + 자동 익명 ID 재사용·원문 비저장 + migration dry-run |
+| 동명이인 연결·원복    | 후보별 별칭 공개 이력 component test + 다중 그룹 source identity 연결/전체 복구 + 후속 작업 충돌 확인             |
 | Supabase view/RPC     | 새 migration + 공개 view 응답 확인                                                                             |
 | Edge Function         | auth test + local/remote 호출 결과                                                                             |
 | 출처 활성화           | 정책 문서 + synthetic fixture + opt-in live test                                                               |
@@ -79,6 +80,6 @@ docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sq
 - 실제 공개 기록과 가상 데이터 badge가 구분되는가
 - 동명이인 경고, 지역 추정 표현, 원문 링크가 보이는가
 - 상세 기록의 전체 종목명이 desktop table과 mobile card에 동일하게 보이는가
-- 동명이인 구분 dialog의 각 후보에 최근 출전 대회명과 원문 종목명이 보이고, 닫힌 뒤 선택값과 비공개 코드가 남지 않는가
+- 동명이인 구분 dialog의 각 후보에 최근 출전 대회명과 원문 종목명이 보이고, 검수된 탁구 별칭을 두 개 이상 골라 비밀번호 없이 기록을 배정할 수 있는가
 - 출처 조회 중·성공·실패 상태가 개별적으로 갱신되는가
 - 키보드 focus와 semantic heading/table 구조가 유지되는가

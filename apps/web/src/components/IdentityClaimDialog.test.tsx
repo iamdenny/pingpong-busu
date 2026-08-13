@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlayerSummary } from "@busu/domain";
+import { ANONYMOUS_EDITOR_STORAGE_KEY } from "../lib/anonymousEditor";
 import { playerRepository } from "../lib/runtime";
 import { IdentityClaimDialog } from "./IdentityClaimDialog";
 
@@ -35,99 +36,31 @@ const candidates: PlayerSummary[] = [
   },
 ];
 
-afterEach(() => {
-  vi.restoreAllMocks();
-  vi.useRealTimers();
-  vi.unstubAllGlobals();
-});
+const editorId = "00000000-0000-4000-8000-000000000099";
 
-function mockMedia(
-  options: { reducedMotion?: boolean; mobile?: boolean } = {},
-) {
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn((query: string) => ({
-      matches: query.includes("prefers-reduced-motion")
-        ? (options.reducedMotion ?? false)
-        : (options.mobile ?? false),
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  );
-}
-
-function renderDialog() {
+function renderDialog(inputCandidates: readonly PlayerSummary[] = candidates) {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <IdentityClaimDialog candidates={candidates} />
+      <IdentityClaimDialog candidates={inputCandidates} />
     </QueryClientProvider>,
   );
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+  window.localStorage.clear();
+});
+
 describe("IdentityClaimDialog", () => {
-  it("keeps the dialog open until the desktop close motion finishes", async () => {
-    vi.useFakeTimers();
-    mockMedia();
-    renderDialog();
-    fireEvent.click(screen.getByRole("button", { name: "내 기록 구분 돕기" }));
-    const dialog = screen.getByRole("dialog", { name: "동명이인 구분 제보" });
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "동명이인 구분 제보 닫기" }),
-    );
-    expect(dialog).toHaveAttribute("open");
-    expect(dialog).toHaveAttribute("data-state", "closing");
-    await vi.advanceTimersByTimeAsync(179);
-    expect(dialog).toHaveAttribute("open");
-    await vi.advanceTimersByTimeAsync(1);
-    expect(dialog).not.toHaveAttribute("open");
-    expect(dialog).toHaveAttribute("data-state", "closed");
-  });
-
-  it("routes Escape through one idempotent mobile close lifecycle", async () => {
-    vi.useFakeTimers();
-    mockMedia({ mobile: true });
-    renderDialog();
-    fireEvent.click(screen.getByRole("button", { name: "내 기록 구분 돕기" }));
-    const dialog = screen.getByRole("dialog", { name: "동명이인 구분 제보" });
-    const onClose = vi.fn();
-    const timeoutSpy = vi.spyOn(window, "setTimeout");
-    dialog.addEventListener("close", onClose);
-
-    const firstCancel = new Event("cancel", { cancelable: true });
-    dialog.dispatchEvent(firstCancel);
-    dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
-    expect(firstCancel.defaultPrevented).toBe(true);
-    expect(timeoutSpy).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(220);
-    expect(onClose).toHaveBeenCalledTimes(1);
-    expect(dialog).not.toHaveAttribute("open");
-  });
-
-  it("closes immediately when reduced motion is requested", () => {
-    mockMedia({ reducedMotion: true });
-    renderDialog();
-    const trigger = screen.getByRole("button", { name: "내 기록 구분 돕기" });
-    fireEvent.click(trigger);
-    const dialog = screen.getByRole("dialog", { name: "동명이인 구분 제보" });
-
-    fireEvent.click(screen.getByRole("button", { name: "취소" }));
-    expect(dialog).not.toHaveAttribute("open");
-    expect(dialog).toHaveAttribute("data-state", "closed");
-  });
-
-  it("submits selected candidates without exposing the private code", async () => {
+  it("assigns records to memorable table-tennis aliases", async () => {
+    window.localStorage.setItem(ANONYMOUS_EDITOR_STORAGE_KEY, editorId);
     vi.spyOn(
       playerRepository,
       "getIdentityCandidateEvidence",
     ).mockResolvedValue([
       {
         candidateId: "candidate-seoul",
+        status: "loaded",
         records: [
           {
             id: "record-seoul",
@@ -144,6 +77,7 @@ describe("IdentityClaimDialog", () => {
       },
       {
         candidateId: "candidate-busan",
+        status: "loaded",
         records: [
           {
             id: "record-busan",
@@ -159,54 +93,160 @@ describe("IdentityClaimDialog", () => {
       },
     ]);
     const submit = vi
-      .spyOn(playerRepository, "submitIdentityClaim")
+      .spyOn(playerRepository, "applyIdentityEdit")
       .mockResolvedValue({
         accepted: true,
         referenceId: "AB12CD34",
-        status: "pending",
+        operationId: "00000000-0000-4000-8000-000000000001",
+        status: "applied",
+        groupCount: 2,
       });
     const user = userEvent.setup();
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <IdentityClaimDialog candidates={candidates} />
-      </QueryClientProvider>,
-    );
+    renderDialog();
 
-    await user.click(screen.getByRole("button", { name: "내 기록 구분 돕기" }));
+    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
     expect(
-      screen.getByRole("dialog", { name: "동명이인 구분 제보" }),
+      screen.getByRole("dialog", { name: "동명이인 기록 구분하기" }),
     ).toHaveAttribute("open");
     expect(
       await screen.findByText("제1회 서울 라켓배 탁구대회"),
     ).toBeInTheDocument();
-    expect(screen.getByText("개인단식(혼성 4~6부)")).toBeInTheDocument();
-    expect(screen.getByText("제2회 부산 바다배 탁구대회")).toBeInTheDocument();
     expect(screen.getByText("여자 개인단식 5~7부")).toBeInTheDocument();
+    expect(
+      screen.getByText(/실제 실력이나 공식 등급을 뜻하지 않습니다/u),
+    ).toBeInTheDocument();
 
-    const submitButton = screen.getByRole("button", { name: "검토 요청" });
+    const submitButton = screen.getByRole("button", {
+      name: "구분 바로 반영",
+    });
     fireEvent.submit(submitButton.closest("form")!);
-    expect(screen.getByRole("alert")).toHaveTextContent("후보를 한 명 이상");
+    expect(screen.getByRole("alert")).toHaveTextContent("별칭 두 개 이상");
 
+    const seoulCandidate = screen.getByRole("group", {
+      name: /서울.*스핀탁구클럽/u,
+    });
+    const busanCandidate = screen.getByRole("group", {
+      name: /부산.*블루라켓/u,
+    });
     await user.click(
-      screen.getByRole("checkbox", { name: /서울.*스핀탁구클럽/u }),
+      within(seoulCandidate).getByRole("radio", { name: "파워 드라이브" }),
     );
-    await user.click(screen.getByRole("checkbox", { name: /부산.*블루라켓/u }));
-    await user.type(screen.getByLabelText("본인 구분 코드 4자리"), "5030");
+    await user.click(
+      within(busanCandidate).getByRole("radio", {
+        name: "루프 드라이브 최강자",
+      }),
+    );
+    expect(
+      screen.queryByLabelText("편집 확인 코드 4자리"),
+    ).not.toBeInTheDocument();
     await user.click(
       screen.getByRole("checkbox", {
-        name: /관리자 검토 전 자동으로 후보가 합쳐지지 않음/u,
+        name: /잘못된 경우 다른 참여자가 이 편집 전체를 되돌릴 수/u,
       }),
     );
     await user.click(submitButton);
 
     expect(
-      await screen.findByRole("heading", { name: "제보가 접수됐습니다." }),
+      await screen.findByRole("heading", {
+        name: "동명이인 기록을 구분했습니다.",
+      }),
     ).toBeInTheDocument();
     expect(screen.getByText(/AB12CD34/u)).toBeInTheDocument();
-    expect(screen.queryByText("5030")).not.toBeInTheDocument();
     expect(submit.mock.calls[0]?.[0]).toEqual({
-      candidateIds: ["candidate-seoul", "candidate-busan"],
-      privateCode: "5030",
+      groups: [
+        { nickname: "power-drive", candidateIds: ["candidate-seoul"] },
+        {
+          nickname: "loop-drive-champion",
+          candidateIds: ["candidate-busan"],
+        },
+      ],
+      editorId,
+      note: "public-record-comparison",
     });
   });
+
+  it("adds another person with a distinct curated alias", async () => {
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    await user.click(screen.getByRole("button", { name: "사람 추가" }));
+
+    expect(screen.getByRole("combobox", { name: "사람 3 별칭" })).toHaveValue(
+      "back-drive-master",
+    );
+    expect(
+      screen.getByRole("button", {
+        name: "사람 3 백드라이브 마스터 삭제",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("classifies more than ten candidates without a record limit", async () => {
+    window.localStorage.setItem(ANONYMOUS_EDITOR_STORAGE_KEY, editorId);
+    const manyCandidates = Array.from({ length: 12 }, (_, index) => ({
+      ...candidates[0]!,
+      id: "candidate-" + (index + 1),
+      club: "소속 " + (index + 1),
+    }));
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue(
+      manyCandidates.map((candidate) => ({
+        candidateId: candidate.id,
+        status: "loaded" as const,
+        records: [],
+      })),
+    );
+    const apply = vi
+      .spyOn(playerRepository, "applyIdentityEdit")
+      .mockResolvedValue({
+        accepted: true,
+        referenceId: "LIMITLESS",
+        operationId: "00000000-0000-4000-8000-000000000002",
+        status: "applied",
+        groupCount: 2,
+      });
+    const user = userEvent.setup();
+    renderDialog(manyCandidates);
+
+    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    for (const [index, candidate] of manyCandidates.entries()) {
+      const candidateGroup = screen.getByRole("group", {
+        name: new RegExp("· " + (candidate.club ?? "") + " ·"),
+      });
+      fireEvent.click(
+        within(candidateGroup).getByRole("radio", {
+          name: index < 6 ? "파워 드라이브" : "루프 드라이브 최강자",
+        }),
+      );
+    }
+    expect(screen.getByText(/분류 12건 · 전체 12건/u)).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /잘못된 경우 다른 참여자가 이 편집 전체를 되돌릴 수/u,
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "구분 바로 반영" }));
+
+    expect(apply).toHaveBeenCalledWith({
+      groups: [
+        {
+          nickname: "power-drive",
+          candidateIds: manyCandidates.slice(0, 6).map(({ id }) => id),
+        },
+        {
+          nickname: "loop-drive-champion",
+          candidateIds: manyCandidates.slice(6).map(({ id }) => id),
+        },
+      ],
+      editorId,
+      note: "public-record-comparison",
+    });
+  }, 15_000);
 });

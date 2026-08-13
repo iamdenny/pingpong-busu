@@ -1,4 +1,5 @@
 import type {
+  HomonymNicknameCode,
   PlayerDetail,
   PlayerRecord,
   PlayerSummary,
@@ -42,20 +43,59 @@ export interface RefreshStatus {
   refreshId: string;
   state: "running" | "completed" | "partial";
 }
-export interface IdentityClaimInput {
+export interface IdentityEditGroupInput {
+  nickname: HomonymNicknameCode;
   candidateIds: string[];
-  privateCode: string;
+}
+export interface IdentityEditInput {
+  groups: IdentityEditGroupInput[];
+  editorId: string;
   note?: string;
   website?: string;
 }
-export interface IdentityClaimResponse {
+export interface IdentityEditResponse {
   accepted: boolean;
   referenceId: string;
-  status: "pending";
+  operationId: string;
+  status: "applied";
+  groupCount: number;
+}
+export interface IdentityEditCandidate {
+  playerId: string;
+  name: string;
+  region?: string;
+  club?: string;
+  groupNickname?: string;
+}
+export interface IdentityEditHistoryEntry {
+  operationId: string;
+  referenceId: string;
+  normalizedName: string;
+  status: "applied" | "reverted";
+  targetPlayerId: string;
+  targetPlayerName: string;
+  reason: string;
+  createdAt: string;
+  revertedAt?: string;
+  revertReason?: string;
+  canRevert: boolean;
+  candidates: IdentityEditCandidate[];
+}
+export interface RevertIdentityEditInput {
+  operationId: string;
+  editorId: string;
+  reason: string;
+  website?: string;
+}
+export interface RevertIdentityEditResponse {
+  reverted: boolean;
+  operationId: string;
+  status: "reverted";
 }
 export interface IdentityCandidateEvidence {
   candidateId: string;
   records: PlayerRecord[];
+  status: "loaded" | "error";
 }
 export interface PlayerRepository {
   listSourceStatuses(): Promise<SourceStatus[]>;
@@ -66,7 +106,11 @@ export interface PlayerRepository {
   ): Promise<IdentityCandidateEvidence[]>;
   requestRefresh(input: RefreshRequest): Promise<RefreshResponse>;
   getRefreshStatus(refreshId: string): Promise<RefreshStatus>;
-  submitIdentityClaim(
-    input: IdentityClaimInput,
-  ): Promise<IdentityClaimResponse>;
+  applyIdentityEdit(input: IdentityEditInput): Promise<IdentityEditResponse>;
+  listIdentityEditHistory(
+    normalizedName: string,
+  ): Promise<IdentityEditHistoryEntry[]>;
+  revertIdentityEdit(
+    input: RevertIdentityEditInput,
+  ): Promise<RevertIdentityEditResponse>;
 }

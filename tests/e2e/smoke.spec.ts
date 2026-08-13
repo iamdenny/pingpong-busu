@@ -3,29 +3,55 @@ import { expect, test } from "@playwright/test";
 test("demo search vertical slice", async ({ page }) => {
   await page.goto("");
   await expect(
-    page.getByRole("heading", { name: /전국 탁구 선수/ }),
+    page.getByRole("heading", { name: /전국 탁구 선수/u }),
   ).toBeVisible();
   await page.getByLabel("선수 검색").fill("김탁구");
   await page.getByRole("button", { name: "검색" }).click();
+
   await expect(
     page.getByRole("heading", { name: "“김탁구” 선수" }),
   ).toBeVisible();
-  await expect(page.getByRole("tab", { name: "입상 2건" })).toBeVisible();
-  await expect(page.getByText(/같은 이름의 선수가 여러 명/)).toBeVisible();
+  await expect(page.getByText("2건", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(/같은 이름의 선수가 여러 명/u),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "동명이인 구분하기" }).click();
+  const editDialog = page.getByRole("dialog", {
+    name: "동명이인 기록 구분하기",
+  });
+  await expect(editDialog).toBeVisible();
+  await expect(
+    editDialog.getByText(/후보 수 제한은 없습니다/u),
+  ).toBeVisible();
+  await expect(
+    editDialog.getByText(/별도의 비밀번호는 없습니다/u),
+  ).toBeVisible();
+  await expect(editDialog.locator('input[type="password"]')).toHaveCount(0);
+  await editDialog
+    .getByRole("group", { name: /서울.*스핀탁구클럽/u })
+    .getByRole("radio", { name: "파워 드라이브" })
+    .click();
+  await editDialog
+    .getByRole("group", { name: /부산.*블루라켓/u })
+    .getByRole("radio", { name: "루프 드라이브 최강자" })
+    .click();
+  await expect(editDialog.getByText(/분류 2건 · 전체 2건/u)).toBeVisible();
+  await editDialog.getByRole("button", { name: "취소" }).click();
 
   const candidates = page.getByRole("tabpanel", {
-    name: /선수 검색 결과 목록/,
+    name: "입상 선수 검색 결과 목록",
   });
   await expect(candidates.getByRole("heading", { name: "김탁구" })).toHaveCount(
-    2,
+    1,
   );
-  await candidates
-    .getByRole("link", { name: /상세 기록 보기/ })
-    .first()
+  await page
+    .getByRole("link", {
+      name: "김탁구 파워 드라이브 서울 스핀탁구클럽 상세 기록 보기",
+    })
     .click();
-
   await expect(page.getByRole("heading", { name: "대회 이력" })).toBeAttached();
-  await expect(page.getByRole("heading", { name: "김탁구" })).toBeVisible();
+  await expect(page.getByText("2026 가상 전국오픈")).toHaveCount(2);
   await page.getByRole("tab", { name: "출처 비교" }).click();
   await expect(
     page.getByRole("heading", { name: "출처별 기록 차이" }),
@@ -42,7 +68,7 @@ test("reduced motion keeps search navigation usable", async ({ page }) => {
     page.getByRole("heading", { name: "“김탁구” 선수" }),
   ).toBeVisible();
   const animationState = await page
-    .locator(".candidate-motion-item")
+    .locator(".candidate-list")
     .first()
     .evaluate((element) => ({
       activeAnimations: element.getAnimations().length,

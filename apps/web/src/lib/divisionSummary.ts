@@ -14,6 +14,12 @@ export interface DivisionSummaryItem {
   participationCount: number;
 }
 
+export interface DivisionSummaryGroup {
+  system: Exclude<DivisionSystem, "women">;
+  systemLabel: string;
+  items: DivisionSummaryItem[];
+}
+
 const systemOrder: DivisionSystem[] = [
   "open",
   "integrated",
@@ -22,6 +28,35 @@ const systemOrder: DivisionSystem[] = [
   "division",
   "unknown",
 ];
+const divisionCollator = new Intl.Collator("ko-KR", {
+  numeric: true,
+  sensitivity: "base",
+});
+
+function divisionOrder(value: string): [category: number, level: number] {
+  const normalized = value.normalize("NFKC").replaceAll(" ", "");
+
+  if (/^(?:남자|여자|여성)?선수부$/u.test(normalized)) return [0, -1];
+
+  const numberedDivision = normalized.match(/(\d+)부/u);
+  if (numberedDivision?.[1]) return [1, Number(numberedDivision[1])];
+
+  const divisionLeague = normalized.match(/^T(\d+)$/iu);
+  if (divisionLeague?.[1]) return [1, Number(divisionLeague[1])];
+
+  return [2, Number.POSITIVE_INFINITY];
+}
+
+function compareDivisions(left: string, right: string): number {
+  const [leftCategory, leftLevel] = divisionOrder(left);
+  const [rightCategory, rightLevel] = divisionOrder(right);
+
+  return (
+    leftCategory - rightCategory ||
+    leftLevel - rightLevel ||
+    divisionCollator.compare(left, right)
+  );
+}
 
 export function summarizeObservedDivisions(
   players: readonly PlayerSummary[],
@@ -59,11 +94,41 @@ export function summarizeObservedDivisions(
     .sort(
       (left, right) =>
         systemOrder.indexOf(left.system) - systemOrder.indexOf(right.system) ||
-        right.awardCount +
-          right.participationCount -
-          (left.awardCount + left.participationCount) ||
-        left.division.localeCompare(right.division, "ko-KR", { numeric: true }),
+        compareDivisions(left.division, right.division),
     );
+}
+
+export function groupDivisionSummaries(
+  summaries: readonly DivisionSummaryItem[],
+): DivisionSummaryGroup[] {
+  const groups = new Map<
+    DivisionSummaryGroup["system"],
+    DivisionSummaryGroup
+  >();
+
+  for (const summary of summaries) {
+    const system = summary.system === "women" ? "integrated" : summary.system;
+    const current = groups.get(system);
+
+    if (current) {
+      current.items.push(summary);
+      continue;
+    }
+
+    groups.set(system, {
+      system,
+      systemLabel: divisionSystemLabels[system],
+      items: [summary],
+    });
+  }
+
+  for (const group of groups.values()) {
+    group.items.sort((left, right) =>
+      compareDivisions(left.division, right.division),
+    );
+  }
+
+  return [...groups.values()];
 }
 
 function observationsForPlayer(

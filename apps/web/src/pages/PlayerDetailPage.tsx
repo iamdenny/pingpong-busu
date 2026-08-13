@@ -6,6 +6,7 @@ import {
   displayDivisionValue,
   divisionSystemLabels,
   formatDivisionObservation,
+  homonymNicknameLabel,
   isAwardRank,
   sortPlayerRecordsByLatest,
 } from "@busu/domain";
@@ -81,8 +82,9 @@ export function PlayerDetailPage() {
   const observedDivisionSummary = player.recentObservedDivision
     ? `최근 관측 ${observedDivision}, `
     : "";
-  const pageTitle = `${player.name} 선수 탁구 부수·입상 기록 · BUSU`;
-  const pageDescription = `${player.name} 선수${identitySummary ? ` (${identitySummary})` : ""}의 ${observedDivisionSummary}대회 출전 ${player.records.length}건과 4강 이상 입상 ${player.resultCount}건의 원문 출처를 확인하세요.`;
+  const nickname = homonymNicknameLabel(player.homonymNickname);
+  const pageTitle = `${player.name}${nickname ? ` · ${nickname}` : ""} 선수 탁구 부수·입상 기록 · BUSU`;
+  const pageDescription = `${player.name} 선수${nickname ? ` (${nickname}, 동명이인 기록 구분용 별칭)` : ""}${identitySummary ? ` (${identitySummary})` : ""}의 ${observedDivisionSummary}대회 출전 ${player.records.length}건과 4강 이상 입상 ${player.resultCount}건의 원문 출처를 확인하세요.`;
   return (
     <div className="page detail-page" ref={detailRef}>
       <PageMetadata
@@ -103,7 +105,21 @@ export function PlayerDetailPage() {
             선수 기록 ·{" "}
             {player.dataKind === "live" ? "수집된 공개 기록" : "가상 데이터"}
           </p>
-          <h1>{player.name}</h1>
+          <h1>
+            {player.name}
+            {nickname && (
+              <>
+                {" "}
+                <span className="player-header__nickname">{nickname}</span>
+              </>
+            )}
+          </h1>
+          {nickname && (
+            <small className="player-header__nickname-note">
+              동명이인 기록을 구분하기 위한 재미있는 별칭이며, 실제 실력이나
+              공식 등급을 뜻하지 않습니다.
+            </small>
+          )}
           <p>
             {player.region
               ? `${player.dataKind === "live" ? "기록 기반 지역 추정 · " : ""}${player.region}`
@@ -113,7 +129,7 @@ export function PlayerDetailPage() {
         </div>
         <span className="identity identity--likely">
           {player.identityStatus === "verified"
-            ? "동일인 확인됨"
+            ? "참여 편집으로 연결됨"
             : "소속·지역 확인 필요"}
         </span>
       </header>

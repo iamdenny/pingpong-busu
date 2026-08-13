@@ -5,12 +5,36 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   SourceRefreshProgress,
   sourceRefreshStateText,
   type SourceRefreshView,
 } from "./SourceRefreshProgress";
+
+let styleElement: HTMLStyleElement;
+const globalStyles = readFileSync(
+  resolve(import.meta.dirname, "../styles/global.css"),
+  "utf8",
+);
+
+beforeAll(() => {
+  styleElement = document.createElement("style");
+  styleElement.textContent = globalStyles;
+  document.head.append(styleElement);
+});
+
+afterAll(() => styleElement.remove());
 
 describe("SourceRefreshProgress", () => {
   afterEach(() => {
@@ -56,6 +80,12 @@ describe("SourceRefreshProgress", () => {
     expect(
       screen.getByRole("button", { name: "실시간 출처 조회 상세 접기" }),
     ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("region", { name: /3곳 중 1곳 완료/ }),
+    ).toHaveAttribute("data-refreshing", "true");
+    expect(globalStyles).toContain(
+      '.source-refresh-progress[data-refreshing="true"]::before',
+    );
   });
 
   it("keeps ongoing source details collapsed when stored records exist", () => {
@@ -203,9 +233,16 @@ describe("SourceRefreshProgress", () => {
       />,
     );
 
+    const details = document.getElementById("source-refresh-details");
+    expect(details).not.toBeNull();
     await waitFor(() =>
-      expect(screen.getByRole("list", { hidden: true })).not.toBeVisible(),
+      expect(details).toHaveAttribute("data-expanded", "false"),
     );
+    expect(details).toHaveAttribute("aria-hidden", "true");
+    expect(details).toHaveAttribute("inert");
+    const collapsedStyle = window.getComputedStyle(details!);
+    expect(collapsedStyle.gridTemplateRows).toBe("0fr");
+    expect(globalStyles).toContain("grid-template-rows 240ms ease");
     const toggle = screen.getByRole("button", {
       name: "실시간 출처 조회 상세 보기",
     });
@@ -215,6 +252,102 @@ describe("SourceRefreshProgress", () => {
 
     expect(screen.getByRole("list")).toBeVisible();
     expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(details).toHaveAttribute("data-expanded", "true");
+    expect(details).toHaveAttribute("aria-hidden", "false");
+    expect(details).not.toHaveAttribute("inert");
+    expect(window.getComputedStyle(details!).gridTemplateRows).toBe("1fr");
+  });
+
+  it("starts collapsed during refresh when stored results already exist", () => {
+    render(
+      <SourceRefreshProgress
+        sources={[
+          {
+            sourceCode: "astree",
+            sourceName: "애즈트리",
+            state: "refreshing",
+          },
+        ]}
+        existingRecordCount={1}
+      />,
+    );
+
+    const toggle = screen.getByRole("button", {
+      name: "실시간 출처 조회 상세 보기",
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByRole("progressbar", {
+        name: "출처 조회 진행률: 1곳 중 0곳 완료",
+      }),
+    ).toHaveAttribute("aria-valuenow", "0");
+    expect(
+      screen.getByRole("progressbar", {
+        name: "출처 조회 진행률: 1곳 중 0곳 완료",
+      }),
+    ).toHaveAttribute("aria-valuemax", "1");
+    expect(
+      screen.getByRole("region", { name: /1곳 중 0곳 완료/ }),
+    ).toHaveAttribute("data-refreshing", "true");
+    expect(globalStyles).toContain("animation: source-card-scan 2.8s");
+    expect(globalStyles).toContain(
+      "animation: source-progress-flow 1.6s linear infinite",
+    );
+    expect(globalStyles).toContain(
+      "transition: width 520ms cubic-bezier(0.22, 1, 0.36, 1)",
+    );
+    expect(globalStyles).toContain("background-position: 8rem 0");
+    expect(globalStyles).toContain("var(--success) 0 3rem");
+    expect(globalStyles).toContain("#68b8ac 3.75rem");
+    expect(globalStyles).toContain("prefers-reduced-motion: reduce");
+    expect(document.getElementById("source-refresh-details")).toHaveAttribute(
+      "inert",
+    );
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(
+      document.getElementById("source-refresh-details"),
+    ).not.toHaveAttribute("inert");
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("smoothly advances the collapsed progress fill as sources finish", () => {
+    const sources: SourceRefreshView[] = [
+      {
+        sourceCode: "astree",
+        sourceName: "애즈트리",
+        state: "refreshing",
+      },
+      {
+        sourceCode: "mytt",
+        sourceName: "마이티티",
+        state: "refreshing",
+      },
+    ];
+    const { rerender } = render(
+      <SourceRefreshProgress sources={sources} existingRecordCount={1} />,
+    );
+
+    expect(
+      document.querySelector(".source-refresh-progress__meter-fill"),
+    ).toHaveStyle({ width: "0%" });
+
+    rerender(
+      <SourceRefreshProgress
+        sources={[{ ...sources[0]!, state: "succeeded" }, sources[1]!]}
+        existingRecordCount={1}
+      />,
+    );
+
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "1",
+    );
+    expect(
+      document.querySelector(".source-refresh-progress__meter-fill"),
+    ).toHaveStyle({ width: "50%" });
   });
 
   it("collapses details when completion includes a failed source", async () => {
