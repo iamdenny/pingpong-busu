@@ -54,6 +54,8 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 
 GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. 커스텀 도메인은 `https://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. 이 중 source refresh 값은 브라우저에서 갱신 UI를 켜는 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다.
 
+Pages workflow는 GitHub Actions 실행 이력을 읽어 UTC 기준 ISO 주차별 배포 순번을 계산하고 `YYYY.WEEK.SEQ` 형식으로 빌드에 주입합니다. 재실행도 별도 순번으로 계산하며, 실패·취소된 실행은 배포되지는 않지만 다음 성공 버전의 순번에 공백을 남길 수 있습니다. 버전 계산이 실패하면 잘못된 버전을 게시하지 않도록 build를 중단합니다. `VITE_APP_VERSION`은 workflow가 자동 설정하므로 repository variable로 등록하지 않습니다.
+
 PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키와 아이핑 자격증명은 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 아이핑을 켤 때는 두 Secret을 먼저 등록한 뒤 `CRAWLER_SOURCE_IPING_ENABLED=true`, 마지막으로 DB `sources.enabled=true` 순서로 활성화합니다. 어느 하나라도 없으면 요청하지 않습니다.
 
 Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 `출처 + 정규화 검색어`별 5초 최소 호출 간격과 1분당 최대 4회 제한을 적용하며 `source_request_throttles`에 제한 구간과 시도 횟수를 저장합니다. 제한 응답의 `retryAfterMs` 또는 외부 출처의 `Retry-After`가 있으면 프런트가 남은 시간을 표시하고 최대 2회 자동 재시도합니다. 실패 행의 수동 재시도는 화면당 최대 3회이며 5초 쿨다운을 둡니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.

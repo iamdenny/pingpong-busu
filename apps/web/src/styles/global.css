@@ -121,6 +121,13 @@ footer strong {
   color: var(--primary);
   font-size: 1.2rem;
 }
+.app-version {
+  display: block;
+  margin-top: 1rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
 .home-page,
 .page {
   max-width: 1120px;

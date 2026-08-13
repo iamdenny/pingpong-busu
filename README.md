@@ -28,6 +28,7 @@ Korean table tennis player rank and tournament record search.
 - mock adapter와 fixture crawler, synthetic fixture로 검증한 애즈트리·대한탁구협회 디비전·마이티티·슈퍼스타탁구·용인탁구협회 다음 카페·아이핑 HTTP adapter
 - Supabase PostgreSQL migration, RLS, synthetic seed, Edge Functions
 - GitHub Actions CI, Pages 배포, 수동 crawler workflow
+- GitHub Pages 배포마다 자동 생성하는 `YYYY.WEEK.SEQ` 버전과 홈 하단 버전 표시
 
 ## 실행
 
@@ -96,6 +97,8 @@ pnpm crawl:fixture --query 김탁구 --version 2
 ## GitHub Pages
 
 Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니다. 현재 커스텀 도메인 `https://busu.iamdenny.com/`은 asset base `/`로 배포하고 HTTP 요청은 HTTPS로 전환합니다. production repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. `http://iamdenny.com/pingpong-busu/`은 커스텀 도메인으로 이동하는 이전 진입점입니다. publishable key는 브라우저 공개용 값이며, service role/secret key는 Pages workflow에 넣지 않습니다.
+
+Pages workflow는 배포 시각의 UTC 기준 ISO 연도와 주차, 해당 주의 workflow 실행·재실행 순번을 합쳐 `YYYY.WEEK.SEQ` 버전을 자동 생성합니다. 예를 들어 2026년 ISO 33주차의 네 번째 배포는 `2026.33.4`입니다. 생성된 공개 버전은 `VITE_APP_VERSION`으로 빌드에만 주입하며 홈 하단에 작게 표시합니다. 로컬 개발처럼 배포 버전이 주입되지 않은 화면에는 `버전 개발`로 표시됩니다. 실패하거나 취소된 실행은 실제 서비스에 노출되지 않지만 이후 순번에 공백이 생길 수 있습니다.
 
 정적 HTML에는 홈의 기본 OG 메타데이터가 포함되고, React가 실행되면 검색어와 선수 상세 데이터에 맞게 title·description·canonical·Open Graph·Twitter 메타데이터를 갱신합니다. 현재 `HashRouter` 기반 GitHub Pages에서는 URL fragment가 서버로 전달되지 않으므로 자바스크립트를 실행하지 않는 SNS 미리보기 봇은 검색·상세 주소에서도 홈 기본 메타데이터를 표시할 수 있습니다. 검색·상세별 서버 생성 미리보기가 필요하면 별도 OG 렌더링 endpoint 또는 SSR 호스팅을 추가해야 합니다.
 

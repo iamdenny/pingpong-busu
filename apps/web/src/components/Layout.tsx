@@ -1,7 +1,10 @@
-import { Link, Outlet } from 'react-router-dom';
-import { isDemoMode, isDevLiveMode } from '../lib/runtime';
+import { Link, Outlet, useLocation } from "react-router-dom";
+import { appVersion } from "../lib/appVersion";
+import { isDemoMode, isDevLiveMode } from "../lib/runtime";
 
 export function Layout() {
+  const location = useLocation();
+
   return (
     <div className="app-shell">
       {isDemoMode && (
@@ -16,7 +19,11 @@ export function Layout() {
       )}
       <header className="site-header">
         <Link to="/" className="brand" aria-label="BUSU 홈">
-          <img src={`${import.meta.env.BASE_URL}busu-logo.png`} alt="" aria-hidden="true" />
+          <img
+            src={`${import.meta.env.BASE_URL}busu-logo.png`}
+            alt=""
+            aria-hidden="true"
+          />
           <span>BUSU</span>
           <small>탁구 기록 통합검색</small>
         </Link>
@@ -27,7 +34,13 @@ export function Layout() {
       <footer>
         <strong>BUSU</strong>
         <p>부수를 판정하지 않고, 판단할 근거를 한곳에 모읍니다.</p>
-        <p>공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후 반영합니다.</p>
+        <p>
+          공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후
+          반영합니다.
+        </p>
+        {location.pathname === "/" && (
+          <small className="app-version">버전 {appVersion}</small>
+        )}
       </footer>
     </div>
   );
