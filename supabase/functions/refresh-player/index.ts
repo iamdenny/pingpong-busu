@@ -683,11 +683,11 @@ Deno.serve(async (request) => {
         }
       }
       const configuredMinimumIntervalMs = Number(
-        Deno.env.get("CRAWLER_SOURCE_MIN_INTERVAL_MS") ?? 2000,
+        Deno.env.get("CRAWLER_SOURCE_MIN_INTERVAL_MS") ?? 5000,
       );
       const minimumIntervalMs = Number.isFinite(configuredMinimumIntervalMs)
-        ? Math.max(1000, configuredMinimumIntervalMs)
-        : 2000;
+        ? Math.max(5000, configuredMinimumIntervalMs)
+        : 5000;
       const { data: retryAfterMs, error: claimError } = await client.rpc(
         "claim_source_request",
         {

@@ -8,7 +8,7 @@ title: "데이터 모델"
 
 # 데이터 모델
 
-`sources`는 adapter 상태, `players`와 `clubs`는 검토된 canonical entity, `source_player_identities`는 출처별 후보를 담습니다. 이름 하나만으로 identity를 연결하지 않습니다. `tournaments`와 `results`는 정규화된 기록이며 `result_revisions`는 실제 내용 변경만 보존합니다. `source_refreshes`는 조회 요약, `refresh_jobs`는 비동기/browser 작업입니다. `source_request_throttles`는 다른 검색어와 사용자를 함께 막지 않도록 `출처 + 정규화 검색어`별 마지막 호출 시각만 보존합니다. `identity_claims`와 `identity_claim_candidates`는 참여자가 선택한 동일인 후보 묶음을, `identity_claim_reviews`는 관리자 상태 변경 감사 이력을 담습니다. `correction_requests`와 `rule_sets`는 후속 기능의 schema입니다.
+`sources`는 adapter 상태, `players`와 `clubs`는 검토된 canonical entity, `source_player_identities`는 출처별 후보를 담습니다. 이름 하나만으로 identity를 연결하지 않습니다. `tournaments`와 `results`는 정규화된 기록이며 `result_revisions`는 실제 내용 변경만 보존합니다. `source_refreshes`는 조회 요약, `refresh_jobs`는 비동기/browser 작업입니다. `source_request_throttles`는 다른 검색어와 사용자를 함께 막지 않도록 `출처 + 정규화 검색어`별 마지막 호출 시각, 1분 제한 시작 시각과 시도 횟수를 보존합니다. `identity_claims`와 `identity_claim_candidates`는 참여자가 선택한 동일인 후보 묶음을, `identity_claim_reviews`는 관리자 상태 변경 감사 이력을 담습니다. `correction_requests`와 `rule_sets`는 후속 기능의 schema입니다.
 
 기록 시간축은 대회 개최일 `tournaments.held_on`을 우선합니다. 게시판형 출처가 대회일을 제공하지 않으면 `results.source_published_on`을 사용하고, 공개 view의 `sort_date`는 두 값을 이 순서로 합성합니다. 크롤러의 `last_checked_at`은 동일 날짜의 보조 정렬 기준일 뿐 경기·게시 시점을 대신하지 않습니다.
 

@@ -11,6 +11,7 @@ import {
   formatDivisionObservation,
   parsePlayerSearchQuery,
   type AwardResultSummary,
+  type SourceCode,
 } from "@busu/domain";
 import { IdentityClaimDialog } from "../components/IdentityClaimDialog";
 import { PageMetadata } from "../components/PageMetadata";
@@ -31,10 +32,16 @@ import {
 } from "../lib/runtime";
 import {
   asRateLimitError,
+  manualSourceRetryAvailability,
   requireRefreshWithoutRateLimit,
   shouldRetrySourceRefresh,
   sourceRefreshRetryDelay,
 } from "../lib/sourceRefreshRetry";
+
+interface ManualRetryAttempt {
+  attempts: number;
+  lastAttemptAt?: number;
+}
 
 const identityText = {
   unreviewed: "동일인 검토 전",
@@ -115,6 +122,12 @@ export function SearchResultsPage() {
     division: string;
   } | null>(null);
   const candidateListRef = useRef<HTMLElement>(null);
+  const [manualRetryAttempts, setManualRetryAttempts] = useState<
+    Readonly<Record<string, ManualRetryAttempt>>
+  >({});
+  const manualRetryAttemptsRef = useRef<
+    Readonly<Record<string, ManualRetryAttempt>>
+  >({});
   const query = params.get("q")?.trim() ?? "";
   const playerSearch = parsePlayerSearchQuery(query);
   const result = useQuery({
@@ -192,6 +205,11 @@ export function SearchResultsPage() {
           message: asRateLimitError(sourceQuery.error)
             ? "자동 재시도 후에도 호출 제한이 해제되지 않았습니다."
             : "BUSU 서버의 출처 조회 요청을 완료하지 못했습니다.",
+          ...manualRetryView(
+            source.sourceCode,
+            sourceQuery.errorUpdatedAt,
+            asRateLimitError(sourceQuery.error)?.retryAt,
+          ),
         };
       const outcome = sourceQuery.data?.sources.find(
         (item) => item.sourceCode === source.sourceCode,
@@ -203,6 +221,13 @@ export function SearchResultsPage() {
           state: "failed",
           errorCode: outcome?.errorCode ?? "source_refresh_failed",
           message: outcome?.message ?? "출처 응답을 확인하지 못했습니다.",
+          ...manualRetryView(
+            source.sourceCode,
+            sourceQuery.dataUpdatedAt,
+            outcome?.retryAfterMs !== undefined
+              ? sourceQuery.dataUpdatedAt + outcome.retryAfterMs
+              : undefined,
+          ),
         };
       if (outcome.status === "skipped")
         return {
@@ -224,6 +249,73 @@ export function SearchResultsPage() {
       };
     },
   );
+
+  function retryKey(sourceCode: SourceCode): string {
+    return `${query}\u0000${sourceCode}`;
+  }
+
+  function manualRetryView(
+    sourceCode: SourceCode,
+    failureAt: number,
+    notBeforeAt?: number,
+  ) {
+    const current = manualRetryAttempts[retryKey(sourceCode)];
+    const availability = manualSourceRetryAvailability({
+      attempts: current?.attempts ?? 0,
+      failureAt,
+      ...(current?.lastAttemptAt !== undefined
+        ? { lastAttemptAt: current.lastAttemptAt }
+        : {}),
+      ...(notBeforeAt !== undefined ? { notBeforeAt } : {}),
+    });
+    return {
+      manualRetryAt: availability.retryAt,
+      manualRetriesRemaining: availability.remainingAttempts,
+    };
+  }
+
+  function retrySource(sourceCode: SourceCode, attemptedAt: number) {
+    const sourceIndex = activeSources.findIndex(
+      (source) => source.sourceCode === sourceCode,
+    );
+    const sourceQuery = refreshQueries[sourceIndex];
+    if (!sourceQuery || sourceQuery.isFetching) return;
+    const key = retryKey(sourceCode);
+    const current = manualRetryAttemptsRef.current[key];
+    const failureAt = Math.max(
+      sourceQuery.errorUpdatedAt,
+      sourceQuery.dataUpdatedAt,
+    );
+    const outcome = sourceQuery.data?.sources.find(
+      (item) => item.sourceCode === sourceCode,
+    );
+    const rateLimitRetryAt =
+      asRateLimitError(sourceQuery.error)?.retryAt ??
+      (outcome?.retryAfterMs !== undefined
+        ? sourceQuery.dataUpdatedAt + outcome.retryAfterMs
+        : undefined);
+    const availability = manualSourceRetryAvailability({
+      attempts: current?.attempts ?? 0,
+      failureAt,
+      ...(current?.lastAttemptAt !== undefined
+        ? { lastAttemptAt: current.lastAttemptAt }
+        : {}),
+      ...(rateLimitRetryAt !== undefined
+        ? { notBeforeAt: rateLimitRetryAt }
+        : {}),
+    });
+    if (!availability.canRetry) return;
+    const nextAttempts = {
+      ...manualRetryAttemptsRef.current,
+      [key]: {
+        attempts: (current?.attempts ?? 0) + 1,
+        lastAttemptAt: attemptedAt,
+      },
+    };
+    manualRetryAttemptsRef.current = nextAttempts;
+    setManualRetryAttempts(nextAttempts);
+    void sourceQuery.refetch();
+  }
 
   const identityCandidates =
     result.data?.filter(
@@ -394,7 +486,7 @@ export function SearchResultsPage() {
         </div>
       )}
       {refreshViews.length > 0 && (
-        <SourceRefreshProgress sources={refreshViews} />
+        <SourceRefreshProgress sources={refreshViews} onRetry={retrySource} />
       )}
       {directSources.length > 0 && (
         <aside

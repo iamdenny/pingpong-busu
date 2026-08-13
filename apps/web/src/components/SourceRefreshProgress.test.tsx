@@ -150,4 +150,70 @@ describe("SourceRefreshProgress", () => {
       "1곳 중 0곳 완료 · 1곳 조회 중",
     );
   });
+
+  it("offers a bounded manual retry only after the cooldown", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-13T00:00:00.000Z"));
+    const onRetry = vi.fn();
+    render(
+      <SourceRefreshProgress
+        sources={[
+          {
+            sourceCode: "airping",
+            sourceName: "에어핑퐁",
+            state: "failed",
+            errorCode: "source_timeout",
+            manualRetryAt: Date.now() + 5_000,
+            manualRetriesRemaining: 3,
+          },
+        ]}
+        onRetry={onRetry}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "실시간 출처 조회 상세 보기",
+      }),
+    );
+
+    const button = screen.getByRole("button", {
+      name: "에어핑퐁 재시도, 5초 후 가능",
+    });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(button);
+    expect(onRetry).not.toHaveBeenCalled();
+
+    await act(() => vi.advanceTimersByTimeAsync(5_000));
+    const availableButton = screen.getByRole("button", {
+      name: "에어핑퐁 재시도, 3회 남음",
+    });
+    expect(availableButton).toHaveAttribute("aria-disabled", "false");
+    fireEvent.click(availableButton);
+    expect(onRetry).toHaveBeenCalledWith("airping", Date.now());
+  });
+
+  it("keeps an exhausted retry button visible with its reason", () => {
+    render(
+      <SourceRefreshProgress
+        sources={[
+          {
+            sourceCode: "iping",
+            sourceName: "아이핑",
+            state: "failed",
+            manualRetryAt: 0,
+            manualRetriesRemaining: 0,
+          },
+        ]}
+        onRetry={vi.fn()}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "실시간 출처 조회 상세 보기",
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "아이핑 재시도, 한도 도달" }),
+    ).toHaveAttribute("aria-disabled", "true");
+  });
 });
