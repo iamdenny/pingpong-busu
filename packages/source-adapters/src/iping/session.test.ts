@@ -5,6 +5,7 @@ import {
   classifyIpingSessionHtml,
   extractIpingSessionCookie,
   extractIpingSessionCookieFromHeader,
+  extractIpingSessionCookieFromHeaders,
   extractIpingSessionId,
   extractIpingSessionIdFromCookie,
 } from "./session";
@@ -87,5 +88,17 @@ describe("extractIpingSessionCookie", () => {
     expect(
       extractIpingSessionCookieFromHeader("locale=ko; Path=/"),
     ).toBeUndefined();
+  });
+
+  it("uses the server-side Set-Cookie array before the combined header", () => {
+    expect(
+      extractIpingSessionCookieFromHeaders({
+        get: () => null,
+        getSetCookie: () => [
+          "locale=ko; Path=/",
+          "PHPSESSID=0123456789abcdef0123456789abcdef; Path=/; HttpOnly",
+        ],
+      }),
+    ).toBe("PHPSESSID=0123456789abcdef0123456789abcdef");
   });
 });

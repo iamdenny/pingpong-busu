@@ -38,6 +38,16 @@ export function extractIpingSessionCookieFromHeader(
     : undefined;
 }
 
+export function extractIpingSessionCookieFromHeaders(
+  headers: Pick<Headers, "get" | "getSetCookie">,
+): string | undefined {
+  for (const header of headers.getSetCookie()) {
+    const cookie = extractIpingSessionCookieFromHeader(header);
+    if (cookie) return cookie;
+  }
+  return extractIpingSessionCookieFromHeader(headers.get("set-cookie"));
+}
+
 export function extractIpingSessionIdFromCookie(
   cookie: string,
 ): string | undefined {

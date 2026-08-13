@@ -3,7 +3,7 @@ import iconv from "npm:iconv-lite@0.7.0";
 import {
   classifyIpingSessionHtml,
   extractIpingSessionCookie,
-  extractIpingSessionCookieFromHeader,
+  extractIpingSessionCookieFromHeaders,
   extractIpingSessionId,
   extractIpingSessionIdFromCookie,
   fetchWithRetry,
@@ -338,9 +338,7 @@ function encodeIpingForm(fields: Readonly<Record<string, string>>): string {
 }
 
 function ipingCookie(response: Response): string | undefined {
-  return extractIpingSessionCookieFromHeader(
-    response.headers.get("set-cookie"),
-  );
+  return extractIpingSessionCookieFromHeaders(response.headers);
 }
 
 async function decodeIpingResponse(response: Response): Promise<string> {

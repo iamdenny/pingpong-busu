@@ -20,7 +20,7 @@ import {
 import {
   classifyIpingSessionHtml,
   extractIpingSessionCookie,
-  extractIpingSessionCookieFromHeader,
+  extractIpingSessionCookieFromHeaders,
   extractIpingSessionId,
   extractIpingSessionIdFromCookie,
 } from "./session";
@@ -32,9 +32,7 @@ export interface IpingCredentials {
 }
 
 function responseCookie(response: Response): string | undefined {
-  return extractIpingSessionCookieFromHeader(
-    response.headers.get("set-cookie"),
-  );
+  return extractIpingSessionCookieFromHeaders(response.headers);
 }
 
 function assertHtmlResponse(response: Response, label: string): void {
