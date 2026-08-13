@@ -1,6 +1,6 @@
 import { ShieldCheck, UsersRound, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { formatDivisionObservation, type PlayerSummary } from "@busu/domain";
 import { playerRepository } from "../lib/runtime";
 
@@ -14,6 +14,8 @@ const evidenceDateFormatter = new Intl.DateTimeFormat("ko-KR", {
   month: "numeric",
   day: "numeric",
 });
+const desktopDialogCloseDurationMs = 180;
+const mobileDialogCloseDurationMs = 220;
 
 export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -28,6 +30,11 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   >("idle");
   const [referenceId, setReferenceId] = useState<string>();
   const [isOpen, setIsOpen] = useState(false);
+  const [dialogState, setDialogState] = useState<"closed" | "open" | "closing">(
+    "closed",
+  );
+  const closeTimerRef = useRef<number | undefined>(undefined);
+  const isClosingRef = useRef(false);
   const candidateIds = candidates.map((candidate) => candidate.id);
   const evidence = useQuery({
     queryKey: ["identity-candidate-evidence", candidateIds],
@@ -40,17 +47,60 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   );
 
   const open = () => {
+    isClosingRef.current = false;
+    if (closeTimerRef.current !== undefined) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = undefined;
+    }
     setErrorMessage(undefined);
     setSubmissionState("idle");
     setReferenceId(undefined);
     setIsOpen(true);
+    setDialogState("open");
     dialogRef.current?.showModal();
   };
 
-  const close = () => dialogRef.current?.close();
+  const finishClose = () => {
+    if (closeTimerRef.current !== undefined) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = undefined;
+    }
+    isClosingRef.current = false;
+    dialogRef.current?.close();
+  };
+
+  const close = () => {
+    if (!dialogRef.current?.open || isClosingRef.current) return;
+    isClosingRef.current = true;
+    const reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) {
+      finishClose();
+      return;
+    }
+    setDialogState("closing");
+    const closeDuration =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(max-width: 700px)").matches
+        ? mobileDialogCloseDurationMs
+        : desktopDialogCloseDurationMs;
+    closeTimerRef.current = window.setTimeout(finishClose, closeDuration);
+  };
+
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current !== undefined)
+        window.clearTimeout(closeTimerRef.current);
+      isClosingRef.current = false;
+    },
+    [],
+  );
 
   const resetForm = () => {
+    isClosingRef.current = false;
     setIsOpen(false);
+    setDialogState("closed");
     setSelectedIds(new Set());
     setPrivateCode("");
     setNote("");
@@ -114,7 +164,12 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
       <dialog
         className="identity-claim-dialog"
         ref={dialogRef}
+        data-state={dialogState}
         aria-labelledby="identity-claim-title"
+        onCancel={(event) => {
+          event.preventDefault();
+          close();
+        }}
         onClose={resetForm}
       >
         <div className="identity-claim-dialog__header">
