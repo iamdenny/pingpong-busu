@@ -12,13 +12,15 @@ title: "수집 정책"
 - 활성화 전 robots.txt, 약관, 데이터 사용 허가, 요청 허용 범위를 확인한다.
 - 로그인 자격증명은 허용된 전용 계정으로 서버에서만 사용하며, CAPTCHA, MFA, 접근제어 우회나 세션 탈취를 구현하지 않는다.
 - BAND는 scraper 없이 manual source URL만 취급한다.
-- 출처별 timeout(기본 8초), concurrency, cooldown, max pages를 적용한다.
+- 출처별 timeout, concurrency, cooldown, max pages를 적용한다. 기본은 8초이며 에어핑퐁 16초, 오케이핑퐁 10초, 아이핑 12초를 사용한다.
 - raw HTML을 저장하거나 React에 렌더링하지 않는다.
 - URL fragment와 `jsessionid` 같은 임시 session identifier를 영구 URL에 넣지 않는다.
 - parser는 합성 fixture, runtime schema validation, version을 갖는다. 구조 불일치는 0건이 아니라 schema/parse error다.
 - 긴급 중지는 DB `sources.enabled=false`와 대응 환경 변수 `false`로 이중 적용한다.
 
 현재 live CLI는 `CRAWL_LIVE=true` 없이는 즉시 종료합니다. 각 live 출처에는 대응하는 `CRAWLER_SOURCE_*_ENABLED=true`가 추가로 필요합니다. 에어핑퐁과 오케이핑퐁은 저장소 운영자가 2026-08-12 수집 승낙 완료를 확인해 opt-in 운영 출처로 전환했습니다. 용인 카페는 `KAKAO_REST_API_KEY`를 Supabase Edge Secret에만 두며 검색 1회당 공식 API 1회로 제한합니다. 아이핑은 `IPING_USERNAME`, `IPING_PASSWORD`를 Supabase Edge Secret에만 두고 조회마다 새 PHP 세션으로 전국오픈·시군구 입상과 출전 이력 세 화면만 확인합니다. 자격증명, 세션 쿠키, 원문 HTML은 저장하지 않습니다. CAPTCHA, MFA 또는 사람 확인 화면이 나타나면 우회하지 않고 아이핑 갱신만 실패 처리합니다. 일반 서버 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 검색 화면은 사용자의 명시적 검색마다 `force=true`로 이 query cache를 우회합니다. 최소 요청 간격은 출처 전체가 아니라 `출처 + 정규화 검색어` 단위로 5초 이상 적용하며, 같은 조합은 1분에 최대 4회까지만 실제 출처 요청을 시작합니다. 제한 남은 시간이 확인되면 클라이언트는 최대 2회 자동 재시도합니다. 실패 행의 수동 재시도는 화면당 최대 3회이고 각 시도 사이에도 5초 쿨다운을 적용하며, 외부 출처가 `Retry-After`를 주지 않는 장기 제한은 자동으로 반복 요청하지 않습니다. Edge 운영에서는 DB `sources.enabled=true`까지 필요합니다. 대한탁구협회 응답의 휴대폰·RT점수와 슈퍼스타의 레이팅 표는 저장하지 않습니다.
+
+네트워크 계층은 에어핑퐁·오케이핑퐁과 아이핑의 GET 요청에서 timeout, 연결 오류, HTTP 408/5xx만 최대 한 번 재시도합니다. 인증 실패, 4xx, parser 오류와 아이핑 로그인 POST는 재시도하지 않습니다. 아이핑 로그인 성공 여부는 특정 파일명 하나에 의존하지 않고 현재 로그인 폼, 로그아웃 링크, 사람 확인 화면을 구분합니다. 오케이핑퐁의 명시적인 `검색 결과가 없습니다.` 행은 정상 0건이며 구조 변경으로 기록하지 않습니다.
 
 아이핑은 전용 계정 Secret과 운영 스위치가 준비되기 전에는 `서버 계정 설정 필요` 상태와 원문 로그인 링크만 표시합니다. 아이핑·에어핑퐁·오케이핑퐁의 운영 스위치를 긴급 중지하면 저장 기록은 유지하고 원문 직접 검색 링크를 다시 표시합니다.
 

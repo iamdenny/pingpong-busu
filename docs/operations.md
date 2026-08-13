@@ -12,6 +12,8 @@ title: "운영"
 
 파서 오류가 증가하면 `sources.enabled=false`와 source 환경 변수 false를 적용하고 기존 저장 결과를 유지합니다. sanitized synthetic fixture로 구조 변경을 재현하고 parser version/test를 함께 올립니다. 내부 stack/secret은 공개 status에 반환하지 않습니다.
 
+에어핑퐁은 16초, 오케이핑퐁은 10초, 아이핑은 12초 안에 응답이 없으면 같은 GET을 한 번 더 시도합니다. 두 번 모두 실패한 경우에만 시간 초과를 표시합니다. 아이핑이 `인증 실패`이면 Secret 값과 계정 상태를 확인하고, `사이트 구조 변경`이면 로그인 성공 화면 식별자가 달라졌는지 확인합니다. 로그인 POST는 중복 인증 시도를 막기 위해 자동 재시도하지 않습니다.
+
 ## 용량과 보존
 
 `pnpm db:size`의 project RPC를 운영 Supabase에 연결해 350MB에서 경고하고 500MB 전에 조치합니다. 완료 refresh 상세는 7~30일, 실패 요약은 진단 기간 뒤 정리합니다. revisions는 변경 이력 요구와 용량을 검토해 archive하며 최근 records를 삭제하지 않습니다.

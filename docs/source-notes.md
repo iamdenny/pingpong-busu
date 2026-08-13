@@ -1,25 +1,25 @@
 ---
-summary: '각 탁구 출처의 URL, adapter 상태, parser version과 운영 허용 근거를 기록한다.'
+summary: "각 탁구 출처의 URL, adapter 상태, parser version과 운영 허용 근거를 기록한다."
 read_when:
   - 출처별 구현·운영 상태를 확인할 때
   - parser version이나 정책 근거를 갱신할 때
-title: '출처 메모'
+title: "출처 메모"
 ---
 
 # 출처 메모
 
-| 출처 | URL | 예상 mode | 상태 | parser | 확인 사항 |
-| --- | --- | ---: | --- | --- | --- |
-| mock | `example.invalid` | http | enabled | mock-1/2 | 합성 fixture 전용 |
-| airping | <https://airping.co.kr/11player/01.php> | http | production opt-in | airping-2 | 공개 검색 parser와 합성 fixture 완료. 저장소 운영자가 2026-08-12 수집 승낙 완료를 확인해 운영 활성화 |
-| astree | <https://astree.co.kr/bbs/board.php?bo_table=member_search> | http | production opt-in | astree-4 | UTF-8 GET, 최대 2페이지, 6시간 cooldown, 정규식 기반 도·시·군·구 및 부수 체계 추출 |
-| ttadivision | <https://ttadivision.sports.or.kr/statistic/moveSearchOteamPlayer.do> | http | production opt-in | ttadivision-1 | 공개 이름 검색, T1~T7·소속팀·지역만 저장. 휴대폰과 RT점수는 저장하지 않음. 서버가 잘못 제공하는 중간 인증서 대신 leaf AIA의 공식 Sectigo DV R36 CA를 추가해 TLS 검증 유지 |
-| okpingpong | <http://okpingpong.co.kr/04match/08.php> | http | production opt-in | okpingpong-2 | 공개 검색 parser와 합성 fixture 완료. 저장소 운영자가 2026-08-12 수집 승낙 완료를 확인해 운영 활성화 |
-| mytt | <https://mytt.kr/main/player_list.xhtml> | http | production opt-in | mytt-2 | robots 전체 허용, 비회원 JSF GET/POST 공개 검색. 단기 JSESSIONID는 요청에만 사용하고 저장하지 않음 |
-| superstar | <https://www.superstar.kr/open/Do.jsp?urlSeq=302> | http | production opt-in | superstar-1 | 비회원 이름 GET 검색. 개인별 대회 결과만 저장하고 레이팅·연락처는 제외 |
-| yongintt | <https://cafe.daum.net/yongintt> | http | production opt-in | yongintt-1 | 카카오 공식 카페 검색 API로 `{이름} 대회` 최신 50건 조회. 해당 카페 URL·정확한 이름 근거만 저장하고 회원 전용 본문은 열지 않음 |
-| iping | <https://www.iping.club/?pg=Search> | http | 인증형 / disabled | iping-1 | CP949 로그인 세션으로 전국오픈·시군구 입상과 출전 이력 조회. 전용 계정 Secret과 명시적 운영 활성화 필요 |
-| band | <https://band.us/> | manual | 사용자 출처 목록 제외 | manual-0 | scraping 금지. 향후 정책 검토를 위해 내부 식별자만 유지 |
+| 출처        | URL                                                                   | 예상 mode | 상태                  | parser        | 확인 사항                                                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------- | --------: | --------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| mock        | `example.invalid`                                                     |      http | enabled               | mock-1/2      | 합성 fixture 전용                                                                                                                                                         |
+| airping     | <https://airping.co.kr/11player/01.php>                               |      http | production opt-in     | airping-2     | 공개 검색 parser와 합성 fixture 완료. 저장소 운영자가 2026-08-12 수집 승낙 완료를 확인해 운영 활성화                                                                      |
+| astree      | <https://astree.co.kr/bbs/board.php?bo_table=member_search>           |      http | production opt-in     | astree-4      | UTF-8 GET, 최대 2페이지, 6시간 cooldown, 정규식 기반 도·시·군·구 및 부수 체계 추출                                                                                        |
+| ttadivision | <https://ttadivision.sports.or.kr/statistic/moveSearchOteamPlayer.do> |      http | production opt-in     | ttadivision-1 | 공개 이름 검색, T1~T7·소속팀·지역만 저장. 휴대폰과 RT점수는 저장하지 않음. 서버가 잘못 제공하는 중간 인증서 대신 leaf AIA의 공식 Sectigo DV R36 CA를 추가해 TLS 검증 유지 |
+| okpingpong  | <http://okpingpong.co.kr/04match/08.php>                              |      http | production opt-in     | okpingpong-3  | 공개 검색 parser와 합성 fixture 완료. 명시적 검색 결과 없음 행을 정상 0건으로 처리                                                                                        |
+| mytt        | <https://mytt.kr/main/player_list.xhtml>                              |      http | production opt-in     | mytt-2        | robots 전체 허용, 비회원 JSF GET/POST 공개 검색. 단기 JSESSIONID는 요청에만 사용하고 저장하지 않음                                                                        |
+| superstar   | <https://www.superstar.kr/open/Do.jsp?urlSeq=302>                     |      http | production opt-in     | superstar-1   | 비회원 이름 GET 검색. 개인별 대회 결과만 저장하고 레이팅·연락처는 제외                                                                                                    |
+| yongintt    | <https://cafe.daum.net/yongintt>                                      |      http | production opt-in     | yongintt-1    | 카카오 공식 카페 검색 API로 `{이름} 대회` 최신 50건 조회. 해당 카페 URL·정확한 이름 근거만 저장하고 회원 전용 본문은 열지 않음                                            |
+| iping       | <https://www.iping.club/?pg=Search>                                   |      http | 인증형 / opt-in       | iping-2       | CP949 로그인 세션과 현재 로그인·로그아웃 화면 식별로 전국오픈·시군구 입상과 출전 이력 조회                                                                                |
+| band        | <https://band.us/>                                                    |    manual | 사용자 출처 목록 제외 | manual-0      | scraping 금지. 향후 정책 검토를 위해 내부 식별자만 유지                                                                                                                   |
 
 2026-08-12 애즈트리 robots.txt, 공개 검색 form/result와 이용약관을 확인했습니다. 일반 user-agent에 공개 검색 경로가 금지되어 있지 않고 약관에서 자동 수집 금지 문구를 찾지 못했지만, 이는 영구적 재사용 허가를 뜻하지 않습니다. 실제 응답이나 정책을 확인하지 않은 나머지는 추정이며 사실로 단정하지 않습니다.
 
@@ -32,5 +32,7 @@ title: '출처 메모'
 2026-08-12 슈퍼스타탁구 `robots.txt`는 `Form.jsp`, `Manager.jsp`, `/ok/`, `Upload.jsp`를 제외하고 공개 `open/Do.jsp?urlSeq=302&userNm=...` 개인별 결과 경로를 막지 않습니다. 비회원 GET 검색에서 고유번호·대회일·대회명·부수·결과를 확인했습니다. parser는 이 결과 표만 읽고 별도 레이팅 표와 화면의 연락처를 수집하지 않습니다.
 
 2026-08-12 확인 결과 아이핑 메인과 대회 목록은 비회원에게 공개되지만 `pg=Search&SchVal=...` 선수 검색은 로그인 화면으로 전환됩니다. 로그인 후 검색 화면은 전국오픈 입상(`Ctype=A`), 시군구 입상(`Ctype=B`), 출전 이력(`B=Y`)을 분리하고 선수명·관측 부수·소속·대회명·대회일·종목·순위를 표로 제공합니다. 사이트는 CP949/EUC-KR 쿼리와 응답을 사용합니다. BUSU는 전용 최소권한 계정으로 조회마다 새 PHP 세션을 만들고 이 세 화면만 파싱하며 자격증명·쿠키·원문 HTML은 보관하지 않습니다. 자격증명은 브라우저나 `VITE_`에 두지 않고 Supabase Edge Secrets에 보관하며, GitHub Actions secret은 배포 시 런타임 secret을 설정하는 전달 수단으로만 사용합니다. CAPTCHA/MFA 또는 사람 확인 절차가 나타나면 우회하지 않습니다.
+
+2026-08-13 공개 구조 재점검에서 오케이핑퐁은 결과가 없을 때도 8열 표 안에 `colspan=8` 안내 행을 반환하는 것을 확인했습니다. 이 행은 구조 변경이 아니라 정상 0건으로 처리합니다. 에어핑퐁은 합성 검색에서 정상 HTML을 반환했지만 결과량에 따라 8초를 넘을 수 있어 16초 timeout과 일시 오류 1회 재시도를 적용했습니다. 아이핑은 로그인 성공 판정을 과거 `mb_logout.php` 문자열 하나에 고정하지 않고 현재 로그인 폼·로그아웃 링크·사람 확인 화면을 구분하도록 변경했습니다.
 
 2026-08-12 카카오 공식 문서에서 Daum 카페 검색 API의 무료 제공량이 전체 Daum 검색 일 5만 건, 카페 검색 일 3만 건, 전체 API 월 300만 건임을 확인했습니다. BUSU는 선수 검색마다 최신순 1페이지(최대 50개 문서)만 요청하며 추가 유료 쿼터를 신청하지 않습니다. 실제 `임대현 대회` 검색에서 용인 카페의 2025 시장기 승급자 공지와 입상자 사진 글이 공개 검색 결과로 확인됐습니다. parser는 `cafe.daum.net/yongintt/` URL과 검색 요약의 정확한 이름만 허용하고 제목·요약·게시일·원문 URL 외 본문이나 개인정보를 저장하지 않습니다.
