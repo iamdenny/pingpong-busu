@@ -14,18 +14,19 @@ title: "테스트 전략"
 
 ## 테스트 계층
 
-| 계층               | 위치                                        | 검증 대상                                            |
-| ------------------ | ------------------------------------------- | ---------------------------------------------------- |
-| Domain unit        | `packages/domain/src/*.test.ts`             | 이름·지역·부수·입상·정렬·hash 규칙                   |
-| Crawler unit       | `packages/crawler-core/src/*.test.ts`       | insert/update/unchanged와 revision                   |
-| Adapter/fixture    | `packages/source-adapters/src/**/*.test.ts` | 외부 응답 schema·정규화, 제한 재시도, 인증 세션 판별 |
-| Web component      | `apps/web/src/**/*.test.tsx`                | 검색·출처 진행·요약 표·상세 UI                       |
-| Migration contract | `tests/*-migration.test.ts`                 | SQL 권한·집계·제한·원복 계약의 정적 회귀             |
-| SQL integration    | `tests/sql/*.sql`                           | 실제 DB 트랜잭션의 병합·원복과 충돌 방어             |
-| Release unit       | `tests/release-version.test.ts`             | package 버전 형식·ISO 주차·순번 증가                 |
-| Edge auth          | `tests/edge-auth.test.ts`                   | publishable key 경계                                 |
-| Browser smoke      | `tests/e2e`                                 | home → 검색 → 상세 흐름                              |
-| Live opt-in        | `tests/live-e2e`                            | 허용된 실제 출처 연결                                |
+| 계층                | 위치                                        | 검증 대상                                            |
+| ------------------- | ------------------------------------------- | ---------------------------------------------------- |
+| Domain unit         | `packages/domain/src/*.test.ts`             | 이름·지역·부수·입상·정렬·hash 규칙                   |
+| Crawler unit        | `packages/crawler-core/src/*.test.ts`       | insert/update/unchanged와 revision                   |
+| Adapter/fixture     | `packages/source-adapters/src/**/*.test.ts` | 외부 응답 schema·정규화, 제한 재시도, 인증 세션 판별 |
+| Web component       | `apps/web/src/**/*.test.tsx`                | 검색·출처 진행·요약 표·상세 UI                       |
+| Migration contract  | `tests/*-migration.test.ts`                 | SQL 권한·집계·제한·원복 계약의 정적 회귀             |
+| SQL integration     | `tests/sql/*.sql`                           | 실제 DB 트랜잭션의 병합·원복과 충돌 방어             |
+| Release unit        | `tests/release-version.test.ts`             | package 버전 형식·ISO 주차·순번 증가                 |
+| Deployment contract | `tests/*-deployment.test.ts`                | environment 격리·수동 trigger·seed·crawler 안전장치  |
+| Edge auth           | `tests/edge-auth.test.ts`                   | publishable key 경계                                 |
+| Browser smoke       | `tests/e2e`                                 | home → 검색 → 상세 흐름                              |
+| Live opt-in         | `tests/live-e2e`                            | 허용된 실제 출처 연결                                |
 
 ## Parser fixture 규칙
 
@@ -73,6 +74,9 @@ docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sq
 | 출처 요청 복원력      | 일시적 HTTP/timeout만 재시도 + 호출자 취소 유지 + 출처별 timeout 확인                                                    |
 | 아이핑 인증           | guest/authenticated/challenge/unknown fixture + hidden session POST 전달 + 쿠키 비저장 + 로그인 POST 단일 시도           |
 | 배포 workflow         | package 버전 형식·주차 순번 unit test + 태그/Release 선행 + GitHub Actions 성공 + 실제 URL 버전 확인                     |
+| Supabase 개발 배포    | main 수동 trigger + project ref 불일치 + seed 2회 적용 + mock 외 source 비활성 + Edge function 목록 확인                 |
+
+development 원격 검증은 production 데이터나 자격증명을 복사하지 않은 상태에서 수행한다. `supabase migration list --linked`로 전체 migration을 확인하고 같은 seed를 두 번 적용한 뒤 합성 club/player 수가 증가하지 않는지, 공개 `sources` 조회에서 `mock`만 활성인지 확인한다. Free 프로젝트가 자동 pause된 경우 Dashboard에서 resume한 뒤 다시 실행한다.
 
 ## 수동 화면 확인
 

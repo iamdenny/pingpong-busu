@@ -37,6 +37,24 @@ Supabase Edge의 에어핑퐁 요청은 5초 단일 시도 뒤 `source_timeout`�
 
 Demo는 public env가 없거나 `VITE_APP_MODE=demo`일 때 자동 선택됩니다. Production은 URL/publishable key와 `VITE_APP_MODE=production`을 설정하고 migration/view/RLS/Edge Function을 먼저 검증합니다. service role/secret key는 trusted 환경만 사용합니다.
 
+### Hosted development
+
+Free 플랜에서는 유료 Branching 대신 production과 다른 두 번째 프로젝트 `pingpong-busu-dev`를 사용합니다. 두 프로젝트는 Singapore 리전에 두되 project ref, URL, publishable key, DB, Edge secrets를 공유하지 않습니다. table 이름에 `dev_` prefix를 붙이지 않고 같은 migration으로 동일한 schema를 유지합니다. Free 프로젝트가 비활성으로 자동 pause되면 배포 전에 Dashboard에서 resume하며, 슬롯 확보를 위해 production을 삭제하거나 결제로 전환하지 않습니다.
+
+GitHub `development` environment에는 아래 값만 둡니다.
+
+| 구분     | 이름                             | 용도                                                                                                            |
+| -------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Secret   | `SUPABASE_ACCESS_TOKEN`          | 사용자가 직접 입력하는 Supabase PAT. production secret을 복사하지 않음                                          |
+| Variable | `SUPABASE_PROJECT_ID`            | development project ref                                                                                         |
+| Variable | `SUPABASE_PRODUCTION_PROJECT_ID` | 잘못된 production 대상 배포를 차단하기 위한 비교 ref                                                            |
+| Variable | `SUPABASE_URL`                   | development 공개 API URL                                                                                        |
+| Secret   | `SUPABASE_PUBLISHABLE_KEY`       | development 브라우저용 공개 key. 값은 공개 가능하지만 workflow 환경을 분리하기 위해 environment secret으로 저장 |
+
+[Deploy Supabase development backend](../.github/workflows/deploy-supabase-development.yml)는 main 브랜치에서 `deploy-development` 확인 문자열을 입력한 수동 실행만 허용합니다. project ref가 production과 같거나 Supabase project 이름이 `pingpong-busu-dev`가 아니면 migration 전에 실패합니다. 성공 경로는 migration dry-run, `db push --include-seed`, 모든 crawler secret의 `false` 고정, Edge Function 배포, 공개 source 상태 검증 순서입니다. Kakao/iPing 자격증명과 production 데이터는 복제하지 않습니다.
+
+`supabase/seed.sql`은 반복 실행 가능하며 합성 club/player만 추가하고 `mock`만 활성화합니다. production workflow는 seed를 적용하지 않습니다. 개발 프런트는 gitignored `.env.development.local`에 development URL/publishable key를 두고 production Pages 변수는 변경하지 않습니다.
+
 ## Supabase 서버 배포
 
 main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/workflows/deploy-supabase.yml)가 production environment에 다음 순서로 배포합니다.

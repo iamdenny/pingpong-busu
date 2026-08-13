@@ -104,7 +104,7 @@ Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니
 
 ## 서버 배포
 
-Supabase backend는 별도 상시 Node 서버가 아니라 managed PostgreSQL과 Edge Functions로 운영합니다. main의 CI가 성공하면 [Supabase 배포 workflow](./.github/workflows/deploy-supabase.yml)가 migration을 적용하고 Edge Functions 및 crawler 안전 플래그를 배포합니다. GitHub `production` environment에는 `SUPABASE_ACCESS_TOKEN` secret과 `SUPABASE_PROJECT_ID` variable이 필요합니다. Supabase CLI의 passwordless login role을 사용하므로 DB 비밀번호를 CI에 저장하지 않습니다. 상세 설정과 운영 활성화 절차는 [운영 문서](./docs/operations.md)를 참고하세요.
+Supabase backend는 별도 상시 Node 서버가 아니라 managed PostgreSQL과 Edge Functions로 운영합니다. production과 development는 서로 다른 Supabase Free 프로젝트를 사용하며 table prefix로 섞지 않습니다. main의 CI가 성공하면 [production 배포 workflow](./.github/workflows/deploy-supabase.yml)가 migration과 Edge Functions를 배포하고, [development 배포 workflow](./.github/workflows/deploy-supabase-development.yml)는 main에서 수동 확인 문자열을 입력한 경우에만 합성 seed와 함께 실행됩니다. development에서는 `mock` 외 출처와 live crawler가 항상 꺼집니다. 각 GitHub environment에는 별도 project 설정과 `SUPABASE_ACCESS_TOKEN` secret이 필요하며 DB 비밀번호는 CI에 저장하지 않습니다. 상세 설정과 운영 활성화 절차는 [운영 문서](./docs/operations.md)를 참고하세요.
 
 ## 구조
 

@@ -28,7 +28,7 @@ flowchart LR
 | `packages/crawler-core/src`                       | `adapter.ts`, `memory-repository.ts`, `presentation.ts`                                                        | adapter 계약과 revision 판정                                    | crawler tests                                      |
 | `packages/source-adapters/src/<source>`           | `adapter.ts`, `parser.ts`, `schema.ts`, 아이핑 `session.ts`                                                    | 출처별 fetch/parse/validate와 인증 세션 판별                    | synthetic fixture, parser version, source notes    |
 | `packages/source-adapters/src/resilient-fetch.ts` | `fetchWithRetry`                                                                                               | timeout·일시적 HTTP 오류에 한정한 재시도와 호출자 취소 전파     | resilient-fetch unit test, Edge 동등 구현          |
-| `supabase/migrations`                             | timestamped SQL                                                                                                | schema, RLS, public views, RPC, source catalog                  | rollback 영향, production dry-run                  |
+| `supabase/migrations`                             | timestamped SQL                                                                                                | schema, RLS, public views, RPC, source catalog                  | rollback 영향, development/production dry-run      |
 | `supabase/functions/refresh-player`               | `index.ts`                                                                                                     | 출처 선택·안전 스위치·fetch·upsert                              | Edge auth, generated bundle, operations docs       |
 | `supabase/functions/refresh-status`               | `index.ts`                                                                                                     | refresh 공개 상태                                               | repository response schema                         |
 | `supabase/functions/submit-identity-claim`        | `index.ts`                                                                                                     | 참여형 동일인 연결, 익명 편집자 ID HMAC                         | public history, merge RPC, abuse control           |
@@ -37,7 +37,7 @@ flowchart LR
 | `fixtures/sources`                                | 출처별 합성 응답                                                                                               | parser 회귀 입력                                                | 개인정보 제거 여부                                 |
 | `scripts`                                         | crawler, edge sync, DB size, `release-version.ts`                                                              | 로컬/운영 도구와 package 릴리즈 버전 검증·증가                  | commands/operations docs, root unit tests          |
 | `tests`                                           | migration contract, Edge auth, e2e, SQL integration                                                            | workspace 밖 통합·배포 회귀 검증                                | migration/workflow 변경                            |
-| `.github/workflows`                               | CI, Pages, Supabase, manual crawl                                                                              | 검증 → 태그/Release/노트 → Pages 배포와 backend 배포            | repository variables/secrets, release version test |
+| `.github/workflows`                               | CI, Pages, production/development Supabase, manual crawl                                                       | 검증 → 태그/Release/노트 → Pages 배포와 환경별 backend 배포     | environment variables/secrets, deployment contract |
 
 ## Change paths
 
@@ -64,6 +64,10 @@ page/component → component test → `global.css` → desktop/mobile preview �
 ### 배포 버전 변경
 
 루트 `package.json` version → `release-version.ts` 검증·증가 → release version unit test → Pages tag/Release gate → `appVersion.ts` JSON import → 모든 라우트의 공통 footer component test.
+
+### Supabase 개발 환경 변경
+
+`supabase/migrations`/idempotent `seed.sql` → development deployment contract → main 수동 workflow → development GitHub environment → 별도 project ref/name 검증 → mock-only source 상태 확인 → operations/testing 문서.
 
 ## Generated and local-only artifacts
 
