@@ -17,7 +17,7 @@ export class SuperstarSourceAdapter implements SourceAdapter {
     url.searchParams.set('userNm', input.name.trim());
     let response: Response;
     try {
-      response = await fetch(url, { signal, redirect: 'follow', headers: { accept: 'text/html', 'user-agent': context.userAgent ?? 'BUSU/0.1' } });
+      response = await fetch(url, { signal, redirect: 'follow', headers: { accept: 'text/html', 'user-agent': context.userAgent ?? 'BUSU' } });
     } catch (error) {
       if (signal.aborted) throw new SourceTimeoutError();
       throw new SourceParseError(error instanceof Error ? error.message : '슈퍼스타탁구 검색 요청 실패');

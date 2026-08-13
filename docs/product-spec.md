@@ -235,7 +235,7 @@ pnpm test
 pnpm build
 ```
 
-parser 변경은 synthetic fixture test가 필수다. 주요 사용자 흐름은 Playwright smoke로 검증한다. `main` push는 GitHub Pages를 빌드하고, production secret/variable이 준비된 경우 Supabase migration과 Edge Function을 배포한다. Pages workflow는 UTC 기준 ISO 연도·주차와 같은 주의 workflow 실행·재실행 순번으로 `YYYY.WEEK.SEQ`를 만들고 `VITE_APP_VERSION`에 주입한다. 실패·취소된 실행은 서비스에 노출되지 않지만 다음 성공 버전의 순번에는 공백을 남길 수 있다.
+parser 변경은 synthetic fixture test가 필수다. 주요 사용자 흐름은 Playwright smoke로 검증한다. `main` push는 GitHub Pages를 빌드하고, production secret/variable이 준비된 경우 Supabase migration과 Edge Function을 배포한다. 제품 버전은 루트 `package.json`의 `YYYY.WEEK.SEQ` 한 곳에서 관리한다. Pages workflow는 검증과 build가 끝난 뒤 같은 버전의 태그·GitHub Release·자동 릴리즈 노트를 생성하고, 그 release가 성공한 경우에만 사이트를 게시한다.
 
 ## 12. 현재 제약과 다음 단계
 

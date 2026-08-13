@@ -35,7 +35,6 @@ jobs:
       KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
       IPING_USERNAME: ${{ secrets.IPING_USERNAME }}
       IPING_PASSWORD: ${{ secrets.IPING_PASSWORD }}
-      CRAWLER_USER_AGENT: ${{ vars.CRAWLER_USER_AGENT || 'BUSU/0.1' }}
       CRAWLER_SOURCE_MIN_INTERVAL_MS: ${{ vars.CRAWLER_SOURCE_MIN_INTERVAL_MS || '2000' }}
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +52,9 @@ jobs:
         with:
           version: latest
       - run: pnpm install --frozen-lockfile
+      - name: Read package version
+        id: version
+        run: node --import tsx scripts/release-version.ts output >> "$GITHUB_OUTPUT"
       - name: Validate deployment configuration
         run: |
           test -n "$SUPABASE_ACCESS_TOKEN"
@@ -78,7 +80,7 @@ jobs:
           CRAWLER_SOURCE_SUPERSTAR_ENABLED="$CRAWLER_SOURCE_SUPERSTAR_ENABLED"
           CRAWLER_SOURCE_YONGINTT_ENABLED="$CRAWLER_SOURCE_YONGINTT_ENABLED"
           CRAWLER_SOURCE_IPING_ENABLED="$CRAWLER_SOURCE_IPING_ENABLED"
-          CRAWLER_USER_AGENT="$CRAWLER_USER_AGENT"
+          CRAWLER_USER_AGENT="BUSU/${{ steps.version.outputs.version }}"
           CRAWLER_SOURCE_MIN_INTERVAL_MS="$CRAWLER_SOURCE_MIN_INTERVAL_MS"
       - name: Configure Kakao REST API key
         if: env.KAKAO_REST_API_KEY != ''

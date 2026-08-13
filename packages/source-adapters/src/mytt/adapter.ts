@@ -24,7 +24,7 @@ export class MyttSourceAdapter implements SourceAdapter {
   async search(input: SourceSearchInput, context: SourceAdapterContext): Promise<SourceSearchResult> {
     if (!this.enabled || !input.live) throw new SourceDisabledError('마이티티 live adapter가 비활성화되어 있습니다.');
     const signal = requestSignal(input, context);
-    const headers = { accept: 'text/html', 'user-agent': context.userAgent ?? 'BUSU/0.1' };
+    const headers = { accept: 'text/html', 'user-agent': context.userAgent ?? 'BUSU' };
     let pageResponse: Response;
     try {
       pageResponse = await fetch(MYTT_SEARCH_URL, { signal, headers, redirect: 'follow' });

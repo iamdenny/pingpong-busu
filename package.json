@@ -1,10 +1,12 @@
 {
   "name": "pingpong-busu",
-  "version": "0.1.0",
+  "version": "2026.33.28",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.17.0",
-  "engines": { "node": ">=24 <25" },
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "dev": "pnpm --filter @busu/web dev",
     "build": "pnpm edge:sync && pnpm -r --if-present build",
@@ -16,6 +18,8 @@
     "test:e2e": "playwright test",
     "test:e2e:live": "BUSU_LIVE_E2E=true playwright test --config playwright.live.config.ts",
     "docs-check:scan": "node --import tsx scripts/docs-check.ts",
+    "release:check": "node --import tsx scripts/release-version.ts check",
+    "release:bump": "node --import tsx scripts/release-version.ts bump",
     "crawl:fixture": "node --env-file-if-exists=.env.local --import tsx scripts/crawl.ts fixture",
     "crawl:live": "NODE_EXTRA_CA_CERTS=packages/source-adapters/src/ttadivision/sectigo-dv-r36.pem node --env-file-if-exists=.env.local --import tsx scripts/crawl.ts live",
     "db:size": "tsx scripts/check-db-size.ts",

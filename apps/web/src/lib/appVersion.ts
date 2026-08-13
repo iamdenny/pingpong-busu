@@ -1,3 +1,5 @@
+import rootPackage from "../../../../package.json";
+
 const deploymentVersionPattern = /^\d{4}\.\d{2}\.\d+$/u;
 
 export function displayAppVersion(value: string | undefined): string {
@@ -5,4 +7,4 @@ export function displayAppVersion(value: string | undefined): string {
   return version && deploymentVersionPattern.test(version) ? version : "개발";
 }
 
-export const appVersion = displayAppVersion(import.meta.env.VITE_APP_VERSION);
+export const appVersion = displayAppVersion(rootPackage.version);

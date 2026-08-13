@@ -20,7 +20,7 @@ export class TtaDivisionSourceAdapter implements SourceAdapter {
   async search(input: SourceSearchInput, context: SourceAdapterContext): Promise<SourceSearchResult> {
     if (!this.enabled || !input.live) throw new SourceDisabledError('대한탁구협회 디비전 live adapter가 비활성화되어 있습니다.');
     const signal = requestSignal(input, context);
-    const headers = { accept: 'text/html', 'user-agent': context.userAgent ?? 'BUSU/0.1' };
+    const headers = { accept: 'text/html', 'user-agent': context.userAgent ?? 'BUSU' };
     let pageResponse: Response;
     try {
       pageResponse = await fetch(TTA_DIVISION_SEARCH_URL, { signal, headers, redirect: 'follow' });
@@ -44,7 +44,7 @@ export class TtaDivisionSourceAdapter implements SourceAdapter {
       const body = new URLSearchParams({ sigunguCd: 'ALL', selectSize: '100', nameSolt: '1', searchScrGbn: 'PP', ttStart: '0', ttEnd: '9999', searchValue: input.name.trim(), memberNm: input.name.trim(), pageIndex: String(page) });
       const response = await fetch(SEARCH_ENDPOINT, {
         method: 'POST', signal, redirect: 'follow', body,
-        headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded; charset=utf-8', cookie, 'x-csrf-token': csrfToken, 'user-agent': context.userAgent ?? 'BUSU/0.1' },
+        headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded; charset=utf-8', cookie, 'x-csrf-token': csrfToken, 'user-agent': context.userAgent ?? 'BUSU' },
       });
       if (response.status === 403) throw new SourceBlockedError();
       if (response.status === 429) throw new SourceRateLimitedError();

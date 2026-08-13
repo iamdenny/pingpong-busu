@@ -66,7 +66,7 @@ supabase functions serve
 
 [초기 migration](./supabase/migrations/202608120001_initial_schema.sql)은 테이블, index, public view, RLS를 함께 만듭니다. 브라우저에는 `VITE_SUPABASE_URL`과 publishable key만 둡니다. `SUPABASE_SERVICE_ROLE_KEY` 또는 secret key는 trusted crawler/운영 환경에서만 사용합니다. production 전환은 두 public 값을 설정하고 `VITE_APP_MODE=production`으로 빌드합니다.
 
-Supabase repository는 공개 검색/상세 view와 refresh Edge Function을 사용합니다. [두 번째 migration](./supabase/migrations/202608120002_astree_refresh.sql)이 identity, revision upsert RPC와 상세 view를 추가합니다. Edge 환경에 `CRAWL_LIVE=true`, 활성 출처별 환경 변수, `CRAWLER_USER_AGENT`를 설정하고 DB의 `sources.enabled`도 true로 둬야 실제 요청이 활성화됩니다. 마이티티는 단기 JSF 세션을 검색 요청에만 쓰고 저장하지 않으며, 슈퍼스타탁구는 공개 개인별 결과 GET 검색만 사용합니다. 용인탁구협회 카페는 카카오 공식 카페 검색 API를 검색당 1회 호출하고 용인 카페 URL만 남깁니다. 아이핑은 서버 전용 계정으로 조회마다 새 PHP 세션을 만들고 CP949 검색 결과만 처리하며 세션 식별자와 자격증명은 저장하지 않습니다. 에어핑퐁·오케이핑퐁과 아이핑의 멱등 GET 요청은 일시적인 timeout과 5xx에 한해 한 번만 재시도하고, 로그인 POST·인증 실패·구조 변경은 자동 반복하지 않습니다.
+Supabase repository는 공개 검색/상세 view와 refresh Edge Function을 사용합니다. [두 번째 migration](./supabase/migrations/202608120002_astree_refresh.sql)이 identity, revision upsert RPC와 상세 view를 추가합니다. Edge 환경에 `CRAWL_LIVE=true`, 활성 출처별 환경 변수를 설정하고 DB의 `sources.enabled`도 true로 둬야 실제 요청이 활성화됩니다. 배포 workflow는 루트 package 버전으로 `CRAWLER_USER_AGENT=BUSU/{version}`을 설정합니다. 마이티티는 단기 JSF 세션을 검색 요청에만 쓰고 저장하지 않으며, 슈퍼스타탁구는 공개 개인별 결과 GET 검색만 사용합니다. 용인탁구협회 카페는 카카오 공식 카페 검색 API를 검색당 1회 호출하고 용인 카페 URL만 남깁니다. 아이핑은 서버 전용 계정으로 조회마다 새 PHP 세션을 만들고 CP949 검색 결과만 처리하며 세션 식별자와 자격증명은 저장하지 않습니다. 에어핑퐁·오케이핑퐁과 아이핑의 멱등 GET 요청은 일시적인 timeout과 5xx에 한해 한 번만 재시도하고, 로그인 POST·인증 실패·구조 변경은 자동 반복하지 않습니다.
 
 선수 기록은 크롤러 확인 시각이 아니라 `대회일 → 게시일 → 확인 시각` 우선순위로 최신순 정렬합니다. 대회일과 게시일이 모두 없는 기록은 날짜가 있는 기록 뒤에 표시합니다.
 
@@ -98,7 +98,7 @@ pnpm crawl:fixture --query 김탁구 --version 2
 
 Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니다. 현재 커스텀 도메인 `https://busu.iamdenny.com/`은 asset base `/`로 배포하고 HTTP 요청은 HTTPS로 전환합니다. production repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. `http://iamdenny.com/pingpong-busu/`은 커스텀 도메인으로 이동하는 이전 진입점입니다. publishable key는 브라우저 공개용 값이며, service role/secret key는 Pages workflow에 넣지 않습니다.
 
-Pages workflow는 배포 시각의 UTC 기준 ISO 연도와 주차, 해당 주의 workflow 실행·재실행 순번을 합쳐 `YYYY.WEEK.SEQ` 버전을 자동 생성합니다. 예를 들어 2026년 ISO 33주차의 네 번째 배포는 `2026.33.4`입니다. 생성된 공개 버전은 `VITE_APP_VERSION`으로 빌드에만 주입하며 홈 하단에 작게 표시합니다. 로컬 개발처럼 배포 버전이 주입되지 않은 화면에는 `버전 개발`로 표시됩니다. 실패하거나 취소된 실행은 실제 서비스에 노출되지 않지만 이후 순번에 공백이 생길 수 있습니다.
+제품 버전의 단일 기준은 루트 `package.json`의 `version`이며 `YYYY.WEEK.SEQ` 형식을 사용합니다. 배포 변경은 `pnpm release:bump`로 같은 주의 순번을 올리거나 새 주에는 `1`로 시작합니다. web 화면은 이 값을 직접 읽어 홈 하단에 표시합니다. Pages workflow는 빌드가 통과한 뒤 `v{version}` 태그와 GitHub Release 및 자동 릴리즈 노트를 먼저 만들고 정적 사이트를 게시합니다. 이미 다른 커밋이 같은 태그를 사용하면 배포를 중단하므로 모든 배포 PR은 버전 변경을 포함해야 합니다.
 
 정적 HTML에는 홈의 기본 OG 메타데이터가 포함되고, React가 실행되면 검색어와 선수 상세 데이터에 맞게 title·description·canonical·Open Graph·Twitter 메타데이터를 갱신합니다. 현재 `HashRouter` 기반 GitHub Pages에서는 URL fragment가 서버로 전달되지 않으므로 자바스크립트를 실행하지 않는 SNS 미리보기 봇은 검색·상세 주소에서도 홈 기본 메타데이터를 표시할 수 있습니다. 검색·상세별 서버 생성 미리보기가 필요하면 별도 OG 렌더링 endpoint 또는 SSR 호스팅을 추가해야 합니다.
 

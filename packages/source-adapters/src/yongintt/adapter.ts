@@ -33,7 +33,7 @@ export class YonginTtSourceAdapter implements SourceAdapter {
       try {
         response = await fetch(url, {
           signal,
-          headers: { accept: 'application/json', authorization: `KakaoAK ${this.apiKey}`, 'user-agent': context.userAgent ?? 'BUSU/0.1' },
+          headers: { accept: 'application/json', authorization: `KakaoAK ${this.apiKey}`, 'user-agent': context.userAgent ?? 'BUSU' },
         });
       } catch (error) {
         if (signal.aborted) throw new SourceTimeoutError();

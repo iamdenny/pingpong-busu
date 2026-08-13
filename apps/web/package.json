@@ -1,9 +1,12 @@
 {
   "name": "@busu/web",
-  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "vite --configLoader runner", "build": "vite build --configLoader runner", "typecheck": "tsc --noEmit" },
+  "scripts": {
+    "dev": "vite --configLoader runner",
+    "build": "vite build --configLoader runner",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@busu/domain": "workspace:*",
     "@supabase/supabase-js": "^2.95.3",
@@ -14,5 +17,8 @@
     "react-router-dom": "^7.13.0",
     "zod": "^4.3.6"
   },
-  "devDependencies": { "typescript": "^5.9.3", "vite": "^7.3.1" }
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
 }

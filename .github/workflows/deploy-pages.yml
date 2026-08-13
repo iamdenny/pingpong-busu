@@ -2,12 +2,21 @@ name: Deploy GitHub Pages
 on:
   push: { branches: [main] }
   workflow_dispatch:
-permissions: { actions: read, contents: read, pages: write, id-token: write }
+permissions: { contents: read }
 concurrency: { group: pages, cancel-in-progress: true }
 jobs:
+  validate-ref:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require main branch
+        run: test "$GITHUB_REF" = "refs/heads/main"
   build:
+    needs: validate-ref
     runs-on: ubuntu-latest
     environment: github-pages
+    permissions: { contents: read, pages: write, id-token: write }
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -15,11 +24,9 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Generate deployment version
-        id: deployment-version
-        run: node --import tsx scripts/deployment-version.ts >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      - name: Read and validate release version
+        id: version
+        run: node --import tsx scripts/release-version.ts output >> "$GITHUB_OUTPUT"
       - run: pnpm lint && pnpm typecheck && pnpm test && pnpm build
         env:
           VITE_APP_BASE_PATH: ${{ vars.VITE_APP_BASE_PATH || '/' }}
@@ -27,13 +34,47 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SOURCE_REFRESH_ENABLED: ${{ vars.VITE_SOURCE_REFRESH_ENABLED || 'false' }}
-          VITE_APP_VERSION: ${{ steps.deployment-version.outputs.version }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: apps/web/dist }
-  deploy:
+  release:
     needs: build
     runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - name: Create tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          tag="v${VERSION}"
+          remote="https://github.com/${GITHUB_REPOSITORY}.git"
+          direct_sha="$(git ls-remote --tags "$remote" "refs/tags/${tag}" | cut -f1)"
+          peeled_sha="$(git ls-remote --tags "$remote" "refs/tags/${tag}^{}" | cut -f1)"
+          existing_sha="${peeled_sha:-$direct_sha}"
+          if [ -n "$existing_sha" ]; then
+            if [ "$existing_sha" != "$GITHUB_SHA" ]; then
+              echo "${tag} already points to ${existing_sha}; bump package.json before deploying." >&2
+              exit 1
+            fi
+            if gh release view "$tag" >/dev/null 2>&1; then
+              exit 0
+            fi
+            gh release create "$tag" \
+              --verify-tag \
+              --title "BUSU ${VERSION}" \
+              --generate-notes
+            exit 0
+          fi
+          gh release create "$tag" \
+            --target "$GITHUB_SHA" \
+            --title "BUSU ${VERSION}" \
+            --generate-notes
+  deploy:
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    permissions: { contents: read, pages: write, id-token: write }
     environment:
       { name: github-pages, url: "${{ steps.deployment.outputs.page_url }}" }
     steps:

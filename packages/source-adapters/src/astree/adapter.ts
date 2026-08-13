@@ -29,7 +29,7 @@ export class AstreeSourceAdapter implements SourceAdapter {
       const signal = input.signal ? AbortSignal.any([input.signal, timeoutSignal]) : timeoutSignal;
       let response: Response;
       try {
-        response = await fetch(url, { signal, headers: { accept: 'text/html', 'user-agent': context.userAgent ?? 'BUSU/0.1' }, redirect: 'follow' });
+        response = await fetch(url, { signal, headers: { accept: 'text/html', 'user-agent': context.userAgent ?? 'BUSU' }, redirect: 'follow' });
       } catch (error) {
         if (signal.aborted) throw new SourceTimeoutError();
         throw new SourceParseError(error instanceof Error ? error.message : '애즈트리 요청 실패');
