@@ -29,7 +29,7 @@ function searchQueryFromState(value: unknown): string | undefined {
 export function PlayerDetailPage() {
   const { id = "" } = useParams();
   const location = useLocation();
-  const [tab, setTab] = useState<Tab>("history");
+  const [tab, setTab] = useState<Tab>("awards");
   const result = useQuery({
     queryKey: ["player", id],
     queryFn: () => playerRepository.getPlayer(id),
@@ -61,11 +61,12 @@ export function PlayerDetailPage() {
       </div>
     );
   const player = result.data;
-  const visibleRecords =
-    tab === "awards"
-      ? player.records.filter((record) => isAwardRank(record.rank))
-      : player.records;
+  const isAwardsTab = tab === "awards";
+  const visibleRecords = isAwardsTab
+    ? player.records.filter((record) => isAwardRank(record.rank))
+    : player.records;
   const records = sortPlayerRecordsByLatest(visibleRecords);
+  const historyTitle = isAwardsTab ? "입상 이력 (4강 이상)" : "전체 이력";
   const integratedSource = player.sources.find(
     (source) =>
       source.recentObservedDivisionSystem === "integrated" ||
@@ -167,8 +168,8 @@ export function PlayerDetailPage() {
       <nav className="tabs" aria-label="선수 상세 항목">
         {(
           [
-            ["history", "전체 이력"],
             ["awards", "입상 이력 (4강 이상)"],
+            ["history", "전체 이력"],
             ["sources", "출처 비교"],
             ["rules", "대회 부수검증"],
           ] as const
@@ -190,107 +191,119 @@ export function PlayerDetailPage() {
           className="tab-panel-entry"
         >
           <h2 id="history-title" className="visually-hidden">
-            대회 이력
+            {historyTitle}
           </h2>
-          <div className="record-table-wrap">
-            <table>
-              <caption>{player.name} 선수의 대회 기록 · 최신순</caption>
-              <thead>
-                <tr>
-                  <th scope="col">날짜</th>
-                  <th scope="col">대회</th>
-                  <th scope="col">종목</th>
-                  <th scope="col">당시 소속</th>
-                  <th scope="col">당시 부수</th>
-                  <th scope="col">결과</th>
-                  <th scope="col">출처</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((record) => (
-                  <tr key={record.id}>
-                    <td>
-                      {record.date ? (
-                        <time dateTime={record.date}>
-                          {record.date}
-                          {record.dateBasis === "published" && (
-                            <small>게시일</small>
+          {records.length === 0 ? (
+            <p className="empty-state">
+              {isAwardsTab
+                ? "4강 이상 입상 이력이 없습니다."
+                : "확인된 대회 이력이 없습니다."}
+            </p>
+          ) : (
+            <>
+              <div className="record-table-wrap">
+                <table>
+                  <caption>
+                    {player.name} 선수의 {historyTitle} · 최신순
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">날짜</th>
+                      <th scope="col">대회</th>
+                      <th scope="col">종목</th>
+                      <th scope="col">당시 소속</th>
+                      <th scope="col">당시 부수</th>
+                      <th scope="col">결과</th>
+                      <th scope="col">출처</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {records.map((record) => (
+                      <tr key={record.id}>
+                        <td>
+                          {record.date ? (
+                            <time dateTime={record.date}>
+                              {record.date}
+                              {record.dateBasis === "published" && (
+                                <small>게시일</small>
+                              )}
+                            </time>
+                          ) : (
+                            "날짜 미상"
                           )}
-                        </time>
-                      ) : (
-                        "날짜 미상"
-                      )}
-                    </td>
-                    <td>
-                      <strong>{record.tournament}</strong>
-                    </td>
-                    <td className="record-event-name">{record.event}</td>
-                    <td>{record.club ?? "-"}</td>
-                    <td>
-                      {record.divisionSystem ? (
-                        <small>
-                          {divisionSystemLabels[record.divisionSystem]}
-                        </small>
-                      ) : null}
-                      {displayDivisionValue(
-                        record.divisionSystem,
-                        record.division ?? "-",
-                      )}
-                    </td>
-                    <td>{record.rank ?? "-"}</td>
-                    <td>
-                      <a
-                        href={record.sourceUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {record.sourceName}
-                        <ExternalLink size={14} />
-                      </a>
-                    </td>
-                  </tr>
+                        </td>
+                        <td>
+                          <strong>{record.tournament}</strong>
+                        </td>
+                        <td className="record-event-name">{record.event}</td>
+                        <td>{record.club ?? "-"}</td>
+                        <td>
+                          {record.divisionSystem ? (
+                            <small>
+                              {divisionSystemLabels[record.divisionSystem]}
+                            </small>
+                          ) : null}
+                          {displayDivisionValue(
+                            record.divisionSystem,
+                            record.division ?? "-",
+                          )}
+                        </td>
+                        <td>{record.rank ?? "-"}</td>
+                        <td>
+                          <a
+                            href={record.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {record.sourceName}
+                            <ExternalLink size={14} />
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="record-cards">
+                {records.map((record) => (
+                  <article key={record.id}>
+                    {record.date ? (
+                      <time dateTime={record.date}>
+                        {record.date}
+                        {record.dateBasis === "published" && " · 게시일"}
+                      </time>
+                    ) : (
+                      <span className="record-date-unknown">날짜 미상</span>
+                    )}
+                    <h3>{record.tournament}</h3>
+                    <p>{record.club ?? "소속 미상"}</p>
+                    <dl>
+                      <div className="record-event-detail">
+                        <dt>종목</dt>
+                        <dd>{record.event}</dd>
+                      </div>
+                      <div>
+                        <dt>당시 부수</dt>
+                        <dd>
+                          {formatDivisionObservation(
+                            record.divisionSystem,
+                            record.division ?? "-",
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>결과</dt>
+                        <dd>{record.rank ?? "-"}</dd>
+                      </div>
+                    </dl>
+                    <a href={record.sourceUrl} target="_blank" rel="noreferrer">
+                      {record.sourceName} 원문 <ExternalLink size={14} />
+                    </a>
+                  </article>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="record-cards">
-            {records.map((record) => (
-              <article key={record.id}>
-                {record.date ? (
-                  <time dateTime={record.date}>
-                    {record.date}
-                    {record.dateBasis === "published" && " · 게시일"}
-                  </time>
-                ) : (
-                  <span className="record-date-unknown">날짜 미상</span>
-                )}
-                <h3>{record.tournament}</h3>
-                <p>{record.club ?? "소속 미상"}</p>
-                <dl>
-                  <div className="record-event-detail">
-                    <dt>종목</dt>
-                    <dd>{record.event}</dd>
-                  </div>
-                  <div>
-                    <dt>당시 부수</dt>
-                    <dd>
-                      {formatDivisionObservation(
-                        record.divisionSystem,
-                        record.division ?? "-",
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>결과</dt>
-                    <dd>{record.rank ?? "-"}</dd>
-                  </div>
-                </dl>
-                <a href={record.sourceUrl} target="_blank" rel="noreferrer">
-                  {record.sourceName} 원문 <ExternalLink size={14} />
-                </a>
-              </article>
-            ))}
-          </div>
+              </div>
+            </>
+          )}
         </section>
       )}
       {tab === "sources" && (
