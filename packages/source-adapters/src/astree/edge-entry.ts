@@ -10,6 +10,7 @@ export {
   classifyIpingSessionHtml,
   extractIpingSessionCookie,
   extractIpingSessionCookieFromHeader,
+  extractIpingSessionCookieFromHeaders,
   extractIpingSessionId,
   extractIpingSessionIdFromCookie,
 } from "../iping/session";
