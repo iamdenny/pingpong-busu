@@ -9,6 +9,7 @@ function player(
   id: string,
   recentObservedDivision?: string,
   recentObservedDivisionSystem?: DivisionSystem,
+  divisionObservations?: PlayerSummary["divisionObservations"],
 ): PlayerSummary {
   return {
     id,
@@ -16,6 +17,7 @@ function player(
     normalizedName: "임대현",
     ...(recentObservedDivision ? { recentObservedDivision } : {}),
     ...(recentObservedDivisionSystem ? { recentObservedDivisionSystem } : {}),
+    ...(divisionObservations ? { divisionObservations } : {}),
     resultCount: 1,
     sourceCount: 1,
     lastCheckedAt: "2026-08-12T00:00:00.000Z",
@@ -35,30 +37,97 @@ describe("summarizeObservedDivisions", () => {
         player("6", "T5", "division"),
       ]),
     ).toEqual([
-      { system: "open", systemLabel: "오픈부수", division: "6부", count: 2 },
+      {
+        system: "open",
+        systemLabel: "오픈부수",
+        division: "6부",
+        awardCount: 2,
+        participationCount: 0,
+      },
       {
         system: "integrated",
         systemLabel: "통합부수",
         division: "6부",
-        count: 1,
+        awardCount: 1,
+        participationCount: 0,
       },
       {
         system: "women",
         systemLabel: "통합부수",
         division: "여자4부",
-        count: 1,
+        awardCount: 1,
+        participationCount: 0,
       },
       {
         system: "division",
         systemLabel: "디비전부수",
         division: "T5",
-        count: 1,
+        awardCount: 1,
+        participationCount: 0,
       },
       {
         system: "unknown",
         systemLabel: "체계 확인 필요",
         division: "확인 필요",
-        count: 1,
+        awardCount: 1,
+        participationCount: 0,
+      },
+    ]);
+  });
+
+  it("adds record-level award and participation counts across candidates", () => {
+    expect(
+      summarizeObservedDivisions([
+        player("1", undefined, undefined, [
+          {
+            system: "open",
+            division: "6부",
+            awardCount: 2,
+            participationCount: 3,
+          },
+          {
+            system: "regional",
+            division: "5부",
+            awardCount: 0,
+            participationCount: 1,
+          },
+        ]),
+        player("2", undefined, undefined, [
+          {
+            system: "open",
+            division: "6부",
+            awardCount: 1,
+            participationCount: 4,
+          },
+          {
+            system: "division",
+            division: "T4",
+            awardCount: 1,
+            participationCount: 0,
+          },
+        ]),
+      ]),
+    ).toEqual([
+      {
+        system: "open",
+        systemLabel: "오픈부수",
+        division: "6부",
+        awardCount: 3,
+        participationCount: 7,
+      },
+      {
+        system: "regional",
+        systemLabel: "지역부수",
+        division: "5부",
+        awardCount: 0,
+        participationCount: 1,
+      },
+      {
+        system: "division",
+        systemLabel: "디비전부수",
+        division: "T4",
+        awardCount: 1,
+        participationCount: 0,
       },
     ]);
   });

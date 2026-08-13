@@ -21,6 +21,7 @@ import {
   type SourceRefreshView,
 } from "../components/SourceRefreshProgress";
 import {
+  divisionObservationForPlayer,
   matchesObservedDivision,
   summarizeObservedDivisions,
   type DivisionSummaryItem,
@@ -345,11 +346,17 @@ export function SearchResultsPage() {
         matchesObservedDivision(player, selectedDivision),
       )
     : (result.data ?? []);
-  const awardCandidates = divisionCandidates.filter(
-    (player) => player.resultCount > 0,
+  const awardCandidates = divisionCandidates.filter((player) =>
+    selectedDivision
+      ? (divisionObservationForPlayer(player, selectedDivision)?.awardCount ??
+          0) > 0
+      : player.resultCount > 0,
   );
-  const entryCandidates = divisionCandidates.filter(
-    (player) => player.resultCount === 0,
+  const entryCandidates = divisionCandidates.filter((player) =>
+    selectedDivision
+      ? (divisionObservationForPlayer(player, selectedDivision)
+          ?.participationCount ?? 0) > 0
+      : player.resultCount === 0,
   );
   const activeResultTab =
     resultTab === "awards"
@@ -362,7 +369,7 @@ export function SearchResultsPage() {
   const shownCandidates =
     activeResultTab === "awards" ? awardCandidates : entryCandidates;
   const candidateListLabel = selectedDivision
-    ? `${selectedDivision.systemLabel} ${selectedDivision.division} 선수 검색 결과 목록`
+    ? `${selectedDivision.systemLabel} ${selectedDivision.division} ${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`
     : `${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`;
   const searchLabel =
     `${playerSearch.name}${playerSearch.region ? ` ${playerSearch.region}` : ""}`.trim();
@@ -380,19 +387,12 @@ export function SearchResultsPage() {
   }, [selectedDivisionKey]);
 
   function selectDivision(summary: DivisionSummaryItem) {
-    const matchingPlayers = (result.data ?? []).filter((player) =>
-      matchesObservedDivision(player, summary),
-    );
     setDivisionSelection({
       query,
       system: summary.system,
       division: summary.division,
     });
-    setResultTab(
-      matchingPlayers.some((player) => player.resultCount > 0)
-        ? "awards"
-        : "entries",
-    );
+    setResultTab(summary.awardCount > 0 ? "awards" : "entries");
   }
 
   function clearDivisionSelection() {
@@ -439,7 +439,7 @@ export function SearchResultsPage() {
           <div className="division-overview__table-wrap">
             <table>
               <caption className="visually-hidden">
-                부수 체계별 최근 관측 부수와 기록 수
+                부수 체계별 최근 관측 부수와 입상 및 참가 기록 수
               </caption>
               <thead>
                 <tr>
@@ -462,11 +462,18 @@ export function SearchResultsPage() {
                           selectedDivision?.system === summary.system &&
                           selectedDivision.division === summary.division
                         }
-                        aria-label={`${summary.systemLabel} ${summary.division} ${summary.count}건 결과 보기`}
+                        aria-label={`${summary.systemLabel} ${summary.division} 입상 ${summary.awardCount}건 참가 ${summary.participationCount}건 결과 보기`}
                         onClick={() => selectDivision(summary)}
                       >
                         <strong>{summary.division}</strong>
-                        <span>{summary.count}건</span>
+                        <span className="division-overview__counts">
+                          <span>
+                            입상 <b>{summary.awardCount}건</b>
+                          </span>
+                          <span>
+                            참가 <b>{summary.participationCount}건</b>
+                          </span>
+                        </span>
                       </button>
                     </td>
                   ))}

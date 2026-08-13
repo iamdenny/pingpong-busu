@@ -1,6 +1,7 @@
 import {
   displayDivisionValue,
   divisionSystemLabels,
+  type DivisionObservationSummary,
   type DivisionSystem,
   type PlayerSummary,
 } from "@busu/domain";
@@ -9,7 +10,8 @@ export interface DivisionSummaryItem {
   system: DivisionSystem;
   systemLabel: string;
   division: string;
-  count: number;
+  awardCount: number;
+  participationCount: number;
 }
 
 const systemOrder: DivisionSystem[] = [
@@ -24,12 +26,23 @@ const systemOrder: DivisionSystem[] = [
 export function summarizeObservedDivisions(
   players: readonly PlayerSummary[],
 ): DivisionSummaryItem[] {
-  const counts = new Map<string, number>();
+  const counts = new Map<
+    string,
+    Pick<DivisionSummaryItem, "awardCount" | "participationCount">
+  >();
   for (const player of players) {
-    const system = player.recentObservedDivisionSystem ?? "unknown";
-    const division = player.recentObservedDivision ?? "확인 필요";
-    const key = `${system}\u0000${division}`;
-    counts.set(key, (counts.get(key) ?? 0) + 1);
+    for (const observation of observationsForPlayer(player)) {
+      const key = `${observation.system}\u0000${observation.division}`;
+      const current = counts.get(key) ?? {
+        awardCount: 0,
+        participationCount: 0,
+      };
+      counts.set(key, {
+        awardCount: current.awardCount + observation.awardCount,
+        participationCount:
+          current.participationCount + observation.participationCount,
+      });
+    }
   }
 
   return [...counts.entries()]
@@ -40,25 +53,50 @@ export function summarizeObservedDivisions(
         system,
         systemLabel: divisionSystemLabels[system],
         division: displayDivisionValue(system, division),
-        count,
+        ...count,
       };
     })
     .sort(
       (left, right) =>
         systemOrder.indexOf(left.system) - systemOrder.indexOf(right.system) ||
-        right.count - left.count ||
+        right.awardCount +
+          right.participationCount -
+          (left.awardCount + left.participationCount) ||
         left.division.localeCompare(right.division, "ko-KR", { numeric: true }),
     );
+}
+
+function observationsForPlayer(
+  player: PlayerSummary,
+): DivisionObservationSummary[] {
+  if (player.divisionObservations !== undefined) {
+    return player.divisionObservations;
+  }
+  return [
+    {
+      system: player.recentObservedDivisionSystem ?? "unknown",
+      division: player.recentObservedDivision ?? "확인 필요",
+      awardCount: player.resultCount,
+      participationCount: player.resultCount === 0 ? 1 : 0,
+    },
+  ];
+}
+
+export function divisionObservationForPlayer(
+  player: PlayerSummary,
+  summary: Pick<DivisionSummaryItem, "system" | "division">,
+) {
+  return observationsForPlayer(player).find(
+    (observation) =>
+      observation.system === summary.system &&
+      displayDivisionValue(observation.system, observation.division) ===
+        summary.division,
+  );
 }
 
 export function matchesObservedDivision(
   player: PlayerSummary,
   summary: Pick<DivisionSummaryItem, "system" | "division">,
 ): boolean {
-  const system = player.recentObservedDivisionSystem ?? "unknown";
-  const division = displayDivisionValue(
-    system,
-    player.recentObservedDivision ?? "확인 필요",
-  );
-  return system === summary.system && division === summary.division;
+  return divisionObservationForPlayer(player, summary) !== undefined;
 }

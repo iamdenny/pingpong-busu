@@ -1,10 +1,28 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-export const sourceCodes = ['mock', 'airping', 'astree', 'ttadivision', 'okpingpong', 'mytt', 'superstar', 'yongintt', 'iping', 'band'] as const;
+export const sourceCodes = [
+  "mock",
+  "airping",
+  "astree",
+  "ttadivision",
+  "okpingpong",
+  "mytt",
+  "superstar",
+  "yongintt",
+  "iping",
+  "band",
+] as const;
 export const sourceCodeSchema = z.enum(sourceCodes);
 export type SourceCode = z.infer<typeof sourceCodeSchema>;
-export type EventType = 'singles' | 'doubles' | 'team' | 'unknown';
-export const divisionSystemCodes = ['open', 'integrated', 'women', 'regional', 'division', 'unknown'] as const;
+export type EventType = "singles" | "doubles" | "team" | "unknown";
+export const divisionSystemCodes = [
+  "open",
+  "integrated",
+  "women",
+  "regional",
+  "division",
+  "unknown",
+] as const;
 export const divisionSystemSchema = z.enum(divisionSystemCodes);
 export type DivisionSystem = z.infer<typeof divisionSystemSchema>;
 
@@ -13,11 +31,18 @@ export interface AwardResultSummary {
   date?: string;
 }
 
+export interface DivisionObservationSummary {
+  system: DivisionSystem;
+  division: string;
+  awardCount: number;
+  participationCount: number;
+}
+
 export interface SourceStatus {
   sourceCode: SourceCode;
   displayName: string;
   baseUrl: string;
-  adapterMode: 'http' | 'browser' | 'manual';
+  adapterMode: "http" | "browser" | "manual";
   enabled: boolean;
   parserVersion: string;
 }
@@ -34,7 +59,7 @@ export const normalizedRecordSchema = z.object({
   tournamentDate: z.string().date().optional(),
   sourcePublishedDate: z.string().date().optional(),
   eventName: z.string().min(1),
-  eventType: z.enum(['singles', 'doubles', 'team', 'unknown']),
+  eventType: z.enum(["singles", "doubles", "team", "unknown"]),
   divisionSystem: divisionSystemSchema.optional(),
   divisionValue: z.string().optional(),
   rankText: z.string().optional(),
@@ -57,18 +82,19 @@ export interface PlayerSummary {
   recentObservedDivisionSystem?: DivisionSystem;
   resultCount: number;
   awardResults?: AwardResultSummary[];
+  divisionObservations?: DivisionObservationSummary[];
   sourceCount: number;
   lastCheckedAt: string;
-  identityStatus: 'unreviewed' | 'likely' | 'verified' | 'disputed';
-  dataKind?: 'demo' | 'live';
+  identityStatus: "unreviewed" | "likely" | "verified" | "disputed";
+  dataKind?: "demo" | "live";
 }
 
 export interface PlayerRecord {
   id: string;
   date?: string;
-  dateBasis?: 'tournament' | 'published';
+  dateBasis?: "tournament" | "published";
   tournament: string;
-  scale: 'national' | 'province' | 'district' | 'club' | 'unknown';
+  scale: "national" | "province" | "district" | "club" | "unknown";
   event: string;
   club?: string;
   division?: string;
@@ -90,7 +116,8 @@ export interface SourceComparison {
   resultCount: number;
   latestRank?: string;
   lastCheckedAt?: string;
-  status: 'fresh' | 'refreshing' | 'unsupported' | 'delayed' | 'parser_attention';
+  status:
+    "fresh" | "refreshing" | "unsupported" | "delayed" | "parser_attention";
 }
 
 export interface PlayerDetail extends PlayerSummary {

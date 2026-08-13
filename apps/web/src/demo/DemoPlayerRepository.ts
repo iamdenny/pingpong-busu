@@ -2,6 +2,7 @@ import {
   isAwardRank,
   normalizeSearchText,
   sortPlayerRecordsByLatest,
+  summarizeDivisionObservations,
   type SourceStatus,
 } from "@busu/domain";
 import type {
@@ -129,6 +130,7 @@ export class DemoPlayerRepository implements PlayerRepository {
                 ]
               : [],
           ),
+        divisionObservations: summarizeDivisionObservations(player.records),
         sourceCount: player.sourceCount,
         lastCheckedAt: player.lastCheckedAt,
         identityStatus: player.identityStatus,

@@ -79,15 +79,20 @@ describe("SearchResultsPage", () => {
       within(summary).getByRole("columnheader", { name: "오픈부수" }),
     ).toBeInTheDocument();
     expect(
-      within(summary).getByRole("columnheader", { name: "통합부수" }),
+      within(summary).getAllByRole("columnheader", { name: "통합부수" }),
+    ).toHaveLength(2);
+    expect(
+      within(summary).getByRole("button", {
+        name: "오픈부수 5부 입상 1건 참가 0건 결과 보기",
+      }),
     ).toBeInTheDocument();
     expect(
       within(summary).getByRole("button", {
-        name: "오픈부수 5부 1건 결과 보기",
+        name: "통합부수 4부 입상 1건 참가 0건 결과 보기",
       }),
     ).toBeInTheDocument();
     const integratedSix = within(summary).getByRole("button", {
-      name: "통합부수 6부 1건 결과 보기",
+      name: "통합부수 6부 입상 0건 참가 1건 결과 보기",
     });
     expect(integratedSix).toHaveAttribute("aria-controls", "candidate-results");
 
@@ -99,7 +104,7 @@ describe("SearchResultsPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("1건만 표시 중")).toBeInTheDocument();
     const filteredList = screen.getByRole("tabpanel", {
-      name: "통합부수 6부 선수 검색 결과 목록",
+      name: "통합부수 6부 출전 선수 검색 결과 목록",
     });
     await waitFor(() => expect(filteredList).toHaveFocus());
     expect(

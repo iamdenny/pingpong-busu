@@ -28,6 +28,16 @@ const summarySchema = z.object({
   awardResults: z
     .array(z.object({ rank: z.string(), date: z.string().optional() }))
     .optional(),
+  divisionObservations: z
+    .array(
+      z.object({
+        system: divisionSystemSchema,
+        division: z.string().min(1),
+        awardCount: z.number().int().nonnegative(),
+        participationCount: z.number().int().nonnegative(),
+      }),
+    )
+    .optional(),
   sourceCount: z.number(),
   lastCheckedAt: z.string(),
   identityStatus: z.enum(["unreviewed", "likely", "verified", "disputed"]),
@@ -124,6 +134,9 @@ export class DevLivePlayerRepository implements PlayerRepository {
             : {}),
           resultCount: row.resultCount,
           ...(awardResults ? { awardResults } : {}),
+          ...(row.divisionObservations
+            ? { divisionObservations: row.divisionObservations }
+            : {}),
           sourceCount: row.sourceCount,
           lastCheckedAt: row.lastCheckedAt,
           identityStatus: row.identityStatus,
