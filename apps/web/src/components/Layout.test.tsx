@@ -28,6 +28,9 @@ describe("Layout", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(`버전 ${appVersion}`)).toBeInTheDocument();
     expect(
+      screen.getByRole("button", { name: "문의·제보하기" }),
+    ).toBeInTheDocument();
+    expect(
       screen.queryByText("라이선스는 아직 결정되지 않음"),
     ).not.toBeInTheDocument();
   });

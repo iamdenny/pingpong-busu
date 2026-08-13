@@ -29,6 +29,7 @@ Korean table tennis player rank and tournament record search.
 - Supabase PostgreSQL migration, RLS, synthetic seed, Edge Functions
 - GitHub Actions CI, Pages 배포, 수동 crawler workflow
 - GitHub Pages 배포마다 자동 생성하는 `YYYY.WEEK.SEQ` 버전과 모든 페이지 하단 버전 표시
+- 로그인 없이 문의·제보 내용을 공개 GitHub Issue로 보내는 하단 폼과 현재 URL·브라우저 User-Agent 자동 첨부
 
 ## 실행
 
@@ -56,6 +57,8 @@ pnpm test:e2e
 로컬 전용 middleware를 사용할 때는 `.env.local`에서 `VITE_DEV_LIVE_SEARCH=true`, `CRAWL_LIVE=true`, `CRAWLER_SOURCE_ASTREE_ENABLED=true`를 함께 설정합니다. 배포된 Supabase Edge Function에서 활성 출처를 조회할 때는 `VITE_DEV_LIVE_SEARCH=false`, `VITE_SOURCE_REFRESH_ENABLED=true`로 설정하고 서버에 출처별 플래그를 둡니다. 용인탁구협회 다음 카페는 서버의 `KAKAO_REST_API_KEY`, 아이핑은 `IPING_USERNAME`과 `IPING_PASSWORD`도 필요합니다. 브라우저가 외부 출처를 직접 호출하지 않으며 service key, 외부 API key, 로그인 자격증명도 받지 않습니다. 동일 이름은 소속별 후보로 분리하고 자동 병합하지 않습니다. `.env.local`은 배포에 포함되지 않습니다.
 
 ## Supabase 설정
+
+익명 문의·제보는 `submit-feedback` Edge Function이 현재 URL과 실제 요청의 `User-Agent`를 서버에서 확인해 GitHub Issue로 등록합니다. production environment의 `GITHUB_ISSUES_TOKEN`에는 대상 저장소 Issues 쓰기만 허용한 fine-grained token을, `GITHUB_ISSUES_REPOSITORY`에는 `iamdenny/pingpong-busu`, `FEEDBACK_ALLOWED_ORIGINS`에는 `https://busu.iamdenny.com`을 설정합니다. 토큰은 브라우저에 전달하지 않습니다.
 
 ```bash
 cp .env.example .env.local
@@ -119,6 +122,8 @@ docs                 설계·정책·운영 문서
 ```
 
 ## 개인정보와 한계
+
+익명 문의·제보는 전송 전 공개 범위를 안내하고 작성 내용, 쿼리 문자열을 제거한 현재 URL, 앱 버전, 요청의 브라우저 User-Agent, 언어와 viewport 크기만 공개 Issue에 남깁니다. IP 주소는 저장하거나 속도 제한 식별자로 사용하지 않습니다.
 
 전화번호, 이메일, 전체 생년월일, 주소와 원본 HTML/이미지/PDF를 저장하지 않습니다. 최근 검색어는 서버로 보내 별도 보관하지 않고 현재 브라우저의 `localStorage`에 최대 10개만 저장하며 홈에서 전체 삭제할 수 있습니다. 동명이인 참여 편집에는 사용자가 기억할 비밀번호나 확인 코드를 요구하지 않습니다. 브라우저가 임의의 익명 편집자 ID를 자동으로 보관하고 서버는 원문 대신 HMAC만 사용하며, 저장값을 잃어도 편집이나 원복 권한은 사라지지 않습니다. 별칭은 개인정보·욕설 입력을 막기 위해 검수된 탁구 용어 목록에서만 고릅니다. 이름만 같다는 이유로 시스템이 자동 병합하지 않으며 사용자가 기록을 별칭 그룹에 명시적으로 배정해야 합니다. 편집은 즉시 반영되지만 선수·대회 기록을 삭제하지 않고 출처 identity 연결과 별칭의 이전 상태를 보존합니다. 공개 편집 이력과 사용자 원복을 제공하며, 후속 편집이 있는 경우 최신 편집부터 역순으로 되돌려 데이터 손상을 방지합니다. 실출처 운영 활성화에는 출처별 정책 확인과 실제 Supabase project가 필요합니다. 별도 라이선스가 부여되기 전까지 저장소의 코드와 문서는 저작권자가 모든 권리를 보유합니다.
 

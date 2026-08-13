@@ -137,6 +137,170 @@ footer strong {
   font-size: 0.72rem;
   letter-spacing: 0.02em;
 }
+.feedback-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 48px;
+  min-height: 48px;
+  margin-top: 0.65rem;
+  border: 1px solid #b6c9ef;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--primary-dark);
+  padding: 0.55rem 0.9rem;
+  font-weight: 800;
+}
+.feedback-trigger:hover {
+  border-color: var(--primary);
+  background: #eef4ff;
+}
+.feedback-dialog {
+  inline-size: min(620px, calc(100% - 2rem));
+  max-block-size: min(88vh, 760px);
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 24px 80px #0f172a40;
+  color: var(--text);
+  overflow: auto;
+}
+.feedback-dialog[open] {
+  animation: identity-dialog-lift-in 240ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.feedback-dialog::backdrop {
+  background: #0f172a99;
+  backdrop-filter: blur(3px);
+  animation: identity-dialog-backdrop-in 180ms ease-out both;
+}
+.feedback-dialog__header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.35rem;
+  background: var(--surface);
+  border-block-end: 1px solid var(--border);
+}
+.feedback-dialog__header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+.feedback-dialog form,
+.feedback-success {
+  padding: 1.25rem 1.35rem;
+  text-align: start;
+}
+.feedback-field {
+  display: grid;
+  gap: 0.4rem;
+  margin-block-end: 1rem;
+  font-weight: 800;
+}
+.feedback-field select,
+.feedback-field textarea {
+  inline-size: 100%;
+  border: 1px solid #94a3b8;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+}
+.feedback-field select {
+  min-block-size: 48px;
+}
+.feedback-field textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+.feedback-field small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: end;
+}
+.feedback-honeypot {
+  position: absolute;
+  inset-inline-start: -10000px;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+}
+.feedback-disclosure {
+  padding: 0.9rem;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  background: #fff9ed;
+  color: #713f12;
+}
+.feedback-disclosure p {
+  margin: 0.3rem 0 0.75rem;
+  font-size: 0.82rem;
+}
+.feedback-disclosure label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+.feedback-disclosure input {
+  flex: none;
+  inline-size: 20px;
+  block-size: 20px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+.feedback-error {
+  margin: 0.8rem 0 0;
+  color: var(--danger);
+  font-weight: 800;
+}
+.feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-block-start: 1rem;
+}
+.feedback-actions button,
+.feedback-success button,
+.feedback-success a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-block-size: 48px;
+  border: 1px solid #b6c9ef;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--primary-dark);
+  padding: 0.55rem 0.85rem;
+  font-weight: 800;
+}
+.feedback-actions button[type="submit"],
+.feedback-success a {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+.feedback-actions button:disabled {
+  opacity: 0.65;
+}
+.feedback-success h3 {
+  margin-top: 0;
+}
+.feedback-success a {
+  margin-inline-end: 0.6rem;
+}
+.feedback-success svg {
+  inline-size: 16px;
+}
 .home-page,
 .page {
   max-width: 1120px;
@@ -2014,6 +2178,33 @@ p {
   font-weight: 800;
 }
 @media (max-width: 700px) {
+  .feedback-dialog {
+    inline-size: 100%;
+    max-inline-size: none;
+    max-block-size: 92dvh;
+    margin-block: auto 0;
+    border-radius: 20px 20px 0 0;
+  }
+  .feedback-dialog[open] {
+    animation: identity-dialog-sheet-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .feedback-dialog__header,
+  .feedback-dialog form,
+  .feedback-success {
+    padding: 1rem;
+  }
+  .feedback-actions {
+    position: sticky;
+    inset-block-end: -1rem;
+    margin-inline: -1rem;
+    margin-block-end: -1rem;
+    padding: 1rem;
+    background: var(--surface);
+    border-block-start: 1px solid var(--border);
+  }
+  .feedback-actions button {
+    flex: 1;
+  }
   .site-header {
     padding: 0.9rem 1rem;
   }
@@ -2281,7 +2472,9 @@ p {
     animation: none !important;
   }
   .identity-claim-dialog,
-  .identity-claim-dialog::backdrop {
+  .identity-claim-dialog::backdrop,
+  .feedback-dialog,
+  .feedback-dialog::backdrop {
     transform: none !important;
   }
 }

@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.revert-identity-edit]
 verify_jwt = false
+
+[functions.submit-feedback]
+verify_jwt = false
