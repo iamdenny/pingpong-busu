@@ -9,11 +9,14 @@ flowchart LR
   REPO --> PUBLIC["Supabase public views"]
   UI --> EDGE["refresh-player Edge Function"]
   UI --> IDENTITY["identity edit Edge Functions"]
+  UI --> FEEDBACK["submit-feedback Edge Function"]
   EDGE --> ADAPTERS["source adapters"]
   ADAPTERS --> DOMAIN["domain normalization"]
   EDGE --> RPC["Supabase upsert RPC"]
   RPC --> PUBLIC
   IDENTITY --> RPC
+  FEEDBACK --> RPC
+  FEEDBACK --> GITHUB["GitHub Issues"]
 ```
 
 ## Directory map
@@ -33,6 +36,7 @@ flowchart LR
 | `supabase/functions/refresh-status`               | `index.ts`                                                                                                     | refresh 공개 상태                                               | repository response schema                         |
 | `supabase/functions/submit-identity-claim`        | `index.ts`                                                                                                     | 참여형 동일인 연결, 익명 편집자 ID HMAC                         | public history, merge RPC, abuse control           |
 | `supabase/functions/revert-identity-edit`         | `index.ts`                                                                                                     | 공개 편집 원복, 익명 편집자 ID HMAC                             | merge snapshot, conflict guard                     |
+| `supabase/functions/submit-feedback`              | `index.ts`, `handler.ts`                                                                                       | 익명 제보 검증, private outbox, GitHub Issue 전달               | origin/auth, abuse limit, idempotency              |
 | `supabase/functions/_shared`                      | auth/http/normalize/generated                                                                                  | Edge 공통 경계                                                  | secret 노출, `pnpm edge:sync`                      |
 | `fixtures/sources`                                | 출처별 합성 응답                                                                                               | parser 회귀 입력                                                | 개인정보 제거 여부                                 |
 | `scripts`                                         | crawler, edge sync, DB size, `release-version.ts`                                                              | 로컬/운영 도구와 package 릴리즈 버전 검증·증가                  | commands/operations docs, root unit tests          |

@@ -8,6 +8,10 @@ title: "데이터 모델"
 
 # 데이터 모델
 
+## 익명 문의·제보 outbox
+
+`feedback_reports`는 public API에 노출하지 않는 service-role 전용 전달 outbox다. `submission_id`와 `payload_hash`가 재시도 멱등성을 보장하고, 전체 요청량 예산은 트랜잭션 안에서 원자적으로 검사한다. 상태는 `pending → delivering → published`이며 GitHub 응답을 확정할 수 없으면 `delivery_unknown`으로 두고 고유 marker로 조정한다. `published` 전환 시 message, page URL, User-Agent, 언어와 viewport는 즉시 null 처리하고 Issue 번호·URL과 비민감 전달 메타데이터만 보존한다.
+
 `sources`는 adapter 상태, `players`와 `clubs`는 canonical entity, `source_player_identities`는 출처별 후보를 담습니다. 이름 하나만으로 identity를 연결하지 않습니다. 출처에 적힌 소속은 `source_player_identities.source_club_text`와 `results.club_text`에 원문 증거로 보존하지만 crawler가 `clubs`를 만들거나 `players.primary_club_id`로 자동 승격하지 않습니다. 대표 소속은 별도의 검토를 거친 canonical metadata입니다. `tournaments`와 `results`는 정규화된 기록이며 `result_revisions`는 실제 내용 변경만 보존합니다. `source_refreshes`는 조회 요약, `refresh_jobs`는 비동기/browser 작업입니다. `source_request_throttles`는 다른 검색어와 사용자를 함께 막지 않도록 `출처 + 정규화 검색어`별 마지막 호출 시각, 1분 제한 시작 시각과 시도 횟수를 보존합니다. `source_request_budgets`는 인증형 아이핑 계정의 분당 실제 요청 예산을 출처 단위로 원자적으로 관리합니다. `identity_partition_operations`는 한 번의 동명이인 분류 편집, `identity_partition_groups`는 탁구 별칭별 대표 선수와 내부 merge, `identity_partition_members`는 후보별 별칭과 이전 상태 snapshot을 담습니다. 기존 `identity_claims` 계열은 배포 전환기의 단일 병합 이력 호환을 위해 유지합니다. `correction_requests`와 `rule_sets`는 후속 기능의 schema입니다.
 
 기록 시간축은 대회 개최일 `tournaments.held_on`을 우선합니다. 게시판형 출처가 대회일을 제공하지 않으면 `results.source_published_on`을 사용하고, 공개 view의 `sort_date`는 두 값을 이 순서로 합성합니다. 크롤러의 `last_checked_at`은 동일 날짜의 보조 정렬 기준일 뿐 경기·게시 시점을 대신하지 않습니다.

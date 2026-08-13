@@ -35,6 +35,9 @@ jobs:
       KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
       IPING_USERNAME: ${{ secrets.IPING_USERNAME }}
       IPING_PASSWORD: ${{ secrets.IPING_PASSWORD }}
+      GITHUB_ISSUES_TOKEN: ${{ secrets.GITHUB_ISSUES_TOKEN }}
+      GITHUB_ISSUES_REPOSITORY: ${{ vars.GITHUB_ISSUES_REPOSITORY || 'iamdenny/pingpong-busu' }}
+      FEEDBACK_ALLOWED_ORIGINS: ${{ vars.FEEDBACK_ALLOWED_ORIGINS || 'https://busu.iamdenny.com' }}
       CRAWLER_SOURCE_MIN_INTERVAL_MS: ${{ vars.CRAWLER_SOURCE_MIN_INTERVAL_MS || '2000' }}
     steps:
       - uses: actions/checkout@v4
@@ -82,6 +85,14 @@ jobs:
           CRAWLER_SOURCE_IPING_ENABLED="$CRAWLER_SOURCE_IPING_ENABLED"
           CRAWLER_USER_AGENT="BUSU/${{ steps.version.outputs.version }}"
           CRAWLER_SOURCE_MIN_INTERVAL_MS="$CRAWLER_SOURCE_MIN_INTERVAL_MS"
+          GITHUB_ISSUES_REPOSITORY="$GITHUB_ISSUES_REPOSITORY"
+          FEEDBACK_ALLOWED_ORIGINS="$FEEDBACK_ALLOWED_ORIGINS"
+      - name: Configure GitHub Issues token
+        if: env.GITHUB_ISSUES_TOKEN != ''
+        run: >-
+          supabase secrets set
+          --project-ref "$SUPABASE_PROJECT_ID"
+          GITHUB_ISSUES_TOKEN="$GITHUB_ISSUES_TOKEN"
       - name: Configure Kakao REST API key
         if: env.KAKAO_REST_API_KEY != ''
         run: >-

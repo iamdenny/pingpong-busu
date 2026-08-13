@@ -62,7 +62,7 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 1. 프로젝트 연결과 migration dry-run
 2. `supabase db push`로 미적용 migration 적용
 3. crawler 안전 플래그를 Edge Function secrets에 동기화
-4. `refresh-player`, `refresh-status`, `submit-identity-claim`, `revert-identity-edit` Edge Function 배포
+4. `refresh-player`, `refresh-status`, `submit-identity-claim`, `revert-identity-edit`, `submit-feedback` Edge Function 배포
 
 이번 변경의 migration은 파일명 순서대로 적용해야 합니다.
 
@@ -75,8 +75,11 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 7. `202608130007_community_identity_edits.sql`: 무제한 후보 참여 편집, 공개 이력과 사용자 원복
 8. `202608130008_homonym_nickname_partitions.sql`: 탁구 별칭별 동명이인 partition과 원자적 편집·원복
 9. `202608130009_single_group_custom_nicknames.sql`: 적용된 운영 DB를 별칭 한 그룹·사용자 입력 별칭 규칙으로 교정
+10. `202608130010_yongin_photo_board_cleanup.sql`: 용인시 탁구협회 사진 게시판 오염 관측 정리
+11. `202608130011_harden_identity_aliases_and_orphans.sql`: 참여 별칭과 고아 identity 무결성 강화
+12. `202608130012_anonymous_feedback.sql`: 익명 문의·제보 private outbox, abuse budget와 멱등 전달 RPC
 
-배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 아홉 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`와 `identity_partition_*` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 `list_identity_edit_history`만 공개되는지, `claim_source_request`와 출처 상태 기록 및 참여 편집 mutation RPC가 service role 전용인지, `public_player_search.division_observations`와 `homonym_nickname`이 조회되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
+배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 열두 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request`와 출처 상태 기록 및 참여 편집·문의 전달 mutation RPC가 service role 전용인지, `public_player_search.division_observations`와 `homonym_nickname`이 조회되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
 GitHub의 `production` environment에 아래 값을 설정합니다.
 
@@ -98,6 +101,11 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 | Secret    | `KAKAO_REST_API_KEY`                 | 카카오 공식 Daum 카페 검색 API 키. 브라우저와 로그에 노출하지 않음                                         |
 | Secret    | `IPING_USERNAME`                     | 아이핑 조회 전용 최소권한 계정 ID. Supabase Edge 런타임에만 전달                                           |
 | Secret    | `IPING_PASSWORD`                     | 아이핑 조회 전용 계정 비밀번호. Supabase Edge 런타임에만 전달                                              |
+| Secret    | `GITHUB_ISSUES_TOKEN`                | 대상 저장소 Issues 쓰기만 허용한 fine-grained token. Edge 런타임에만 전달                                  |
+| Variable  | `GITHUB_ISSUES_REPOSITORY`           | 문의·제보 Issue 대상 저장소. 기본 `iamdenny/pingpong-busu`                                                 |
+| Variable  | `FEEDBACK_ALLOWED_ORIGINS`           | 쉼표로 구분한 문의·제보 허용 Origin. 기본 `https://busu.iamdenny.com`                                      |
+
+문의·제보 기능은 GitHub token 또는 허용 Origin 설정이 없으면 닫힌 상태로 실패합니다. 전체 요청이 10분당 10건 또는 하루 50건을 넘으면 429를 반환합니다. 성공 시 공개 Issue를 확인한 뒤 private outbox의 본문과 브라우저 문맥을 즉시 지웁니다. 공개되는 페이지 링크에서는 쿼리 문자열을 제거하고, hash route에도 붙은 쿼리를 제거합니다. `delivery_unknown`은 같은 submission ID로 재시도하면 GitHub marker를 먼저 조회해 중복 생성을 막습니다. migration이 매일 service role 전용 `redact_expired_feedback_internal()`을 예약해 30일이 지난 미전달 행을 삭제합니다. abuse 시 `submit-feedback` 배포를 중지하거나 token을 폐기하고 비민감 상태·오류 코드만 조사합니다.
 
 GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. 커스텀 도메인은 `https://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. 이 중 source refresh 값은 브라우저에서 갱신 UI를 켜는 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다.
 

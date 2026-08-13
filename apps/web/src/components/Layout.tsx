@@ -1,6 +1,8 @@
 import { Link, Outlet } from "react-router-dom";
 import { appVersion } from "../lib/appVersion";
 import { isDemoMode, isDevLiveMode } from "../lib/runtime";
+import { feedbackRepository } from "../lib/runtime";
+import { FeedbackDialog } from "./FeedbackDialog";
 
 export function Layout() {
   return (
@@ -36,6 +38,10 @@ export function Layout() {
           공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후
           반영합니다.
         </p>
+        <FeedbackDialog
+          repository={feedbackRepository}
+          appVersion={appVersion}
+        />
         <small className="app-version">버전 {appVersion}</small>
       </footer>
     </div>

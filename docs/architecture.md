@@ -23,6 +23,9 @@ flowchart LR
   R --> S["SupabasePlayerRepository"]
   S --> V["Supabase public views"]
   S --> E["refresh-player Edge Function"]
+  W --> F["submit-feedback Edge Function"]
+  F --> O["private feedback outbox"]
+  F --> G["GitHub Issues API"]
   E --> A["출처별 HTTP adapter"]
   A --> X["공개·인증형 탁구 사이트"]
   E --> P["upsert RPC / PostgreSQL"]
@@ -75,6 +78,8 @@ Supabase Edge의 에어핑퐁 요청은 5초 제한의 단일 서버 시도만 �
 - 아이핑 자격증명은 Edge Secret에만 두고 요청마다 생성한 세션 쿠키는 조회가 끝나면 폐기한다.
 - 출처 실패는 허용 목록의 `last_error_code`만 저장하고 검색어·원문 오류·쿠키·HTML은 실패 상태 RPC에 전달하지 않는다. 성공 상태는 record upsert 트랜잭션이 원자적으로 갱신하며 이전 오류 코드를 지운다.
 - PAT, DB password, service role key는 프런트 build 환경에 전달하지 않는다.
+- `submit-feedback`은 요청 Origin을 서버 허용 목록과 대조하고 현재 URL이 같은 Origin인지 확인한다. GitHub token은 Edge Secret에만 두고 실제 HTTP `User-Agent`를 포함한 Issue 제목·본문을 서버가 생성한다.
+- feedback outbox는 submission UUID와 payload hash로 멱등성을 보장한다. 게시 완료 즉시 내용·URL·User-Agent·언어·viewport를 지우며, 결과가 모호하면 marker 조회 전에는 같은 Issue를 다시 만들지 않는다.
 
 ## 정규화와 revision
 

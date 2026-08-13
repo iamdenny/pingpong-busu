@@ -81,9 +81,10 @@ npx --yes supabase@latest functions deploy refresh-player --project-ref <project
 npx --yes supabase@latest functions deploy refresh-status --project-ref <project-ref>
 npx --yes supabase@latest functions deploy submit-identity-claim --project-ref <project-ref>
 npx --yes supabase@latest functions deploy revert-identity-edit --project-ref <project-ref>
+npx --yes supabase@latest functions deploy submit-feedback --project-ref <project-ref>
 ```
 
-`202608130001_reversible_player_merges.sql`부터 `202608130009_single_group_custom_nicknames.sql`까지 파일명 순서로 적용한다. 참여 편집과 원복 운영 확인은 [운영 문서](operations.md)를 따른다.
+`202608130001_reversible_player_merges.sql`부터 `202608130012_anonymous_feedback.sql`까지 파일명 순서로 적용한다. 참여 편집과 원복 운영 확인은 [운영 문서](operations.md)를 따른다.
 
 독립 development 프로젝트의 최초 구성과 반복 배포는 main의 `Deploy Supabase development backend` workflow를 사용한다. 로컬에서 미리 볼 때도 production ref와 다른지 확인하고 development에만 seed를 포함한다.
 

@@ -39,4 +39,6 @@ Primary button은 Rally Blue 표면과 12px radius, 최소 44~48px touch target�
 
 ## 5. Layout Principles
 
+공통 footer의 `문의·제보하기`는 native modal dialog를 열며 desktop에서는 중앙 dialog, 700px 이하에서는 한 열 bottom sheet로 표시한다. 작성 내용과 함께 현재 URL, 앱 버전, 브라우저 User-Agent, 언어와 viewport가 공개 GitHub Issue에 포함된다는 확인을 제출 전에 명시한다. 연락처와 이미지 입력은 두지 않으며 성공 뒤 공개 Issue 링크를 제공한다.
+
 페이지 본문은 최대 1120px이고 중앙 정렬한다. desktop에서는 정보가 가로 grid/table로 정렬되며, 700px 이하에서는 후보와 상세 이력을 세로 흐름으로 전환한다. 긴 부수 요약은 페이지 높이를 늘리지 않고 체계별 행 안의 세부 정보만 가로 스크롤한다. 상세 기록은 desktop table, mobile card를 사용하되 DOM 의미와 날짜·원문 순서는 동일하게 유지한다. 배포 버전은 공통 footer의 가장 낮은 정보 위계에 작은 문자로 배치해 홈·검색 결과·선수 상세에서 일관되게 확인할 수 있게 한다.
