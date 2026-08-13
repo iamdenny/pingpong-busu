@@ -35,9 +35,92 @@ const candidates: PlayerSummary[] = [
   },
 ];
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+
+function mockMedia(
+  options: { reducedMotion?: boolean; mobile?: boolean } = {},
+) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: query.includes("prefers-reduced-motion")
+        ? (options.reducedMotion ?? false)
+        : (options.mobile ?? false),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
+}
+
+function renderDialog() {
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <IdentityClaimDialog candidates={candidates} />
+    </QueryClientProvider>,
+  );
+}
 
 describe("IdentityClaimDialog", () => {
+  it("keeps the dialog open until the desktop close motion finishes", async () => {
+    vi.useFakeTimers();
+    mockMedia();
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: "내 기록 구분 돕기" }));
+    const dialog = screen.getByRole("dialog", { name: "동명이인 구분 제보" });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "동명이인 구분 제보 닫기" }),
+    );
+    expect(dialog).toHaveAttribute("open");
+    expect(dialog).toHaveAttribute("data-state", "closing");
+    await vi.advanceTimersByTimeAsync(179);
+    expect(dialog).toHaveAttribute("open");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(dialog).not.toHaveAttribute("open");
+    expect(dialog).toHaveAttribute("data-state", "closed");
+  });
+
+  it("routes Escape through one idempotent mobile close lifecycle", async () => {
+    vi.useFakeTimers();
+    mockMedia({ mobile: true });
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: "내 기록 구분 돕기" }));
+    const dialog = screen.getByRole("dialog", { name: "동명이인 구분 제보" });
+    const onClose = vi.fn();
+    const timeoutSpy = vi.spyOn(window, "setTimeout");
+    dialog.addEventListener("close", onClose);
+
+    const firstCancel = new Event("cancel", { cancelable: true });
+    dialog.dispatchEvent(firstCancel);
+    dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
+    expect(firstCancel.defaultPrevented).toBe(true);
+    expect(timeoutSpy).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(220);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(dialog).not.toHaveAttribute("open");
+  });
+
+  it("closes immediately when reduced motion is requested", () => {
+    mockMedia({ reducedMotion: true });
+    renderDialog();
+    const trigger = screen.getByRole("button", { name: "내 기록 구분 돕기" });
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: "동명이인 구분 제보" });
+
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    expect(dialog).not.toHaveAttribute("open");
+    expect(dialog).toHaveAttribute("data-state", "closed");
+  });
+
   it("submits selected candidates without exposing the private code", async () => {
     vi.spyOn(
       playerRepository,

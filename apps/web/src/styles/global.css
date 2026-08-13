@@ -647,10 +647,52 @@ p {
   box-shadow: 0 24px 80px #0f172a40;
   color: var(--text);
   overflow: auto;
+  opacity: 0;
+  transform: translateY(18px) scale(0.96);
+  transform-origin: center;
+}
+.identity-claim-dialog[open][data-state="open"] {
+  animation: identity-dialog-lift-in 300ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.identity-claim-dialog[open][data-state="closing"] {
+  animation: identity-dialog-lift-out 180ms ease-in both;
+  pointer-events: none;
 }
 .identity-claim-dialog::backdrop {
   background: #0f172a99;
   backdrop-filter: blur(3px);
+  animation: identity-dialog-backdrop-in 180ms ease-out both;
+}
+.identity-claim-dialog[data-state="closing"]::backdrop {
+  animation: identity-dialog-backdrop-out 180ms ease-in both;
+}
+@keyframes identity-dialog-lift-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes identity-dialog-lift-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@keyframes identity-dialog-backdrop-in {
+  from {
+    background: transparent;
+    backdrop-filter: blur(0);
+  }
+}
+@keyframes identity-dialog-backdrop-out {
+  to {
+    background: transparent;
+    backdrop-filter: blur(0);
+  }
 }
 .identity-claim-dialog__header {
   position: sticky;
@@ -1517,9 +1559,36 @@ p {
   }
   .identity-claim-dialog {
     inline-size: 100%;
-    max-block-size: 100%;
-    block-size: 100%;
-    border-radius: 0;
+    max-block-size: 92dvh;
+    margin-block: auto 0;
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+  }
+  .identity-claim-dialog[open][data-state="open"] {
+    animation: identity-dialog-sheet-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .identity-claim-dialog[open][data-state="closing"] {
+    animation: identity-dialog-sheet-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+  }
+  @keyframes identity-dialog-sheet-in {
+    from {
+      opacity: 0.65;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes identity-dialog-sheet-out {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0.4;
+      transform: translateY(100%);
+    }
   }
   .identity-claim-dialog__header {
     padding: 1rem;
@@ -1658,6 +1727,10 @@ p {
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none !important;
+  }
+  .identity-claim-dialog,
+  .identity-claim-dialog::backdrop {
+    transform: none !important;
   }
 }
 

@@ -10,6 +10,7 @@ BUSU는 기록 근거를 빠르게 비교하는 차분하고 신뢰감 있는 �
 - 진입 효과는 opacity와 최대 8px 수직 이동만 사용한다. 후보·탭 전환은 240ms 안에 끝내고 후보 stagger는 여섯 번째 항목에서 상한을 둔다.
 - 라우트 이동은 React Router view transition을 점진적 향상으로 사용하고 root crossfade만 허용한다. 비동기 상세 데이터와 카드 사이의 가짜 shared-element morph는 만들지 않는다.
 - `prefers-reduced-motion: reduce`에서는 transform, stagger, source pulse, smooth scroll, view-transition animation을 제거한다.
+- 동명이인 구분 dialog는 desktop에서 중앙 리프트(18px, scale 0.96), 700px 이하에서 bottom sheet로 연다. 닫기 효과가 끝날 때까지 native dialog top layer를 유지하고 reduced motion에서는 즉시 닫는다.
 
 ## 1. Visual Theme & Atmosphere
 
