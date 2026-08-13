@@ -32,13 +32,16 @@ describe("Layout", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps the compact version label on the home route only", () => {
-    render(
-      <MemoryRouter initialEntries={["/search"]}>
-        <Layout />
-      </MemoryRouter>,
-    );
+  it.each(["/", "/search?q=임대현", "/players/player-1"])(
+    "shows the compact version label on %s",
+    (route) => {
+      render(
+        <MemoryRouter initialEntries={[route]}>
+          <Layout />
+        </MemoryRouter>,
+      );
 
-    expect(document.querySelector(".app-version")).not.toBeInTheDocument();
-  });
+      expect(screen.getByText(`버전 ${appVersion}`)).toHaveClass("app-version");
+    },
+  );
 });
