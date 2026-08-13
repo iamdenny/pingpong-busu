@@ -12,6 +12,7 @@ import {
   type SourceComparison,
 } from "@busu/domain";
 import type {
+  IdentityCandidateEvidence,
   IdentityClaimInput,
   PlayerRepository,
   PlayerSearchInput,
@@ -58,6 +59,9 @@ const resultSchema = z.object({
   sort_date: z.string().nullish(),
   last_checked_at: z.string(),
   first_seen_at: z.string(),
+});
+const candidateResultSchema = resultSchema.extend({
+  player_public_id: z.coerce.string(),
 });
 const sourceStatusSchema = z.object({
   code: sourceCodeSchema,
@@ -228,6 +232,33 @@ export class SupabasePlayerRepository implements PlayerRepository {
       },
     );
     return { ...summary, records, sources };
+  }
+  async getIdentityCandidateEvidence(
+    candidateIds: readonly string[],
+  ): Promise<IdentityCandidateEvidence[]> {
+    if (candidateIds.length === 0) return [];
+    const uniqueIds = [...new Set(candidateIds)].slice(0, 30);
+    const { data, error } = await this.client
+      .from("public_results")
+      .select("*")
+      .in("player_public_id", uniqueIds)
+      .order("sort_date", { ascending: false, nullsFirst: false })
+      .order("last_checked_at", { ascending: false })
+      .limit(1_000);
+    if (error) throw error;
+    const rows = z.array(candidateResultSchema).parse(data);
+    const recordsByCandidate = new Map<string, PlayerRecord[]>();
+    for (const row of rows) {
+      const records = recordsByCandidate.get(row.player_public_id) ?? [];
+      records.push(toPlayerRecord(row));
+      recordsByCandidate.set(row.player_public_id, records);
+    }
+    return uniqueIds.map((candidateId) => ({
+      candidateId,
+      records: sortPlayerRecordsByLatest(
+        recordsByCandidate.get(candidateId) ?? [],
+      ).slice(0, 2),
+    }));
   }
   async requestRefresh(input: RefreshRequest) {
     const { data, error } = await this.client.functions.invoke(

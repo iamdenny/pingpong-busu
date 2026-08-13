@@ -1,4 +1,5 @@
 import { ShieldCheck, UsersRound, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent } from "react";
 import { formatDivisionObservation, type PlayerSummary } from "@busu/domain";
 import { playerRepository } from "../lib/runtime";
@@ -8,6 +9,11 @@ interface IdentityClaimDialogProps {
 }
 
 const privateCodePattern = /^\d{4}$/u;
+const evidenceDateFormatter = new Intl.DateTimeFormat("ko-KR", {
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+});
 
 export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -21,17 +27,30 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
     "idle" | "pending" | "success" | "error"
   >("idle");
   const [referenceId, setReferenceId] = useState<string>();
+  const [isOpen, setIsOpen] = useState(false);
+  const candidateIds = candidates.map((candidate) => candidate.id);
+  const evidence = useQuery({
+    queryKey: ["identity-candidate-evidence", candidateIds],
+    queryFn: () => playerRepository.getIdentityCandidateEvidence(candidateIds),
+    enabled: isOpen && candidateIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+  const evidenceByCandidate = new Map(
+    evidence.data?.map((item) => [item.candidateId, item.records] as const),
+  );
 
   const open = () => {
     setErrorMessage(undefined);
     setSubmissionState("idle");
     setReferenceId(undefined);
+    setIsOpen(true);
     dialogRef.current?.showModal();
   };
 
   const close = () => dialogRef.current?.close();
 
   const resetForm = () => {
+    setIsOpen(false);
     setSelectedIds(new Set());
     setPrivateCode("");
     setNote("");
@@ -140,27 +159,69 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
               <p id="identity-candidate-hint">
                 같은 사람의 기록이면 여러 개를 선택할 수 있습니다.
               </p>
-              {candidates.map((candidate) => (
-                <label key={candidate.id}>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(candidate.id)}
-                    onChange={() => toggleCandidate(candidate.id)}
-                  />
-                  <span>
-                    <strong>{candidate.name}</strong>
-                    <small>
-                      {candidate.region ?? "지역 미상"} ·{" "}
-                      {candidate.club ?? "소속 미상"} ·{" "}
-                      {formatDivisionObservation(
-                        candidate.recentObservedDivisionSystem,
-                        candidate.recentObservedDivision,
-                      )}{" "}
-                      · 입상 {candidate.resultCount}건
-                    </small>
-                  </span>
-                </label>
-              ))}
+              {candidates.map((candidate) => {
+                const evidenceId = `identity-candidate-evidence-${candidate.id}`;
+                const records = evidenceByCandidate.get(candidate.id) ?? [];
+                return (
+                  <div className="identity-candidate-option" key={candidate.id}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(candidate.id)}
+                        aria-describedby={evidenceId}
+                        onChange={() => toggleCandidate(candidate.id)}
+                      />
+                      <span>
+                        <strong>{candidate.name}</strong>
+                        <small>
+                          {candidate.region ?? "지역 미상"} ·{" "}
+                          {candidate.club ?? "소속 미상"} ·{" "}
+                          {formatDivisionObservation(
+                            candidate.recentObservedDivisionSystem,
+                            candidate.recentObservedDivision,
+                          )}{" "}
+                          · 입상 {candidate.resultCount}건
+                        </small>
+                      </span>
+                    </label>
+                    <div
+                      className="identity-candidate-evidence"
+                      id={evidenceId}
+                    >
+                      {evidence.isPending ? (
+                        <small>최근 출전 기록 확인 중…</small>
+                      ) : evidence.isError ? (
+                        <small>최근 출전 기록을 불러오지 못했습니다.</small>
+                      ) : records.length === 0 ? (
+                        <small>확인 가능한 출전 기록이 없습니다.</small>
+                      ) : (
+                        <>
+                          <small className="identity-candidate-evidence__title">
+                            최근 출전 기록
+                          </small>
+                          <ul>
+                            {records.map((record) => (
+                              <li key={record.id}>
+                                <span>
+                                  {record.date && (
+                                    <time dateTime={record.date}>
+                                      {evidenceDateFormatter.format(
+                                        new Date(`${record.date}T00:00:00`),
+                                      )}
+                                    </time>
+                                  )}
+                                  <strong>{record.tournament}</strong>
+                                </span>
+                                <span>{record.event}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </fieldset>
 
             <div className="identity-claim-field">

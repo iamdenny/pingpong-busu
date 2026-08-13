@@ -5,6 +5,7 @@ import {
   type SourceStatus,
 } from "@busu/domain";
 import type {
+  IdentityCandidateEvidence,
   IdentityClaimInput,
   IdentityClaimResponse,
   PlayerRepository,
@@ -138,6 +139,21 @@ export class DemoPlayerRepository implements PlayerRepository {
     return player
       ? { ...player, records: sortPlayerRecordsByLatest(player.records) }
       : null;
+  }
+  async getIdentityCandidateEvidence(
+    candidateIds: readonly string[],
+  ): Promise<IdentityCandidateEvidence[]> {
+    return [...new Set(candidateIds)].slice(0, 30).map((candidateId) => {
+      const player = demoPlayers.find(
+        (candidate) => candidate.id === candidateId,
+      );
+      return {
+        candidateId,
+        records: player
+          ? sortPlayerRecordsByLatest(player.records).slice(0, 2)
+          : [],
+      };
+    });
   }
   async requestRefresh(input: RefreshRequest): Promise<RefreshResponse> {
     return {

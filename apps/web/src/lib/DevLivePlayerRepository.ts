@@ -6,6 +6,7 @@ import {
   type SourceStatus,
 } from "@busu/domain";
 import type {
+  IdentityCandidateEvidence,
   IdentityClaimInput,
   IdentityClaimResponse,
   PlayerRepository,
@@ -136,6 +137,19 @@ export class DevLivePlayerRepository implements PlayerRepository {
     if (!response.ok)
       throw new Error("개발용 선수 상세를 불러오지 못했습니다.");
     return (await response.json()) as PlayerDetail;
+  }
+  async getIdentityCandidateEvidence(
+    candidateIds: readonly string[],
+  ): Promise<IdentityCandidateEvidence[]> {
+    return Promise.all(
+      [...new Set(candidateIds)].slice(0, 30).map(async (candidateId) => {
+        const player = await this.getPlayer(candidateId);
+        return {
+          candidateId,
+          records: player?.records.slice(0, 2) ?? [],
+        };
+      }),
+    );
   }
   async requestRefresh(input: RefreshRequest): Promise<RefreshResponse> {
     const sourceCode = input.sourceCodes?.[0] ?? "astree";
