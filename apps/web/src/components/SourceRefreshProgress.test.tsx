@@ -89,6 +89,57 @@ describe("SourceRefreshProgress", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("collapses details when completion includes a failed source", async () => {
+    const { rerender } = render(
+      <SourceRefreshProgress
+        sources={[
+          {
+            sourceCode: "astree",
+            sourceName: "애즈트리",
+            state: "refreshing",
+          },
+          {
+            sourceCode: "airping",
+            sourceName: "에어핑퐁",
+            state: "refreshing",
+          },
+        ]}
+      />,
+    );
+
+    rerender(
+      <SourceRefreshProgress
+        sources={[
+          {
+            sourceCode: "astree",
+            sourceName: "애즈트리",
+            state: "succeeded",
+          },
+          {
+            sourceCode: "airping",
+            sourceName: "에어핑퐁",
+            state: "failed",
+            errorCode: "source_timeout",
+          },
+        ]}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", {
+          name: "실시간 출처 조회 상세 보기",
+        }),
+      ).toHaveAttribute("aria-expanded", "false"),
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "2곳 조회 완료 · 1곳 확인 필요",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("list", { hidden: true })).not.toBeVisible();
+  });
+
   it.each([
     ["source_timeout", "시간 초과"],
     ["source_blocked", "접근 차단"],
