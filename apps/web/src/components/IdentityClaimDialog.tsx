@@ -3,9 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   formatDivisionObservation,
-  homonymNicknameCatalog,
+  homonymNicknameMaxLength,
   homonymNicknameLabel,
-  type HomonymNicknameCode,
+  isHomonymNickname,
+  normalizeHomonymNickname,
+  pickHomonymNicknameSuggestion,
   type PlayerSummary,
 } from "@busu/domain";
 import { getAnonymousEditorId } from "../lib/anonymousEditor";
@@ -17,7 +19,12 @@ interface IdentityClaimDialogProps {
 
 interface IdentityGroup {
   id: string;
-  nickname: HomonymNicknameCode;
+  nickname: string;
+}
+
+interface IdentityFormState {
+  groups: IdentityGroup[];
+  assignments: Readonly<Record<string, string>>;
 }
 
 const evidenceDateFormatter = new Intl.DateTimeFormat("ko-KR", {
@@ -28,22 +35,44 @@ const evidenceDateFormatter = new Intl.DateTimeFormat("ko-KR", {
 const desktopDialogCloseDurationMs = 180;
 const mobileDialogCloseDurationMs = 220;
 
-function initialGroups(): IdentityGroup[] {
-  return [
-    { id: "identity-group-1", nickname: "power-drive" },
-    { id: "identity-group-2", nickname: "loop-drive-champion" },
-  ];
+function identityFormState(
+  candidates: readonly PlayerSummary[],
+): IdentityFormState {
+  const groups: IdentityGroup[] = [];
+  const assignments: Record<string, string> = {};
+  const groupIdByNickname = new Map<string, string>();
+
+  for (const candidate of candidates) {
+    const nickname = homonymNicknameLabel(candidate.homonymNickname);
+    if (!nickname) continue;
+    const nicknameKey = nickname.toLocaleLowerCase("ko-KR");
+    let groupId = groupIdByNickname.get(nicknameKey);
+    if (!groupId) {
+      groupId = "identity-group-" + (groups.length + 1);
+      groups.push({ id: groupId, nickname });
+      groupIdByNickname.set(nicknameKey, groupId);
+    }
+    assignments[candidate.id] = groupId;
+  }
+
+  if (groups.length === 0) {
+    groups.push({
+      id: "identity-group-1",
+      nickname: pickHomonymNicknameSuggestion(),
+    });
+  }
+
+  return { groups, assignments };
 }
 
 export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const nextGroupIdRef = useRef(3);
+  const nextGroupIdRef = useRef(2);
   const queryClient = useQueryClient();
-  const [groups, setGroups] = useState<IdentityGroup[]>(initialGroups);
-  const [assignmentByCandidate, setAssignmentByCandidate] = useState<
-    Readonly<Record<string, string>>
-  >({});
-  const [reasonCode, setReasonCode] = useState("public-record-comparison");
+  const [formState, setFormState] = useState<IdentityFormState>(() =>
+    identityFormState(candidates),
+  );
+  const { groups, assignments: assignmentByCandidate } = formState;
   const [website, setWebsite] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>();
@@ -71,12 +100,12 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   const evidenceByCandidate = new Map(
     evidence.data?.map((item) => [item.candidateId, item] as const),
   );
-  const usedNicknameCodes = new Set(groups.map((group) => group.nickname));
   const assignedCount = Object.values(assignmentByCandidate).filter(
     Boolean,
   ).length;
 
   const open = () => {
+    const restoredFormState = identityFormState(candidates);
     isClosingRef.current = false;
     if (closeTimerRef.current !== undefined) {
       window.clearTimeout(closeTimerRef.current);
@@ -86,6 +115,8 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
     setSubmissionState("idle");
     setReferenceId(undefined);
     setAppliedGroupCount(undefined);
+    setFormState(restoredFormState);
+    nextGroupIdRef.current = restoredFormState.groups.length + 1;
     setIsOpen(true);
     setDialogState("open");
     dialogRef.current?.showModal();
@@ -138,10 +169,6 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
       });
     }
     setIsOpen(false);
-    setGroups(initialGroups());
-    nextGroupIdRef.current = 3;
-    setAssignmentByCandidate({});
-    setReasonCode("public-record-comparison");
     setWebsite("");
     setConfirmed(false);
     setErrorMessage(undefined);
@@ -151,51 +178,56 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   };
 
   const assignCandidate = (candidateId: string, groupId: string) => {
-    setAssignmentByCandidate((current) => {
+    setFormState((current) => {
+      const assignments = { ...current.assignments };
       if (!groupId) {
-        const next = { ...current };
-        delete next[candidateId];
-        return next;
+        delete assignments[candidateId];
+      } else {
+        assignments[candidateId] = groupId;
       }
-      return { ...current, [candidateId]: groupId };
+      return { ...current, assignments };
     });
     setErrorMessage(undefined);
   };
 
-  const updateGroupNickname = (
-    groupId: string,
-    nickname: HomonymNicknameCode,
-  ) => {
-    setGroups((current) =>
-      current.map((group) =>
+  const updateGroupNickname = (groupId: string, nickname: string) => {
+    setFormState((current) => ({
+      ...current,
+      groups: current.groups.map((group) =>
         group.id === groupId ? { ...group, nickname } : group,
       ),
-    );
+    }));
     setErrorMessage(undefined);
   };
 
   const addGroup = () => {
-    setGroups((current) => {
-      const currentNicknames = new Set(current.map((group) => group.nickname));
-      const nickname = homonymNicknameCatalog.find(
-        (item) => !currentNicknames.has(item.code),
-      )?.code;
-      if (!nickname) return current;
+    setFormState((current) => {
       const groupId = "identity-group-" + nextGroupIdRef.current;
       nextGroupIdRef.current += 1;
-      return [...current, { id: groupId, nickname }];
+      const suggestedNickname = pickHomonymNicknameSuggestion(
+        current.groups.map((group) => group.nickname),
+      );
+      return {
+        ...current,
+        groups: [
+          ...current.groups,
+          { id: groupId, nickname: suggestedNickname },
+        ],
+      };
     });
     setErrorMessage(undefined);
   };
 
   const removeGroup = (groupId: string) => {
-    if (groups.length <= 2) return;
-    setGroups((current) => current.filter((group) => group.id !== groupId));
-    setAssignmentByCandidate((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(([, value]) => value !== groupId),
+    if (groups.length <= 1) return;
+    setFormState((current) => ({
+      groups: current.groups.filter((group) => group.id !== groupId),
+      assignments: Object.fromEntries(
+        Object.entries(current.assignments).filter(
+          ([, value]) => value !== groupId,
+        ),
       ),
-    );
+    }));
     setErrorMessage(undefined);
   };
 
@@ -205,12 +237,29 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
       const groupCandidateIds = candidateIds.filter(
         (candidateId) => assignmentByCandidate[candidateId] === group.id,
       );
+      const nickname = normalizeHomonymNickname(group.nickname);
       return groupCandidateIds.length > 0
-        ? [{ nickname: group.nickname, candidateIds: groupCandidateIds }]
+        ? [{ nickname, candidateIds: groupCandidateIds }]
         : [];
     });
-    if (assignedGroups.length < 2) {
-      setErrorMessage("서로 다른 사람 별칭 두 개 이상에 기록을 배정해 주세요.");
+    if (assignedGroups.some((group) => !isHomonymNickname(group.nickname))) {
+      setErrorMessage(
+        `별칭은 한글이나 영문을 포함한 2~${homonymNicknameMaxLength}자로 입력해 주세요.`,
+      );
+      return;
+    }
+    if (
+      new Set(
+        assignedGroups.map((group) =>
+          group.nickname.toLocaleLowerCase("ko-KR"),
+        ),
+      ).size !== assignedGroups.length
+    ) {
+      setErrorMessage("각 사람에게 서로 다른 별칭을 입력해 주세요.");
+      return;
+    }
+    if (assignedGroups.length < 1) {
+      setErrorMessage("한 사람 이상의 별칭에 기록을 배정해 주세요.");
       return;
     }
     if (!confirmed) {
@@ -232,20 +281,28 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
     const request = playerRepository.applyIdentityEdit({
       groups: assignedGroups,
       editorId,
-      note: reasonCode,
       ...(website ? { website } : {}),
     });
     void request
-      .then((response) => {
-        void queryClient.invalidateQueries({ queryKey: ["players"] });
-        void queryClient.invalidateQueries({
-          queryKey: ["identity-edit-history"],
-        });
+      .then(async (response) => {
         setReferenceId(response.referenceId);
         setAppliedGroupCount(response.groupCount);
+        await Promise.allSettled([
+          queryClient.invalidateQueries({ queryKey: ["players"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["identity-edit-history"],
+          }),
+        ]);
         setSubmissionState("success");
       })
-      .catch(() => setSubmissionState("error"));
+      .catch((error: unknown) => {
+        setSubmissionState("error");
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "편집을 반영하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+      });
   };
 
   return (
@@ -307,12 +364,12 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
               <div className="identity-groups__heading">
                 <div>
                   <h3 id="identity-groups-title">사람별 탁구 별칭</h3>
-                  <p>같은 이름 안에서는 서로 다른 별칭을 사용합니다.</p>
+                  <p>추천 문구를 바꾸거나 원하는 별칭을 직접 입력하세요.</p>
                 </div>
                 <button
                   type="button"
                   onClick={addGroup}
-                  disabled={groups.length >= homonymNicknameCatalog.length}
+                  disabled={groups.length >= candidates.length}
                 >
                   <Plus size={15} aria-hidden="true" /> 사람 추가
                 </button>
@@ -327,31 +384,21 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                       <label htmlFor={group.id + "-nickname"}>
                         사람 {index + 1} 별칭
                       </label>
-                      <select
+                      <input
                         id={group.id + "-nickname"}
+                        name={group.id + "-nickname"}
+                        type="text"
+                        autoComplete="off"
+                        minLength={2}
+                        maxLength={homonymNicknameMaxLength}
+                        required
                         value={group.nickname}
                         onChange={(event) =>
-                          updateGroupNickname(
-                            group.id,
-                            event.target.value as HomonymNicknameCode,
-                          )
+                          updateGroupNickname(group.id, event.target.value)
                         }
-                      >
-                        {homonymNicknameCatalog.map((item) => (
-                          <option
-                            key={item.code}
-                            value={item.code}
-                            disabled={
-                              item.code !== group.nickname &&
-                              usedNicknameCodes.has(item.code)
-                            }
-                          >
-                            {item.label}
-                          </option>
-                        ))}
-                      </select>
+                      />
                       <strong>{groupCandidateCount}건</strong>
-                      {groups.length > 2 && (
+                      {groups.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeGroup(group.id)}
@@ -359,7 +406,8 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                             "사람 " +
                             (index + 1) +
                             " " +
-                            homonymNicknameLabel(group.nickname) +
+                            (homonymNicknameLabel(group.nickname) ||
+                              "별칭 미입력") +
                             " 삭제"
                           }
                         >
@@ -419,7 +467,10 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                                 assignCandidate(candidate.id, group.id)
                               }
                             />
-                            <span>{homonymNicknameLabel(group.nickname)}</span>
+                            <span>
+                              {homonymNicknameLabel(group.nickname) ||
+                                `사람 ${groups.indexOf(group) + 1}`}
+                            </span>
                           </label>
                         ))}
                         <label>
@@ -430,7 +481,7 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                             checked={!selectedGroupId}
                             onChange={() => assignCandidate(candidate.id, "")}
                           />
-                          <span>아직 모르겠어요</span>
+                          <span>모름</span>
                         </label>
                       </div>
                     ) : (
@@ -442,10 +493,11 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                             assignCandidate(candidate.id, event.target.value)
                           }
                         >
-                          <option value="">아직 모르겠어요</option>
+                          <option value="">모름</option>
                           {groups.map((group) => (
                             <option key={group.id} value={group.id}>
-                              {homonymNicknameLabel(group.nickname)}
+                              {homonymNicknameLabel(group.nickname) ||
+                                `사람 ${groups.indexOf(group) + 1}`}
                             </option>
                           ))}
                         </select>
@@ -457,10 +509,22 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                     >
                       {evidence.isPending ? (
                         <small>최근 출전 기록 확인 중…</small>
-                      ) : evidence.isError ? (
-                        <small>최근 출전 기록을 불러오지 못했습니다.</small>
-                      ) : candidateEvidence?.status === "error" ? (
-                        <small>이 후보의 최근 출전 기록 조회에 실패했습니다.</small>
+                      ) : evidence.isError ||
+                        candidateEvidence?.status === "error" ? (
+                        <div className="identity-candidate-evidence__error">
+                          <small>
+                            {candidateEvidence?.status === "error"
+                              ? "이 후보의 최근 출전 기록 조회에 실패했습니다."
+                              : "최근 출전 기록을 불러오지 못했습니다."}
+                          </small>
+                          <button
+                            type="button"
+                            onClick={() => void evidence.refetch()}
+                            disabled={evidence.isFetching}
+                          >
+                            다시 불러오기
+                          </button>
+                        </div>
                       ) : records.length === 0 ? (
                         <small>확인 가능한 출전 기록이 없습니다.</small>
                       ) : (
@@ -497,21 +561,6 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
               별도의 비밀번호는 없습니다. 원본 기록은 삭제되지 않고, 변경과
               되돌리기는 모두 공개 이력으로 남습니다.
             </p>
-
-            <div className="identity-claim-field">
-              <label htmlFor="identity-claim-reason">구분 근거</label>
-              <select
-                id="identity-claim-reason"
-                name="reasonCode"
-                value={reasonCode}
-                onChange={(event) => setReasonCode(event.target.value)}
-              >
-                <option value="public-record-comparison">공개 대회 기록 비교</option>
-                <option value="club-and-region-comparison">소속·지역 기록 비교</option>
-                <option value="event-history-comparison">출전 종목 이력 비교</option>
-              </select>
-              <p>개인정보가 공개 이력에 남지 않도록 정해진 근거만 선택합니다.</p>
-            </div>
 
             <div className="identity-claim-honeypot" inert>
               <label htmlFor="identity-claim-website">웹사이트</label>

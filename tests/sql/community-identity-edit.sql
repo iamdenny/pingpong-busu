@@ -98,24 +98,24 @@ begin
   end if;
 
   update public.players
-  set homonym_nickname = 'loop-drive-champion'
+  set homonym_nickname = '루프 드라이브 최강자'
   where public_id = v_player_public_ids[1];
 
   update public.players
-  set homonym_nickname = 'power-drive'
+  set homonym_nickname = '파워 드라이브 전문가'
   where public_id = v_player_public_ids[7];
 
   v_edit := public.apply_identity_partition_internal(
     jsonb_build_array(
       jsonb_build_object(
         'nickname',
-        'power-drive',
+        '파워 드라이브 전문가',
         'player_public_ids',
         to_jsonb(v_player_public_ids[1:6])
       ),
       jsonb_build_object(
         'nickname',
-        'loop-drive-champion',
+        '루프 드라이브 최강자',
         'player_public_ids',
         to_jsonb(v_player_public_ids[7:12])
       )
@@ -141,8 +141,8 @@ begin
     where player.public_id = any(v_player_public_ids)
       and player.merged_into_player_id is null
       and player.homonym_nickname in (
-        'power-drive',
-        'loop-drive-champion'
+        '파워 드라이브 전문가',
+        '루프 드라이브 최강자'
       )
   ) <> 2 then
     raise exception 'community partition did not apply both nicknames';
@@ -182,12 +182,12 @@ begin
     select 1
     from public.players player
     where player.public_id = v_player_public_ids[1]
-      and player.homonym_nickname = 'loop-drive-champion'
+      and player.homonym_nickname = '루프 드라이브 최강자'
   ) or not exists (
     select 1
     from public.players player
     where player.public_id = v_player_public_ids[7]
-      and player.homonym_nickname = 'power-drive'
+      and player.homonym_nickname = '파워 드라이브 전문가'
   ) or (
     select count(*)
     from public.players player

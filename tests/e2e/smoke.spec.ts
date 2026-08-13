@@ -12,25 +12,21 @@ test("demo search vertical slice", async ({ page }) => {
     page.getByRole("heading", { name: "“김탁구” 선수" }),
   ).toBeVisible();
   await expect(page.getByText("2건", { exact: true })).toBeVisible();
-  await expect(
-    page.getByText(/같은 이름의 선수가 여러 명/u),
-  ).toBeVisible();
+  await expect(page.getByText(/같은 이름의 선수가 여러 명/u)).toBeVisible();
 
   await page.getByRole("button", { name: "동명이인 구분하기" }).click();
   const editDialog = page.getByRole("dialog", {
     name: "동명이인 기록 구분하기",
   });
   await expect(editDialog).toBeVisible();
-  await expect(
-    editDialog.getByText(/후보 수 제한은 없습니다/u),
-  ).toBeVisible();
+  await expect(editDialog.getByText(/후보 수 제한은 없습니다/u)).toBeVisible();
   await expect(
     editDialog.getByText(/별도의 비밀번호는 없습니다/u),
   ).toBeVisible();
   await expect(editDialog.locator('input[type="password"]')).toHaveCount(0);
   await editDialog
     .getByRole("group", { name: /서울.*스핀탁구클럽/u })
-    .getByRole("radio", { name: "파워 드라이브" })
+    .getByRole("radio", { name: "파워 드라이브 전문가" })
     .click();
   await editDialog
     .getByRole("group", { name: /부산.*블루라켓/u })
@@ -47,7 +43,7 @@ test("demo search vertical slice", async ({ page }) => {
   );
   await page
     .getByRole("link", {
-      name: "김탁구 파워 드라이브 서울 스핀탁구클럽 상세 기록 보기",
+      name: "김탁구 파워 드라이브 전문가 서울 스핀탁구클럽 상세 기록 보기",
     })
     .click();
   await expect(page.getByRole("heading", { name: "대회 이력" })).toBeAttached();

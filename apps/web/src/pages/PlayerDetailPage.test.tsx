@@ -18,12 +18,12 @@ describe("PlayerDetailPage metadata", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "김탁구 파워 드라이브",
+        name: "김탁구 파워 드라이브 전문가",
       }),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(document.title).toBe(
-        "김탁구 · 파워 드라이브 선수 탁구 부수·입상 기록 · BUSU",
+        "김탁구 · 파워 드라이브 전문가 선수 탁구 부수·입상 기록 · BUSU",
       ),
     );
     expect(
@@ -33,7 +33,7 @@ describe("PlayerDetailPage metadata", () => {
       document.head.querySelector('meta[property="og:description"]'),
     ).toHaveAttribute(
       "content",
-      "김탁구 선수 (파워 드라이브, 동명이인 기록 구분용 별칭) (서울 · 스핀탁구클럽)의 최근 관측 오픈부수 5부, 대회 출전 3건과 4강 이상 입상 3건의 원문 출처를 확인하세요.",
+      "김탁구 선수 (파워 드라이브 전문가, 동명이인 기록 구분용 별칭) (서울 · 스핀탁구클럽)의 최근 관측 오픈부수 5부, 대회 출전 3건과 4강 이상 입상 3건의 원문 출처를 확인하세요.",
     );
     expect(
       document.head.querySelector('meta[property="og:url"]'),

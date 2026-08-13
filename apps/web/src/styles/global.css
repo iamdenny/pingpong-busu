@@ -811,7 +811,7 @@ p {
   font-size: 0.82rem;
   font-weight: 850;
 }
-.identity-groups select,
+.identity-groups input,
 .identity-assignment-select select {
   min-block-size: 44px;
   min-inline-size: 0;
@@ -821,6 +821,9 @@ p {
   color: var(--text);
   padding: 0.45rem 0.65rem;
   font: inherit;
+}
+.identity-groups input:user-invalid {
+  border-color: #c02626;
 }
 .identity-groups li > strong {
   min-inline-size: 2.3rem;
@@ -838,12 +841,10 @@ p {
   padding: 0;
   border: 0;
 }
-.identity-candidate-options legend,
-.identity-claim-field > label {
+.identity-candidate-options legend {
   font-weight: 900;
 }
-.identity-candidate-options > p,
-.identity-claim-field > p {
+.identity-candidate-options > p {
   margin: 0.15rem 0 0.55rem;
   color: var(--muted);
   font-size: 0.82rem;
@@ -939,6 +940,22 @@ p {
   padding-block-start: 0.6rem;
   border-block-start: 1px solid #e2e8f0;
 }
+.identity-candidate-evidence__error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+.identity-candidate-evidence__error button {
+  min-block-size: 40px;
+  border: 1px solid #b6c9ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #1649a5;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
 .identity-candidate-evidence__title {
   display: block;
   margin-block-end: 0.35rem;
@@ -978,25 +995,6 @@ p {
   color: #475569;
   font-size: 0.8rem;
 }
-.identity-claim-field {
-  margin: 1rem 0;
-}
-.identity-claim-field label small {
-  color: var(--muted);
-  font-weight: 600;
-}
-.identity-claim-field textarea {
-  inline-size: 100%;
-  border: 1px solid #94a3b8;
-  border-radius: 10px;
-  background: #fff;
-  padding: 0.7rem 0.8rem;
-  font-size: 1rem;
-}
-.identity-claim-field textarea {
-  min-block-size: 90px;
-  resize: vertical;
-}
 .identity-editor-note {
   margin: 0.75rem 0;
   border-radius: 10px;
@@ -1004,10 +1002,6 @@ p {
   color: #334155;
   padding: 0.7rem 0.8rem;
   font-size: 0.84rem;
-}
-.identity-claim-field textarea:user-invalid {
-  border-color: var(--danger);
-  background: #fff7f7;
 }
 .identity-claim-honeypot {
   position: absolute;
@@ -2130,11 +2124,34 @@ p {
     grid-template-columns: minmax(0, 1fr) auto;
   }
   .identity-groups li > label,
-  .identity-groups li > select {
+  .identity-groups li > input {
     grid-column: 1 / -1;
   }
   .identity-groups li > strong {
     text-align: start;
+  }
+  .identity-assignment-radios {
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    overflow-x: auto;
+    padding-block-end: 0.15rem;
+    scrollbar-width: none;
+  }
+  .identity-assignment-radios::-webkit-scrollbar {
+    display: none;
+  }
+  .identity-assignment-radios label {
+    min-block-size: 36px;
+    flex: 0 0 auto;
+    gap: 0.25rem;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+  .identity-assignment-radios input {
+    inline-size: 16px;
+    block-size: 16px;
+    margin: 0;
   }
   .identity-claim-actions {
     position: sticky;

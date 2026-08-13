@@ -56,8 +56,9 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 6. `202608130006_source_observation_boundary.sql`: 출처 소속 증거와 canonical 대표 소속의 경계 및 예선 순위 입상 제외
 7. `202608130007_community_identity_edits.sql`: 무제한 후보 참여 편집, 공개 이력과 사용자 원복
 8. `202608130008_homonym_nickname_partitions.sql`: 탁구 별칭별 동명이인 partition과 원자적 편집·원복
+9. `202608130009_single_group_custom_nicknames.sql`: 적용된 운영 DB를 별칭 한 그룹·사용자 입력 별칭 규칙으로 교정
 
-배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 여덟 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. 배포 후에는 내부 `player_merge_review_log`와 `identity_partition_*` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 `list_identity_edit_history`만 공개되는지, `claim_source_request`와 출처 상태 기록 및 참여 편집 mutation RPC가 service role 전용인지, `public_player_search.division_observations`와 `homonym_nickname`이 조회되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
+배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 아홉 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`와 `identity_partition_*` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 `list_identity_edit_history`만 공개되는지, `claim_source_request`와 출처 상태 기록 및 참여 편집 mutation RPC가 service role 전용인지, `public_player_search.division_observations`와 `homonym_nickname`이 조회되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
 GitHub의 `production` environment에 아래 값을 설정합니다.
 
@@ -94,7 +95,7 @@ Edge가 장애를 기록할 때는 service role 전용 `record_source_refresh_fa
 
 ## 동명이인 참여 편집
 
-관리자 승인 queue는 사용하지 않습니다. 참여자는 검색 결과의 기록을 `파워 드라이브`·`루프 드라이브 최강자` 같은 검수된 탁구 별칭 두 개 이상에 배정합니다. 별칭은 동명이인 구분용이며 실제 실력이나 공식 등급이 아닙니다. 자유 입력은 받지 않고 같은 이름 안의 별칭 중복을 막으며, 확실하지 않은 기록은 미분류로 둡니다. `submit-identity-claim`은 후보 수에 고정 상한을 두지 않고 catalog, 중복 배정과 같은 정규화 이름의 활성 후보인지 서버에서 다시 확인합니다. 브라우저는 `crypto.randomUUID()`로 익명 편집자 ID를 한 번 만들고 `localStorage`에 보관하지만 사용자에게 기억하거나 입력하도록 요구하지 않습니다. Edge Function은 원문 ID를 서버 HMAC으로 즉시 변환하며 DB에는 HMAC만 남깁니다. 이 값은 인증 수단이 아니므로 브라우저 저장값을 지우거나 다른 기기를 사용해도 편집과 원복은 계속할 수 있습니다. 동일 브라우저 식별값은 이름별 24시간에 최대 3건, 전체 편집은 10분에 최대 30건으로 제한하고 숨겨진 honeypot 필드가 채워진 자동 제출은 저장하지 않습니다.
+관리자 승인 queue는 사용하지 않습니다. 참여자는 검색 결과의 기록을 직접 입력한 탁구 별칭 하나 이상에 배정합니다. 저장된 별칭이 없는 첫 진입은 사람 한 명만 만들고 추천 목록에서 별칭 하나를 무작위로 제안합니다. 필요한 만큼 사람을 추가해 다른 무작위 제안을 받거나 문구를 직접 수정할 수 있습니다. 저장된 별칭이 있는 후보는 다음에 창을 열 때 기존 사람 그룹과 기록 배정을 복원합니다. 한 사람만 확실히 아는 경우 그 기록만 반영하고 나머지는 미분류로 둘 수 있습니다. 구분 근거는 별도로 입력받지 않으며 공개 이력에는 시스템 기본 사유를 남깁니다. 별칭은 동명이인 구분용이며 실제 실력이나 공식 등급이 아닙니다. 같은 이름 안의 별칭 중복을 막고 확실하지 않은 기록은 미분류로 둡니다. `submit-identity-claim`은 후보 수에 고정 상한을 두지 않고 별칭 길이·문자·연락처 형태, 중복 배정과 같은 정규화 이름의 활성 후보인지 서버에서 다시 확인합니다. 브라우저는 `crypto.randomUUID()`로 익명 편집자 ID를 한 번 만들고 `localStorage`에 보관하지만 사용자에게 기억하거나 입력하도록 요구하지 않습니다. Edge Function은 원문 ID를 서버 HMAC으로 즉시 변환하며 DB에는 HMAC만 남깁니다. 이 값은 인증 수단이 아니므로 브라우저 저장값을 지우거나 다른 기기를 사용해도 편집과 원복은 계속할 수 있습니다. 동일 브라우저 식별값은 이름별 24시간에 최대 3건, 전체 편집은 10분에 최대 30건으로 제한하고 숨겨진 honeypot 필드가 채워진 자동 제출은 저장하지 않습니다.
 
 편집과 원복은 요청 단계에서 요청 원점별 10분 10건, 익명 편집자별 24시간 6건을 원자적으로 제한합니다. 전체 10분 30건 예산은 실제 변경 트랜잭션 안에서만 차감되므로 무효 후보나 존재하지 않는 편집번호로 전체 사용자의 예산을 소모할 수 없습니다. 변경·원복 근거는 검수된 선택지만 저장해 주소·연락처·생년월일 같은 개인정보가 공개 이력에 유입되는 경로를 차단합니다. 후보 전체 수는 제한하지 않지만 근거 조회는 100건씩 분할합니다.
 

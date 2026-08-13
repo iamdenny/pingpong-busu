@@ -55,7 +55,7 @@ page/component → component test → `global.css` → desktop/mobile preview �
 
 ### 동명이인 참여 편집·원복 변경
 
-별칭 catalog → 기록별 그룹 배정 UI → Edge 입력 검증/HMAC → service-role atomic partition/merge RPC → 공개 이력 RPC → migration contract test → 전체 rollback SQL integration → public view의 활성 그룹·별칭 → data-model/operations 문서.
+별칭 자유 입력·정규화 → 기록별 그룹 배정 UI → Edge 입력 검증/HMAC → service-role atomic partition/merge RPC → 공개 이력·후보 기록 RPC와 fallback → migration contract test → 전체 rollback SQL integration → public view의 활성 그룹·별칭 → data-model/operations 문서.
 
 ### 출처 재시도 변경
 
