@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { PlayerDetailPage } from "./PlayerDetailPage";
@@ -44,5 +45,32 @@ describe("PlayerDetailPage metadata", () => {
     expect(screen.getAllByText("남자 단식")).not.toHaveLength(0);
     expect(screen.getAllByText("개인 단식")).not.toHaveLength(0);
     expect(screen.getAllByText("혼합 복식")).not.toHaveLength(0);
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs[0]).toHaveTextContent("입상 이력 (4강 이상)");
+    expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+    expect(tabs[1]).toHaveTextContent("전체 이력");
+  });
+
+  it("shows an empty award state before the complete history", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/players/kim-busan"]}>
+          <Routes>
+            <Route path="/players/:id" element={<PlayerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByText("4강 이상 입상 이력이 없습니다."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("8강")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "전체 이력" }));
+
+    expect(screen.getAllByText("8강")).not.toHaveLength(0);
   });
 });
