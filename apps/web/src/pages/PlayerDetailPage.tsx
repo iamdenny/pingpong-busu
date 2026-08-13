@@ -13,6 +13,7 @@ import { PageMetadata } from "../components/PageMetadata";
 import { RefreshStatus } from "../components/RefreshStatus";
 import { SourceComparison } from "../components/SourceComparison";
 import { playerRepository } from "../lib/runtime";
+import { useCalmEntry } from "../lib/motion";
 
 type Tab = "history" | "awards" | "sources" | "rules";
 
@@ -32,6 +33,10 @@ export function PlayerDetailPage() {
     queryKey: ["player", id],
     queryFn: () => playerRepository.getPlayer(id),
   });
+  const detailRef = useCalmEntry(
+    ".motion-entry",
+    result.data ? `${id}-ready` : `${id}-loading`,
+  );
   if (result.isLoading)
     return (
       <div className="page" aria-live="polite">
@@ -79,7 +84,7 @@ export function PlayerDetailPage() {
   const pageTitle = `${player.name} 선수 탁구 부수·입상 기록 · BUSU`;
   const pageDescription = `${player.name} 선수${identitySummary ? ` (${identitySummary})` : ""}의 ${observedDivisionSummary}대회 출전 ${player.records.length}건과 4강 이상 입상 ${player.resultCount}건의 원문 출처를 확인하세요.`;
   return (
-    <div className="page detail-page">
+    <div className="page detail-page" ref={detailRef}>
       <PageMetadata
         title={pageTitle}
         description={pageDescription}
@@ -88,10 +93,11 @@ export function PlayerDetailPage() {
       <Link
         className="back-link"
         to={`/search?q=${encodeURIComponent(returnQuery)}`}
+        viewTransition
       >
         <ArrowLeft size={18} /> 검색 결과로
       </Link>
-      <header className="player-header">
+      <header className="player-header motion-entry">
         <div>
           <p className="eyebrow">
             선수 기록 ·{" "}
@@ -111,7 +117,7 @@ export function PlayerDetailPage() {
             : "소속·지역 확인 필요"}
         </span>
       </header>
-      <section className="division-summary">
+      <section className="division-summary motion-entry">
         <article>
           <span>최근 관측 부수</span>
           <strong>
@@ -162,7 +168,11 @@ export function PlayerDetailPage() {
         ))}
       </nav>
       {(tab === "history" || tab === "awards") && (
-        <section aria-labelledby="history-title">
+        <section
+          key={tab}
+          aria-labelledby="history-title"
+          className="tab-panel-entry"
+        >
           <h2 id="history-title" className="visually-hidden">
             대회 이력
           </h2>
@@ -267,9 +277,13 @@ export function PlayerDetailPage() {
           </div>
         </section>
       )}
-      {tab === "sources" && <SourceComparison sources={player.sources} />}
+      {tab === "sources" && (
+        <div key="sources" className="tab-panel-entry">
+          <SourceComparison sources={player.sources} />
+        </div>
+      )}
       {tab === "rules" && (
-        <section className="empty-state">
+        <section key="rules" className="empty-state tab-panel-entry">
           <span className="badge">준비 중</span>
           <h2>대회 부수검증</h2>
           <p>

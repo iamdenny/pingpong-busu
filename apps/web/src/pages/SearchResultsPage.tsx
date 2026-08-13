@@ -38,6 +38,7 @@ import {
   shouldRetrySourceRefresh,
   sourceRefreshRetryDelay,
 } from "../lib/sourceRefreshRetry";
+import { useCalmEntry } from "../lib/motion";
 
 interface ManualRetryAttempt {
   attempts: number;
@@ -122,7 +123,6 @@ export function SearchResultsPage() {
     system: DivisionSummaryItem["system"];
     division: string;
   } | null>(null);
-  const candidateListRef = useRef<HTMLElement>(null);
   const [manualRetryAttempts, setManualRetryAttempts] = useState<
     Readonly<Record<string, ManualRetryAttempt>>
   >({});
@@ -368,6 +368,12 @@ export function SearchResultsPage() {
         : "awards";
   const shownCandidates =
     activeResultTab === "awards" ? awardCandidates : entryCandidates;
+  const candidateIds = shownCandidates.map((player) => player.id).join(",");
+  const candidateMotionKey = `${query}-${selectedDivisionKey ?? "all"}-${activeResultTab}-${candidateIds}`;
+  const candidateMotionRef = useCalmEntry(
+    ".candidate-motion-item",
+    candidateMotionKey,
+  );
   const candidateListLabel = selectedDivision
     ? `${selectedDivision.systemLabel} ${selectedDivision.division} ${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`
     : `${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`;
@@ -382,9 +388,10 @@ export function SearchResultsPage() {
 
   useEffect(() => {
     if (!selectedDivisionKey) return;
-    candidateListRef.current?.scrollIntoView?.({ block: "start" });
-    candidateListRef.current?.focus({ preventScroll: true });
-  }, [selectedDivisionKey]);
+    const list = candidateMotionRef.current as HTMLElement | null;
+    list?.scrollIntoView?.({ block: "start" });
+    list?.focus({ preventScroll: true });
+  }, [candidateMotionRef, selectedDivisionKey]);
 
   function selectDivision(summary: DivisionSummaryItem) {
     setDivisionSelection({
@@ -414,7 +421,9 @@ export function SearchResultsPage() {
         onSearch={(value) => {
           setResultTab("awards");
           setDivisionSelection(null);
-          void navigate(`/search?q=${encodeURIComponent(value)}`);
+          void navigate(`/search?q=${encodeURIComponent(value)}`, {
+            viewTransition: true,
+          });
         }}
       />
       <div className="page-heading">
@@ -597,89 +606,95 @@ export function SearchResultsPage() {
       )}
       <section
         id="candidate-results"
-        ref={candidateListRef}
+        ref={candidateMotionRef}
         className="candidate-list"
         aria-label={candidateListLabel}
         role="tabpanel"
         tabIndex={-1}
       >
-        {shownCandidates.map((player) => (
-          <Link
-            className="candidate-card candidate-card--link"
+        {shownCandidates.map((player, index) => (
+          <div
+            className="candidate-motion-item"
             key={player.id}
-            to={`/players/${player.id}`}
-            state={{ searchQuery: query }}
-            aria-label={`${player.name}${player.region ? ` ${player.region}` : ""}${player.club ? ` ${player.club}` : ""} 상세 기록 보기`}
+            data-motion-index={Math.min(index, 5)}
           >
-            <article>
-              <div className="candidate-card__top">
-                <div className="avatar" aria-hidden="true">
-                  {player.name.slice(0, 1)}
-                </div>
-                <div className="candidate-card__summary">
-                  <div className="candidate-name-row">
-                    <h2>{player.name}</h2>
+            <Link
+              className="candidate-card candidate-card--link"
+              to={`/players/${player.id}`}
+              state={{ searchQuery: query }}
+              viewTransition
+              aria-label={`${player.name}${player.region ? ` ${player.region}` : ""}${player.club ? ` ${player.club}` : ""} 상세 기록 보기`}
+            >
+              <article>
+                <div className="candidate-card__top">
+                  <div className="avatar" aria-hidden="true">
+                    {player.name.slice(0, 1)}
+                  </div>
+                  <div className="candidate-card__summary">
+                    <div className="candidate-name-row">
+                      <h2>{player.name}</h2>
+                      <span
+                        className={`data-badge data-badge--${player.dataKind ?? "demo"}`}
+                      >
+                        {player.dataKind === "live"
+                          ? "실제 공개 기록"
+                          : "가상 데이터"}
+                      </span>
+                    </div>
+                    <p>
+                      <MapPin size={16} />{" "}
+                      {player.region
+                        ? `${player.dataKind === "live" ? "기록 기반 추정 · " : ""}${player.region}`
+                        : "지역 미상"}{" "}
+                      · {player.club ?? "소속 미상"}
+                    </p>
+                  </div>
+                  <div className="candidate-card__meta">
                     <span
-                      className={`data-badge data-badge--${player.dataKind ?? "demo"}`}
+                      className={`identity identity--${player.identityStatus}`}
                     >
-                      {player.dataKind === "live"
-                        ? "실제 공개 기록"
-                        : "가상 데이터"}
+                      {identityText[player.identityStatus]}
+                    </span>
+                    <span className="candidate-card__checked">
+                      최근 확인{" "}
+                      {new Intl.DateTimeFormat("ko-KR", {
+                        dateStyle: "medium",
+                      }).format(new Date(player.lastCheckedAt))}
+                      <ChevronRight aria-hidden="true" size={17} />
                     </span>
                   </div>
-                  <p>
-                    <MapPin size={16} />{" "}
-                    {player.region
-                      ? `${player.dataKind === "live" ? "기록 기반 추정 · " : ""}${player.region}`
-                      : "지역 미상"}{" "}
-                    · {player.club ?? "소속 미상"}
-                  </p>
                 </div>
-                <div className="candidate-card__meta">
-                  <span
-                    className={`identity identity--${player.identityStatus}`}
-                  >
-                    {identityText[player.identityStatus]}
-                  </span>
-                  <span className="candidate-card__checked">
-                    최근 확인{" "}
-                    {new Intl.DateTimeFormat("ko-KR", {
-                      dateStyle: "medium",
-                    }).format(new Date(player.lastCheckedAt))}
-                    <ChevronRight aria-hidden="true" size={17} />
-                  </span>
-                </div>
-              </div>
-              <dl className="stats">
-                <div>
-                  <dt>최근 관측 부수</dt>
-                  <dd>
-                    {formatDivisionObservation(
-                      player.recentObservedDivisionSystem,
-                      player.recentObservedDivision,
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt>
-                    <Trophy size={15} /> 입상 성적 · 날짜
-                  </dt>
-                  <dd className="award-result-summary">
-                    <AwardResultSummary
-                      results={player.awardResults}
-                      resultCount={player.resultCount}
-                    />
-                  </dd>
-                </div>
-                <div>
-                  <dt>
-                    <Waypoints size={15} /> 출처
-                  </dt>
-                  <dd>{player.sourceCount}곳</dd>
-                </div>
-              </dl>
-            </article>
-          </Link>
+                <dl className="stats">
+                  <div>
+                    <dt>최근 관측 부수</dt>
+                    <dd>
+                      {formatDivisionObservation(
+                        player.recentObservedDivisionSystem,
+                        player.recentObservedDivision,
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      <Trophy size={15} /> 입상 성적 · 날짜
+                    </dt>
+                    <dd className="award-result-summary">
+                      <AwardResultSummary
+                        results={player.awardResults}
+                        resultCount={player.resultCount}
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      <Waypoints size={15} /> 출처
+                    </dt>
+                    <dd>{player.sourceCount}곳</dd>
+                  </div>
+                </dl>
+              </article>
+            </Link>
+          </div>
         ))}
         {!result.isLoading &&
           (result.data?.length ?? 0) > 0 &&
