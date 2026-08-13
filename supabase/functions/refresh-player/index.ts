@@ -71,6 +71,8 @@ const parserVersions: Record<LiveSourceCode, string> = {
   iping: "iping-2",
 };
 
+const airpingRetryAfterMs = 5_000;
+
 function parseInput(value: unknown): RefreshInput {
   if (
     !isRecord(value) ||
@@ -230,7 +232,7 @@ async function fetchSimpleHtmlRecords(
       redirect: "follow",
     },
     sourceCode === "airping"
-      ? { timeoutMs: 16_000, maxAttempts: 2, retryDelayMs: 250 }
+      ? { timeoutMs: 5_000, maxAttempts: 1, retryDelayMs: 250 }
       : { timeoutMs: 10_000, maxAttempts: 2, retryDelayMs: 250 },
   );
   assertPublicHtmlResponse(response, sourceCode);
@@ -716,12 +718,9 @@ Deno.serve(async (request) => {
       const configuredMinimumIntervalMs = Number(
         Deno.env.get("CRAWLER_SOURCE_MIN_INTERVAL_MS") ?? 5000,
       );
-      const minimumIntervalMs =
-        sourceCode === "iping"
-          ? 60_000
-          : Number.isFinite(configuredMinimumIntervalMs)
-            ? Math.max(5000, configuredMinimumIntervalMs)
-            : 5000;
+      const minimumIntervalMs = Number.isFinite(configuredMinimumIntervalMs)
+        ? Math.min(60_000, Math.max(5000, configuredMinimumIntervalMs))
+        : 5000;
       const { data: retryAfterMs, error: claimError } = await client.rpc(
         "claim_source_request",
         {
@@ -834,6 +833,10 @@ Deno.serve(async (request) => {
             "정규화한 출처 기록을 저장하지 못했습니다.",
           );
         refreshId = Number(summary.refreshId);
+        await client.rpc("record_source_refresh_success", {
+          p_source_code: sourceCode,
+          p_parser_version: parserVersion,
+        });
         results.push({
           sourceCode,
           status: "succeeded",
@@ -843,7 +846,19 @@ Deno.serve(async (request) => {
           found: Number(summary.found ?? unique.length),
         });
       } catch (error) {
-        const safe = publicSourceError(error);
+        const mapped = publicSourceError(error);
+        const safe =
+          sourceCode === "airping" && mapped.code === "source_timeout"
+            ? {
+                ...mapped,
+                message: "에어핑퐁 응답 시간이 초과되었습니다.",
+                retryAfterMs: airpingRetryAfterMs,
+              }
+            : mapped;
+        await client.rpc("record_source_refresh_failure", {
+          p_source_code: sourceCode,
+          p_error_code: safe.code,
+        });
         results.push({
           sourceCode,
           status: "failed",

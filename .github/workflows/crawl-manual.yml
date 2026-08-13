@@ -2,7 +2,7 @@ name: Manual crawl
 on:
   workflow_dispatch:
     inputs:
-      source: { description: Source code, required: true, default: mock, type: choice, options: [mock, airping, astree, ttadivision, okpingpong, mytt, superstar, iping] }
+      source: { description: Source code, required: true, default: mock, type: choice, options: [mock, airping, astree, ttadivision, okpingpong, mytt, superstar] }
       query: { description: Player name, required: true, default: 김탁구, type: string }
       live: { description: Enable approved live access, required: true, default: false, type: boolean }
       maxPages: { description: Maximum pages, required: true, default: '1', type: string }
@@ -19,11 +19,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Fixture crawl
         if: ${{ !inputs.live }}
-        run: pnpm crawl:fixture --query "${{ inputs.query }}" --version 1
+        run: pnpm crawl:fixture --query "$CRAWL_QUERY" --version 1
+        env:
+          CRAWL_QUERY: ${{ inputs.query }}
+          CRAWLER_REDACT_QUERY: "true"
       - name: Approved live crawl
         if: ${{ inputs.live }}
-        run: pnpm crawl:live --query "${{ inputs.query }}" --source "${{ inputs.source }}" --maxPages "${{ inputs.maxPages }}"
+        run: pnpm crawl:live --query "$CRAWL_QUERY" --source "$CRAWL_SOURCE" --maxPages "$CRAWL_MAX_PAGES"
         env:
+          CRAWL_QUERY: ${{ inputs.query }}
+          CRAWL_SOURCE: ${{ inputs.source }}
+          CRAWL_MAX_PAGES: ${{ inputs.maxPages }}
+          CRAWLER_REDACT_QUERY: "true"
           CRAWL_LIVE: "true"
           CRAWLER_SOURCE_ASTREE_ENABLED: ${{ inputs.source == 'astree' && 'true' || 'false' }}
           CRAWLER_SOURCE_TTADIVISION_ENABLED: ${{ inputs.source == 'ttadivision' && 'true' || 'false' }}
@@ -31,8 +38,3 @@ jobs:
           CRAWLER_SOURCE_OKPINGPONG_ENABLED: ${{ inputs.source == 'okpingpong' && 'true' || 'false' }}
           CRAWLER_SOURCE_MYTT_ENABLED: ${{ inputs.source == 'mytt' && 'true' || 'false' }}
           CRAWLER_SOURCE_SUPERSTAR_ENABLED: ${{ inputs.source == 'superstar' && 'true' || 'false' }}
-          CRAWLER_SOURCE_IPING_ENABLED: ${{ inputs.source == 'iping' && 'true' || 'false' }}
-          IPING_USERNAME: ${{ secrets.IPING_USERNAME }}
-          IPING_PASSWORD: ${{ secrets.IPING_PASSWORD }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
