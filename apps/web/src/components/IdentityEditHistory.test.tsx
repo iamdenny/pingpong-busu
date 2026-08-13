@@ -33,14 +33,14 @@ describe("IdentityEditHistory", () => {
             name: "김탁구",
             region: "서울",
             club: "스핀탁구클럽",
-            groupNickname: "power-drive",
+            groupNickname: "파워 드라이브 전문가",
           },
           {
             playerId: "candidate-gyeonggi",
             name: "김탁구",
             region: "경기",
             club: "스핀탁구클럽",
-            groupNickname: "loop-drive-champion",
+            groupNickname: "루프 드라이브 최강자",
           },
         ],
       },
@@ -66,7 +66,7 @@ describe("IdentityEditHistory", () => {
     expect(
       screen.getByText("변경 근거: 같은 소속과 대회 출전 이력을 확인했습니다."),
     ).toBeInTheDocument();
-    expect(screen.getByText("파워 드라이브")).toBeInTheDocument();
+    expect(screen.getByText("파워 드라이브 전문가")).toBeInTheDocument();
     expect(screen.getByText("루프 드라이브 최강자")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "되돌리기" }));
     await user.selectOptions(

@@ -3,14 +3,13 @@ import { z } from "zod";
 import {
   divisionSystemSchema,
   isAwardRank,
-  isHomonymNicknameCode,
+  isHomonymNickname,
   normalizePlayerName,
   sortPlayerRecordsByLatest,
   sourceCodeSchema,
   type PlayerDetail,
   type PlayerRecord,
   type PlayerSummary,
-  type HomonymNicknameCode,
   type SourceComparison,
 } from "@busu/domain";
 import type {
@@ -23,10 +22,47 @@ import type {
   RevertIdentityEditInput,
 } from "./repository";
 
-const homonymNicknameSchema = z.custom<HomonymNicknameCode>(
-  (value) => typeof value === "string" && isHomonymNicknameCode(value),
+const homonymNicknameSchema = z.custom<string>(
+  (value) => typeof value === "string" && isHomonymNickname(value),
   "알 수 없는 동명이인 별칭입니다.",
 );
+
+const identityEditErrorMessages: Readonly<Record<string, string>> = {
+  rate_limited: "편집 요청이 많습니다. 잠시 후 다시 시도해 주세요.",
+  candidate_name_mismatch:
+    "선택한 기록의 선수가 서로 다르거나 더 이상 유효하지 않습니다. 검색 결과를 새로고침해 주세요.",
+  stale_candidates:
+    "선택한 기록이 최근 편집으로 변경되었습니다. 검색 결과를 새로고침해 주세요.",
+  unauthorized: "편집 요청을 인증하지 못했습니다. 페이지를 새로고침해 주세요.",
+  server_not_configured:
+    "편집 서버 설정을 확인하고 있습니다. 잠시 후 다시 시도해 주세요.",
+  invalid_request: "별칭이나 선택한 기록을 확인한 뒤 다시 시도해 주세요.",
+};
+
+async function identityEditError(error: unknown): Promise<Error> {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "context" in error &&
+    error.context instanceof Response
+  ) {
+    try {
+      const payload = z
+        .object({ error: z.string() })
+        .safeParse(await error.context.clone().json());
+      if (payload.success)
+        return new Error(
+          identityEditErrorMessages[payload.data.error] ??
+            "편집을 반영하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+    } catch {
+      // Fall through to the safe public message below.
+    }
+  }
+  return new Error(
+    "편집 서버에 연결하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
+  );
+}
 
 const divisionObservationSchema = z.object({
   system: divisionSystemSchema,
@@ -311,6 +347,14 @@ export class SupabasePlayerRepository implements PlayerRepository {
         );
         if (!error) return z.array(candidateResultSchema).parse(data);
       }
+      const { data, error } = await this.client
+        .from("public_results")
+        .select("*")
+        .in("player_public_id", batch)
+        .order("sort_date", { ascending: false, nullsFirst: false })
+        .order("last_checked_at", { ascending: false })
+        .limit(1_000);
+      if (!error) return z.array(candidateResultSchema).parse(data);
       for (const candidateId of batch) failedCandidateIds.add(candidateId);
       return [];
     };
@@ -389,14 +433,14 @@ export class SupabasePlayerRepository implements PlayerRepository {
       "submit-identity-claim",
       { body: input },
     );
-    if (error) throw error;
+    if (error) throw await identityEditError(error);
     return z
       .object({
         accepted: z.boolean(),
         referenceId: z.string().min(1),
         operationId: z.string().uuid(),
         status: z.literal("applied"),
-        groupCount: z.number().int().min(2),
+        groupCount: z.number().int().min(1),
       })
       .parse(data);
   }

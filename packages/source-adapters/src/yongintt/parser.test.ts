@@ -24,5 +24,22 @@ describe('parseYonginCafeSearchResponse', () => {
     });
     expect(result.records[1]).toMatchObject({ sourcePublishedDate: '2025-11-04', eventName: '승급 공지' });
     expect(result.records.every((record) => record.sourceUrl.startsWith('https://cafe.daum.net/yongintt/'))).toBe(true);
+    expect(result.records.every((record) => !record.sourceUrl.includes('/IWou/'))).toBe(true);
+  });
+
+  it('does not attach another awardee\'s division and rank from a photo-board snippet', () => {
+    const result = parseYonginCafeSearchResponse(fixture, '김라켓', '2026-08-12T00:00:00.000Z');
+    expect(result.records).not.toContainEqual(expect.objectContaining({ sourceUrl: 'https://cafe.daum.net/yongintt/IWou/11' }));
+  });
+
+  it('does not attach fields from another name in a multi-player snippet', () => {
+    const result = parseYonginCafeSearchResponse(fixture, '박오탐', '2026-08-12T00:00:00.000Z');
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0]).toMatchObject({
+      sourceUrl: 'https://cafe.daum.net/yongintt/IBLf/33',
+      eventName: '입상 공지',
+    });
+    expect(result.records[0]?.divisionValue).toBeUndefined();
+    expect(result.records[0]?.rankText).toBeUndefined();
   });
 });

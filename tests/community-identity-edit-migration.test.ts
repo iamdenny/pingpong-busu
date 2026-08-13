@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { homonymNicknameCatalog } from "@busu/domain";
 
 const migration = readFileSync(
   resolve(
@@ -17,6 +16,13 @@ const partitionMigration = readFileSync(
   ),
   "utf8",
 );
+const customNicknameMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    "supabase/migrations/202608130009_single_group_custom_nicknames.sql",
+  ),
+  "utf8",
+);
 const submitEdgeFunction = readFileSync(
   resolve(process.cwd(), "supabase/functions/submit-identity-claim/index.ts"),
   "utf8",
@@ -27,7 +33,7 @@ const revertEdgeFunction = readFileSync(
 );
 
 describe("community identity edit migration", () => {
-  it("partitions unlimited candidates into curated nickname groups atomically", () => {
+  it("partitions unlimited candidates into user-entered nickname groups atomically", () => {
     expect(migration).toContain(
       "drop view if exists public.identity_claim_review_queue",
     );
@@ -40,8 +46,13 @@ describe("community identity edit migration", () => {
     expect(migration).toContain("public.merge_players_internal(");
     expect(partitionMigration).toContain("apply_identity_partition_internal");
     expect(partitionMigration).toContain("homonym_nickname");
-    expect(partitionMigration).toContain("'파워 드라이브'");
-    expect(partitionMigration).toContain("'루프 드라이브 최강자'");
+    expect(partitionMigration).toContain(
+      "char_length(homonym_nickname) between 2 and 20",
+    );
+    expect(partitionMigration).not.toContain(
+      "players_homonym_nickname_catalog_check",
+    );
+    expect(partitionMigration).not.toContain("'power-drive'");
     expect(partitionMigration).toContain("identity_partition_members");
     expect(partitionMigration).toContain(
       "claim_identity_community_request_internal",
@@ -51,19 +62,30 @@ describe("community identity edit migration", () => {
       "'identity-fingerprint:' || p_candidate_fingerprint",
     );
     expect(partitionMigration).toContain("pg_advisory_xact_lock");
-    expect(partitionMigration).toContain("'identity-name:' || v_normalized_name");
+    expect(partitionMigration).toContain(
+      "'identity-name:' || v_normalized_name",
+    );
     expect(partitionMigration).toContain(
       "'identity-name:' || v_operation.normalized_name",
+    );
+    expect(customNicknameMigration).toContain(
+      "drop constraint if exists players_homonym_nickname_catalog_check",
+    );
+    expect(customNicknameMigration).toContain(
+      "jsonb_array_length(p_groups) < 1",
+    );
+    expect(customNicknameMigration).toContain("v_candidate_count < 1");
+    expect(customNicknameMigration).toContain(
+      "on public.players(normalized_name, lower(homonym_nickname))",
     );
     expect(submitEdgeFunction).not.toMatch(
       /allCandidateIds\.length\s*>\s*\d+/u,
     );
     expect(submitEdgeFunction).toContain("apply_identity_partition_internal");
     expect(submitEdgeFunction).toContain("value.groups");
-    for (const nickname of homonymNicknameCatalog) {
-      expect(submitEdgeFunction).toContain(`"${nickname.code}"`);
-      expect(partitionMigration).toContain(`'${nickname.code}'`);
-    }
+    expect(submitEdgeFunction).toContain("normalizeHomonymNickname");
+    expect(submitEdgeFunction).toContain("isValidHomonymNickname");
+    expect(submitEdgeFunction).not.toContain("homonymNicknameCodes");
     expect(submitEdgeFunction).toContain("value.editorId");
     expect(submitEdgeFunction).toContain("busu/anonymous-editor/v1");
   });
@@ -78,6 +100,7 @@ describe("community identity edit migration", () => {
     );
     expect(migration).toContain("to service_role");
     expect(partitionMigration).toContain("to service_role");
+    expect(customNicknameMigration).toContain("to service_role");
     expect(revertEdgeFunction).toContain(
       "revert_identity_edit_community_internal",
     );

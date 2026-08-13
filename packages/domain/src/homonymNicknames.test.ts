@@ -1,25 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
-  homonymNicknameCatalog,
+  homonymNicknameSuggestions,
   homonymNicknameLabel,
-  isHomonymNicknameCode,
+  isHomonymNickname,
+  normalizeHomonymNickname,
+  pickHomonymNicknameSuggestion,
 } from "./homonymNicknames";
 
 describe("homonym nicknames", () => {
-  it("provides curated memorable table-tennis nicknames", () => {
-    expect(homonymNicknameLabel("power-drive")).toBe("파워 드라이브");
-    expect(homonymNicknameLabel("loop-drive-champion")).toBe(
+  it("provides editable initial nickname suggestions", () => {
+    expect(homonymNicknameSuggestions).toHaveLength(30);
+    expect(new Set(homonymNicknameSuggestions).size).toBe(30);
+    expect(homonymNicknameSuggestions.every(isHomonymNickname)).toBe(true);
+    expect(homonymNicknameSuggestions).toContain("파워 드라이브 전문가");
+    expect(homonymNicknameSuggestions).toContain("치키타 장인");
+    expect(pickHomonymNicknameSuggestion([], 0)).toBe("파워 드라이브 전문가");
+    expect(pickHomonymNicknameSuggestion(["파워 드라이브 전문가"], 0)).toBe(
       "루프 드라이브 최강자",
     );
-    expect(homonymNicknameLabel("back-drive-master")).toBe("백드라이브 마스터");
-    expect(homonymNicknameLabel("amateur-best")).toBe("아마추어 최강");
-    expect(homonymNicknameLabel("edge-fairy")).toBe("엣지의 요정");
-    expect(homonymNicknameLabel("spin-restaurant")).toBe("회전 맛집");
+    expect(homonymNicknameLabel("power-drive")).toBe("파워 드라이브 전문가");
   });
 
-  it("accepts catalog codes and rejects arbitrary public labels", () => {
-    expect(homonymNicknameCatalog.length).toBeGreaterThanOrEqual(20);
-    expect(isHomonymNicknameCode("chiquita-artisan")).toBe(true);
-    expect(isHomonymNicknameCode("사용자 자유 입력")).toBe(false);
+  it("accepts normalized user-entered aliases without a catalog", () => {
+    expect(normalizeHomonymNickname("  치키타   요정  ")).toBe("치키타 요정");
+    expect(isHomonymNickname("치키타 요정")).toBe(true);
+    expect(isHomonymNickname("Denny-드라이브")).toBe(true);
+    expect(isHomonymNickname("5030")).toBe(false);
+    expect(isHomonymNickname("<script>")).toBe(false);
+    expect(isHomonymNickname("가".repeat(21))).toBe(false);
   });
 });

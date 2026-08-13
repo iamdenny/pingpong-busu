@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PlayerSummary } from "@busu/domain";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { homonymNicknameSuggestions, type PlayerSummary } from "@busu/domain";
 import { ANONYMOUS_EDITOR_STORAGE_KEY } from "../lib/anonymousEditor";
 import { playerRepository } from "../lib/runtime";
 import { IdentityClaimDialog } from "./IdentityClaimDialog";
@@ -40,7 +40,13 @@ const editorId = "00000000-0000-4000-8000-000000000099";
 
 function renderDialog(inputCandidates: readonly PlayerSummary[] = candidates) {
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider
+      client={
+        new QueryClient({
+          defaultOptions: { queries: { retry: false } },
+        })
+      }
+    >
       <IdentityClaimDialog candidates={inputCandidates} />
     </QueryClientProvider>,
   );
@@ -51,7 +57,65 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
+beforeEach(() => {
+  vi.spyOn(Math, "random").mockReturnValue(0);
+});
+
 describe("IdentityClaimDialog", () => {
+  it("starts a new classification with one randomized suggestion", async () => {
+    vi.mocked(Math.random).mockReturnValue(0.5);
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+
+    expect(screen.getByRole("textbox", { name: "사람 1 별칭" })).toHaveValue(
+      homonymNicknameSuggestions[
+        Math.floor(homonymNicknameSuggestions.length * 0.5)
+      ],
+    );
+    expect(
+      screen.queryByRole("textbox", { name: "사람 2 별칭" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("restores saved aliases and candidate assignments when reopened", async () => {
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue([]);
+    const savedCandidates = [
+      { ...candidates[0]!, homonymNickname: "용인 치키타" },
+      { ...candidates[1]!, homonymNickname: "부산 스매시" },
+    ];
+    const user = userEvent.setup();
+    renderDialog(savedCandidates);
+
+    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+
+    expect(screen.getByRole("textbox", { name: "사람 1 별칭" })).toHaveValue(
+      "용인 치키타",
+    );
+    expect(screen.getByRole("textbox", { name: "사람 2 별칭" })).toHaveValue(
+      "부산 스매시",
+    );
+    expect(
+      within(
+        screen.getByRole("group", { name: /서울.*스핀탁구클럽/u }),
+      ).getByRole("radio", { name: "용인 치키타" }),
+    ).toBeChecked();
+    expect(
+      within(screen.getByRole("group", { name: /부산.*블루라켓/u })).getByRole(
+        "radio",
+        { name: "부산 스매시" },
+      ),
+    ).toBeChecked();
+  });
+
   it("assigns records to memorable table-tennis aliases", async () => {
     window.localStorage.setItem(ANONYMOUS_EDITOR_STORAGE_KEY, editorId);
     vi.spyOn(
@@ -115,12 +179,16 @@ describe("IdentityClaimDialog", () => {
     expect(
       screen.getByText(/실제 실력이나 공식 등급을 뜻하지 않습니다/u),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: /구분 근거/u }),
+    ).not.toBeInTheDocument();
 
     const submitButton = screen.getByRole("button", {
       name: "구분 바로 반영",
     });
     fireEvent.submit(submitButton.closest("form")!);
-    expect(screen.getByRole("alert")).toHaveTextContent("별칭 두 개 이상");
+    expect(screen.getByRole("alert")).toHaveTextContent("한 사람 이상의 별칭");
+    await user.click(screen.getByRole("button", { name: "사람 추가" }));
 
     const seoulCandidate = screen.getByRole("group", {
       name: /서울.*스핀탁구클럽/u,
@@ -129,7 +197,9 @@ describe("IdentityClaimDialog", () => {
       name: /부산.*블루라켓/u,
     });
     await user.click(
-      within(seoulCandidate).getByRole("radio", { name: "파워 드라이브" }),
+      within(seoulCandidate).getByRole("radio", {
+        name: "파워 드라이브 전문가",
+      }),
     );
     await user.click(
       within(busanCandidate).getByRole("radio", {
@@ -154,34 +224,45 @@ describe("IdentityClaimDialog", () => {
     expect(screen.getByText(/AB12CD34/u)).toBeInTheDocument();
     expect(submit.mock.calls[0]?.[0]).toEqual({
       groups: [
-        { nickname: "power-drive", candidateIds: ["candidate-seoul"] },
         {
-          nickname: "loop-drive-champion",
+          nickname: "파워 드라이브 전문가",
+          candidateIds: ["candidate-seoul"],
+        },
+        {
+          nickname: "루프 드라이브 최강자",
           candidateIds: ["candidate-busan"],
         },
       ],
       editorId,
-      note: "public-record-comparison",
     });
   });
 
-  it("adds another person with a distinct curated alias", async () => {
+  it("lets participants enter an additional alias without a catalog", async () => {
     vi.spyOn(
       playerRepository,
       "getIdentityCandidateEvidence",
     ).mockResolvedValue([]);
     const user = userEvent.setup();
-    renderDialog();
+    renderDialog([
+      ...candidates,
+      {
+        ...candidates[0]!,
+        id: "candidate-incheon",
+        region: "인천",
+        club: "스매시탁구클럽",
+      },
+    ]);
 
     await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
     await user.click(screen.getByRole("button", { name: "사람 추가" }));
 
-    expect(screen.getByRole("combobox", { name: "사람 3 별칭" })).toHaveValue(
-      "back-drive-master",
-    );
+    const nicknameInput = screen.getByRole("textbox", { name: "사람 2 별칭" });
+    expect(nicknameInput).toHaveValue("루프 드라이브 최강자");
+    await user.clear(nicknameInput);
+    await user.type(nicknameInput, "치키타 요정");
     expect(
       screen.getByRole("button", {
-        name: "사람 3 백드라이브 마스터 삭제",
+        name: "사람 2 치키타 요정 삭제",
       }),
     ).toBeInTheDocument();
   });
@@ -216,13 +297,14 @@ describe("IdentityClaimDialog", () => {
     renderDialog(manyCandidates);
 
     await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    await user.click(screen.getByRole("button", { name: "사람 추가" }));
     for (const [index, candidate] of manyCandidates.entries()) {
       const candidateGroup = screen.getByRole("group", {
         name: new RegExp("· " + (candidate.club ?? "") + " ·"),
       });
       fireEvent.click(
         within(candidateGroup).getByRole("radio", {
-          name: index < 6 ? "파워 드라이브" : "루프 드라이브 최강자",
+          name: index < 6 ? "파워 드라이브 전문가" : "루프 드라이브 최강자",
         }),
       );
     }
@@ -237,16 +319,93 @@ describe("IdentityClaimDialog", () => {
     expect(apply).toHaveBeenCalledWith({
       groups: [
         {
-          nickname: "power-drive",
+          nickname: "파워 드라이브 전문가",
           candidateIds: manyCandidates.slice(0, 6).map(({ id }) => id),
         },
         {
-          nickname: "loop-drive-champion",
+          nickname: "루프 드라이브 최강자",
           candidateIds: manyCandidates.slice(6).map(({ id }) => id),
         },
       ],
       editorId,
-      note: "public-record-comparison",
     });
   }, 15_000);
+
+  it("applies one custom alias without forcing a second person", async () => {
+    window.localStorage.setItem(ANONYMOUS_EDITOR_STORAGE_KEY, editorId);
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue([]);
+    const apply = vi
+      .spyOn(playerRepository, "applyIdentityEdit")
+      .mockResolvedValue({
+        accepted: true,
+        referenceId: "ONEALIAS",
+        operationId: "00000000-0000-4000-8000-000000000003",
+        status: "applied",
+        groupCount: 1,
+      });
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    const nicknameInput = screen.getByRole("textbox", { name: "사람 1 별칭" });
+    await user.clear(nicknameInput);
+    await user.type(nicknameInput, "용인 치키타");
+    const seoulCandidate = screen.getByRole("group", {
+      name: /서울.*스핀탁구클럽/u,
+    });
+    await user.click(
+      within(seoulCandidate).getByRole("radio", { name: "용인 치키타" }),
+    );
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /잘못된 경우 다른 참여자가 이 편집 전체를 되돌릴 수/u,
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "구분 바로 반영" }));
+
+    expect(apply).toHaveBeenCalledWith({
+      groups: [{ nickname: "용인 치키타", candidateIds: ["candidate-seoul"] }],
+      editorId,
+    });
+  });
+
+  it("retries recent evidence loading after a transient failure", async () => {
+    const evidence = vi
+      .spyOn(playerRepository, "getIdentityCandidateEvidence")
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce([
+        {
+          candidateId: "candidate-seoul",
+          status: "loaded",
+          records: [
+            {
+              id: "record-retry",
+              tournament: "재조회 성공 대회",
+              scale: "district",
+              event: "개인단식 6부",
+              sourceCode: "astree",
+              sourceName: "애즈트리",
+              sourceUrl: "https://example.com/retry",
+              lastCheckedAt: "2026-08-13T00:00:00.000Z",
+            },
+          ],
+        },
+      ]);
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    expect(
+      await screen.findAllByText("최근 출전 기록을 불러오지 못했습니다."),
+    ).not.toHaveLength(0);
+    await user.click(
+      screen.getAllByRole("button", { name: "다시 불러오기" })[0]!,
+    );
+
+    expect(await screen.findByText("재조회 성공 대회")).toBeInTheDocument();
+    expect(evidence).toHaveBeenCalledTimes(2);
+  });
 });

@@ -13,38 +13,10 @@ const identityReasonCodes = new Set([
   "club-and-region-comparison",
   "event-history-comparison",
 ]);
-const homonymNicknameCodes = new Set([
-  "power-drive",
-  "loop-drive-champion",
-  "back-drive-master",
-  "amateur-best",
-  "chiquita-artisan",
-  "smash-solver",
-  "cut-defense-king",
-  "block-master",
-  "serve-ace",
-  "receive-artisan",
-  "rally-dominator",
-  "forehand-specialist",
-  "backhand-expert",
-  "topspin-master",
-  "backspin-strategist",
-  "sidespin-wizard",
-  "counter-drive",
-  "flick-specialist",
-  "short-play-master",
-  "lob-defense",
-  "drop-shot-artisan",
-  "third-ball-attacker",
-  "fifth-ball-winner",
-  "deuce-winner",
-  "edge-fairy",
-  "net-wizard",
-  "spin-restaurant",
-  "rally-zombie",
-  "table-commander",
-  "backhand-bulldozer",
-]);
+const homonymNicknameMinLength = 2;
+const homonymNicknameMaxLength = 20;
+const homonymNicknameCharactersPattern = /^[\p{L}\p{N} ._·-]+$/u;
+const homonymNicknameLetterPattern = /\p{L}/u;
 const encoder = new TextEncoder();
 
 interface PartitionGroupInput {
@@ -70,6 +42,20 @@ interface LegacyClaimInput extends CommonClaimInput {
 }
 
 type ClaimInput = PartitionClaimInput | LegacyClaimInput;
+
+function normalizeHomonymNickname(value: string): string {
+  return value.normalize("NFKC").trim().replace(/\s+/gu, " ");
+}
+
+function isValidHomonymNickname(value: string): boolean {
+  return (
+    value.length >= homonymNicknameMinLength &&
+    value.length <= homonymNicknameMaxLength &&
+    homonymNicknameCharactersPattern.test(value) &&
+    homonymNicknameLetterPattern.test(value) &&
+    !sensitiveNotePattern.test(value)
+  );
+}
 
 function parseCandidateIds(value: unknown, allowSingle: boolean): string[] {
   if (!Array.isArray(value)) throw new Error("invalid_identity_claim");
@@ -118,7 +104,10 @@ function parseCommonInput(
     (note.length < 10 || note.length > 500)
   )
     throw new Error("invalid_identity_claim");
-  if (note && (!identityReasonCodes.has(note) || sensitiveNotePattern.test(note)))
+  if (
+    note &&
+    (!identityReasonCodes.has(note) || sensitiveNotePattern.test(note))
+  )
     throw new Error("sensitive_note_rejected");
   const website =
     typeof value.website === "string" ? value.website.trim() : undefined;
@@ -133,16 +122,16 @@ function parseCommonInput(
 function parseClaimInput(value: unknown): ClaimInput {
   if (!isRecord(value)) throw new Error("invalid_identity_claim");
   if (Array.isArray(value.groups)) {
-    if (value.groups.length < 2) throw new Error("invalid_identity_claim");
+    if (value.groups.length < 1) throw new Error("invalid_identity_claim");
     const groups = value.groups.map((candidateGroup) => {
-      if (
-        !isRecord(candidateGroup) ||
-        typeof candidateGroup.nickname !== "string" ||
-        !homonymNicknameCodes.has(candidateGroup.nickname)
-      )
+      const nickname =
+        isRecord(candidateGroup) && typeof candidateGroup.nickname === "string"
+          ? normalizeHomonymNickname(candidateGroup.nickname)
+          : "";
+      if (!isRecord(candidateGroup) || !isValidHomonymNickname(nickname))
         throw new Error("invalid_identity_claim");
       return {
-        nickname: candidateGroup.nickname,
+        nickname,
         candidateIds: parseCandidateIds(candidateGroup.candidateIds, true),
       };
     });
@@ -150,7 +139,7 @@ function parseClaimInput(value: unknown): ClaimInput {
     const allCandidateIds = groups.flatMap((group) => group.candidateIds);
     if (
       new Set(nicknames).size !== nicknames.length ||
-      allCandidateIds.length < 2 ||
+      allCandidateIds.length < 1 ||
       new Set(allCandidateIds).size !== allCandidateIds.length
     )
       throw new Error("invalid_identity_claim");
@@ -289,7 +278,7 @@ Deno.serve(async (request) => {
         typeof data.partition_id !== "string" ||
         !uuidPattern.test(data.partition_id) ||
         typeof data.group_count !== "number" ||
-        data.group_count < 2
+        data.group_count < 1
       )
         return json({ error: "invalid_identity_edit_response" }, 500);
       return json({

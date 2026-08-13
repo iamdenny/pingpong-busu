@@ -1,8 +1,7 @@
 import { z } from "zod";
 import {
   divisionSystemSchema,
-  isHomonymNicknameCode,
-  type HomonymNicknameCode,
+  isHomonymNickname,
   type PlayerDetail,
   type PlayerSummary,
   type SourceStatus,
@@ -21,8 +20,8 @@ import type {
   RevertIdentityEditResponse,
 } from "./repository";
 
-const homonymNicknameSchema = z.custom<HomonymNicknameCode>(
-  (value) => typeof value === "string" && isHomonymNicknameCode(value),
+const homonymNicknameSchema = z.custom<string>(
+  (value) => typeof value === "string" && isHomonymNickname(value),
 );
 
 const summarySchema = z.object({
