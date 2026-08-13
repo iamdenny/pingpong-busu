@@ -94,7 +94,9 @@ PAT, service role key, DB password는 명령 문자열이나 문서에 기록하
 ## 배포 버전 미리보기
 
 ```bash
-VITE_APP_VERSION=2026.33.1 pnpm build
+pnpm release:check
+pnpm release:bump
+pnpm build
 ```
 
-`YYYY.WEEK.SEQ` 형식의 값은 홈 하단에 표시된다. 실제 GitHub Pages 배포에서는 workflow가 Actions 실행 이력으로 값을 자동 생성하므로 repository variable로 고정하지 않는다. 값이 없거나 형식이 다르면 `버전 개발`로 표시된다.
+`release:check`는 루트 `package.json`의 `YYYY.WEEK.SEQ` 형식을 검증한다. `release:bump`는 같은 ISO 주차의 순번을 올리며 이 파일만 수정한다. 배포 PR에는 변경된 버전을 커밋해야 한다. web 화면과 GitHub 태그·Release는 모두 이 값을 사용한다.

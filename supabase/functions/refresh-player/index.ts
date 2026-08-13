@@ -102,7 +102,7 @@ async function fetchTtaDivisionRecords(
   name: string,
   fetchedAt: string,
 ): Promise<Array<Record<string, unknown>>> {
-  const userAgent = Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU/0.1";
+  const userAgent = Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU";
   const client = Deno.createHttpClient({ caCerts: [ttaDivisionCa] });
   try {
     const pageResponse = await fetch(
@@ -212,7 +212,7 @@ async function fetchSimpleHtmlRecords(
   name: string,
   fetchedAt: string,
 ): Promise<Array<Record<string, unknown>>> {
-  const userAgent = Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU/0.1";
+  const userAgent = Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU";
   const url =
     sourceCode === "airping"
       ? new URL("https://airping.co.kr/11player/01.php")
@@ -249,7 +249,7 @@ async function fetchSuperstarRecords(
     signal: AbortSignal.timeout(8000),
     headers: {
       accept: "text/html",
-      "user-agent": Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU/0.1",
+      "user-agent": Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU",
     },
     redirect: "follow",
   });
@@ -281,7 +281,7 @@ async function fetchYonginCafeRecords(
     headers: {
       accept: "application/json",
       authorization: `KakaoAK ${apiKey}`,
-      "user-agent": Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU/0.1",
+      "user-agent": Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU",
     },
   });
   if (response.status === 401 || response.status === 403)
@@ -373,7 +373,7 @@ async function fetchIpingRecords(
       "source_not_configured",
       "아이핑 전용 계정 Secret이 설정되지 않았습니다.",
     );
-  const userAgent = Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU/0.1";
+  const userAgent = Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU";
   const baseHeaders = {
     accept: "text/html",
     "accept-encoding": "identity",
@@ -513,7 +513,7 @@ async function fetchMyttRecords(
   fetchedAt: string,
 ): Promise<Array<Record<string, unknown>>> {
   const url = "https://mytt.kr/main/player_list.xhtml";
-  const userAgent = Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU/0.1";
+  const userAgent = Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU";
   const headers = {
     accept: "text/html",
     "accept-encoding": "identity",
@@ -759,7 +759,7 @@ Deno.serve(async (request) => {
               signal: AbortSignal.timeout(8000),
               headers: {
                 accept: "text/html",
-                "user-agent": Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU/0.1",
+                "user-agent": Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU",
               },
               redirect: "follow",
             });

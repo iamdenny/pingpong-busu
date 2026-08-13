@@ -4,13 +4,13 @@ BUSU는 여러 공개 탁구 대회 출처의 선수 부수·소속·입상 기�
 
 ## Workspaces
 
-| 경로 | 책임 | 런타임 |
-| --- | --- | --- |
-| `apps/web` | React UI, repository 구현, 로컬 live middleware | Browser / Vite |
-| `packages/domain` | 정규화, 부수·지역·입상 규칙, 모델, hash, 정렬 | Node / Browser |
-| `packages/crawler-core` | source adapter 계약, 오류, revision 판정 | Node |
-| `packages/source-adapters` | 출처별 HTTP adapter, parser, Zod schema | Node / Edge bundle |
-| `supabase` | PostgreSQL migration, public views/RPC, Edge Functions | Supabase |
+| 경로                       | 책임                                                   | 런타임             |
+| -------------------------- | ------------------------------------------------------ | ------------------ |
+| `apps/web`                 | React UI, repository 구현, 로컬 live middleware        | Browser / Vite     |
+| `packages/domain`          | 정규화, 부수·지역·입상 규칙, 모델, hash, 정렬          | Node / Browser     |
+| `packages/crawler-core`    | source adapter 계약, 오류, revision 판정               | Node               |
+| `packages/source-adapters` | 출처별 HTTP adapter, parser, Zod schema                | Node / Edge bundle |
+| `supabase`                 | PostgreSQL migration, public views/RPC, Edge Functions | Supabase           |
 
 ## Repository rules
 
@@ -31,6 +31,9 @@ BUSU는 여러 공개 탁구 대회 출처의 선수 부수·소속·입상 기�
 - 지나친 추상화와 불필요한 마이크로서비스를 만들지 않는다.
 - 변경 후 README와 관련 문서를 함께 갱신한다.
 - 테스트 실패를 무시하거나 삭제해서 통과시키지 않는다.
+- 제품 버전의 단일 기준은 루트 `package.json`의 `version`이다. workspace package, 소스, 환경 변수에 별도 버전을 중복 기록하지 않는다.
+- 배포 PR은 `pnpm release:bump`로 `YYYY.WEEK.SEQ` 버전을 먼저 올리고 변경을 함께 커밋한다.
+- `main` 배포는 같은 버전 태그가 없어야 하며, Pages 게시 전에 `v{version}` 태그와 GitHub Release 및 자동 릴리즈 노트를 생성한다. 버전을 올리지 않은 배포는 실패해야 한다.
 
 ## Domain invariants
 
@@ -44,13 +47,13 @@ BUSU는 여러 공개 탁구 대회 출처의 선수 부수·소속·입상 기�
 
 ## Evidence capture
 
-| 항목 | 값 |
-| --- | --- |
-| 화면 | React 검색·선수 상세 페이지 |
-| 개발 명령 | `pnpm dev` |
-| URL | `http://localhost:5173/pingpong-busu/` |
-| 검증 방법 | in-app browser 또는 Playwright, terminal test output |
-| 기본 viewport | Desktop 및 700px 이하 mobile |
+| 항목          | 값                                                   |
+| ------------- | ---------------------------------------------------- |
+| 화면          | React 검색·선수 상세 페이지                          |
+| 개발 명령     | `pnpm dev`                                           |
+| URL           | `http://localhost:5173/pingpong-busu/`               |
+| 검증 방법     | in-app browser 또는 Playwright, terminal test output |
+| 기본 viewport | Desktop 및 700px 이하 mobile                         |
 
 ## Commands
 
@@ -60,24 +63,25 @@ BUSU는 여러 공개 탁구 대회 출처의 선수 부수·소속·입상 기�
 - fixture: `pnpm crawl:fixture --query 김탁구 --version 1`
 - live opt-in: `pnpm crawl:live --query 김탁구 --source astree`
 - DB 용량: `pnpm db:size`
+- 릴리즈: `pnpm release:check`, `pnpm release:bump`
 
 ## Documentation
 
-| 문서 | 용도 |
-| --- | --- |
-| [docs/README.md](docs/README.md) | 문서 인덱스와 읽는 순서 |
-| [docs/product-spec.md](docs/product-spec.md) | 현재 구현의 기준 제품 스펙과 수용 조건 |
-| [docs/architecture.md](docs/architecture.md) | 런타임 경계와 데이터 흐름 |
-| [docs/data-model.md](docs/data-model.md) | 엔터티, 시간축, hash/revision 규칙 |
-| [docs/crawling-policy.md](docs/crawling-policy.md) | 외부 출처 접근·수집 안전 정책 |
-| [docs/source-notes.md](docs/source-notes.md) | 출처별 상태, URL, parser version |
-| [docs/adding-a-source.md](docs/adding-a-source.md) | 신규 출처 추가 절차 |
-| [docs/operations.md](docs/operations.md) | Supabase와 GitHub 배포·장애 대응 |
-| [docs/commands.md](docs/commands.md) | 개발·수집·배포 명령 |
-| [docs/testing.md](docs/testing.md) | 테스트 계층과 완료 게이트 |
-| [docs/codemap.md](docs/codemap.md) | 디렉터리별 책임과 변경 경로 |
-| [apps/web/DESIGN.md](apps/web/DESIGN.md) | UI 디자인 시스템 |
-| [docs/roadmap.md](docs/roadmap.md) | 구현 이후의 제품 로드맵 |
+| 문서                                               | 용도                                   |
+| -------------------------------------------------- | -------------------------------------- |
+| [docs/README.md](docs/README.md)                   | 문서 인덱스와 읽는 순서                |
+| [docs/product-spec.md](docs/product-spec.md)       | 현재 구현의 기준 제품 스펙과 수용 조건 |
+| [docs/architecture.md](docs/architecture.md)       | 런타임 경계와 데이터 흐름              |
+| [docs/data-model.md](docs/data-model.md)           | 엔터티, 시간축, hash/revision 규칙     |
+| [docs/crawling-policy.md](docs/crawling-policy.md) | 외부 출처 접근·수집 안전 정책          |
+| [docs/source-notes.md](docs/source-notes.md)       | 출처별 상태, URL, parser version       |
+| [docs/adding-a-source.md](docs/adding-a-source.md) | 신규 출처 추가 절차                    |
+| [docs/operations.md](docs/operations.md)           | Supabase와 GitHub 배포·장애 대응       |
+| [docs/commands.md](docs/commands.md)               | 개발·수집·배포 명령                    |
+| [docs/testing.md](docs/testing.md)                 | 테스트 계층과 완료 게이트              |
+| [docs/codemap.md](docs/codemap.md)                 | 디렉터리별 책임과 변경 경로            |
+| [apps/web/DESIGN.md](apps/web/DESIGN.md)           | UI 디자인 시스템                       |
+| [docs/roadmap.md](docs/roadmap.md)                 | 구현 이후의 제품 로드맵                |
 
 ## Knowledge graph
 

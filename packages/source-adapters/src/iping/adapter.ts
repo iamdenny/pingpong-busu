@@ -63,7 +63,7 @@ async function request(
       headers: {
         accept: "text/html",
         "accept-encoding": "identity",
-        "user-agent": context.userAgent ?? "BUSU/0.1",
+        "user-agent": context.userAgent ?? "BUSU",
         ...init.headers,
       },
     } satisfies RequestInit;

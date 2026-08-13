@@ -42,7 +42,7 @@ export class OkPingpongSourceAdapter implements SourceAdapter {
           ...(input.signal ? { signal: input.signal } : {}),
           headers: {
             accept: "text/html",
-            "user-agent": context.userAgent ?? "BUSU/0.1",
+            "user-agent": context.userAgent ?? "BUSU",
           },
           redirect: "follow",
         },
