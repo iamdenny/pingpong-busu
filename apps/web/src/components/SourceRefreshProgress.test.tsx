@@ -20,6 +20,7 @@ describe("SourceRefreshProgress", () => {
   it("shows aggregate and per-source live progress", () => {
     render(
       <SourceRefreshProgress
+        existingRecordCount={0}
         sources={[
           {
             sourceCode: "astree",
@@ -57,6 +58,129 @@ describe("SourceRefreshProgress", () => {
     ).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("keeps ongoing source details collapsed when stored records exist", () => {
+    render(
+      <SourceRefreshProgress
+        existingRecordCount={1}
+        sources={[
+          {
+            sourceCode: "astree",
+            sourceName: "애즈트리",
+            state: "succeeded",
+          },
+          {
+            sourceCode: "airping",
+            sourceName: "에어핑퐁",
+            state: "refreshing",
+          },
+          {
+            sourceCode: "iping",
+            sourceName: "아이핑",
+            state: "refreshing",
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "3곳 중 1곳 완료 · 2곳 조회 중",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "실시간 출처 조회 상세 보기" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("list", { hidden: true })).not.toBeVisible();
+  });
+
+  it("opens ongoing details after stored-record loading resolves empty", () => {
+    const source: SourceRefreshView = {
+      sourceCode: "astree",
+      sourceName: "애즈트리",
+      state: "refreshing",
+    };
+    const { rerender } = render(
+      <SourceRefreshProgress existingRecordCount={null} sources={[source]} />,
+    );
+
+    expect(screen.getByRole("list", { hidden: true })).not.toBeVisible();
+
+    rerender(
+      <SourceRefreshProgress existingRecordCount={0} sources={[source]} />,
+    );
+
+    expect(screen.getByRole("list")).toBeVisible();
+  });
+
+  it.each([0, 1])(
+    "preserves a manual toggle when stored-record loading resolves to %i records",
+    (existingRecordCount) => {
+      const source: SourceRefreshView = {
+        sourceCode: "astree",
+        sourceName: "애즈트리",
+        state: "refreshing",
+      };
+      const { rerender } = render(
+        <SourceRefreshProgress
+          existingRecordCount={null}
+          searchKey="임대현"
+          sources={[source]}
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "실시간 출처 조회 상세 보기",
+        }),
+      );
+
+      rerender(
+        <SourceRefreshProgress
+          existingRecordCount={existingRecordCount}
+          searchKey="임대현"
+          sources={[source]}
+        />,
+      );
+
+      expect(screen.getByRole("list")).toBeVisible();
+      expect(
+        screen.getByRole("button", {
+          name: "실시간 출처 조회 상세 접기",
+        }),
+      ).toHaveAttribute("aria-expanded", "true");
+    },
+  );
+
+  it("resets the disclosure default when the search changes", () => {
+    const source: SourceRefreshView = {
+      sourceCode: "astree",
+      sourceName: "애즈트리",
+      state: "refreshing",
+    };
+    const { rerender } = render(
+      <SourceRefreshProgress
+        existingRecordCount={0}
+        searchKey="임대현"
+        sources={[source]}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "실시간 출처 조회 상세 접기",
+      }),
+    );
+    expect(screen.getByRole("list", { hidden: true })).not.toBeVisible();
+
+    rerender(
+      <SourceRefreshProgress
+        existingRecordCount={0}
+        searchKey="김탁구"
+        sources={[source]}
+      />,
+    );
+
+    expect(screen.getByRole("list")).toBeVisible();
+  });
+
   it("collapses details when every source finishes and allows reopening", async () => {
     const refreshingSource: SourceRefreshView = {
       sourceCode: "astree",
@@ -64,13 +188,17 @@ describe("SourceRefreshProgress", () => {
       state: "refreshing",
     };
     const { rerender } = render(
-      <SourceRefreshProgress sources={[refreshingSource]} />,
+      <SourceRefreshProgress
+        existingRecordCount={0}
+        sources={[refreshingSource]}
+      />,
     );
 
     expect(screen.getByRole("list")).toBeVisible();
 
     rerender(
       <SourceRefreshProgress
+        existingRecordCount={0}
         sources={[{ ...refreshingSource, state: "succeeded" }]}
       />,
     );
@@ -92,6 +220,7 @@ describe("SourceRefreshProgress", () => {
   it("collapses details when completion includes a failed source", async () => {
     const { rerender } = render(
       <SourceRefreshProgress
+        existingRecordCount={0}
         sources={[
           {
             sourceCode: "astree",
@@ -109,6 +238,7 @@ describe("SourceRefreshProgress", () => {
 
     rerender(
       <SourceRefreshProgress
+        existingRecordCount={0}
         sources={[
           {
             sourceCode: "astree",
@@ -159,6 +289,7 @@ describe("SourceRefreshProgress", () => {
   it("marks a disabled source as integration off", () => {
     render(
       <SourceRefreshProgress
+        existingRecordCount={0}
         sources={[
           {
             sourceCode: "iping",
@@ -182,6 +313,7 @@ describe("SourceRefreshProgress", () => {
     vi.setSystemTime(new Date("2026-08-13T00:00:00.000Z"));
     render(
       <SourceRefreshProgress
+        existingRecordCount={0}
         sources={[
           {
             sourceCode: "astree",
@@ -208,6 +340,7 @@ describe("SourceRefreshProgress", () => {
     const onRetry = vi.fn();
     render(
       <SourceRefreshProgress
+        existingRecordCount={0}
         sources={[
           {
             sourceCode: "airping",
@@ -246,6 +379,7 @@ describe("SourceRefreshProgress", () => {
   it("keeps an exhausted retry button visible with its reason", () => {
     render(
       <SourceRefreshProgress
+        existingRecordCount={0}
         sources={[
           {
             sourceCode: "iping",
