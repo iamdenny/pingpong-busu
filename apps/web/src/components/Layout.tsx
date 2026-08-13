@@ -1,10 +1,8 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import { appVersion } from "../lib/appVersion";
 import { isDemoMode, isDevLiveMode } from "../lib/runtime";
 
 export function Layout() {
-  const location = useLocation();
-
   return (
     <div className="app-shell">
       {isDemoMode && (
@@ -38,9 +36,7 @@ export function Layout() {
           공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후
           반영합니다.
         </p>
-        {location.pathname === "/" && (
-          <small className="app-version">버전 {appVersion}</small>
-        )}
+        <small className="app-version">버전 {appVersion}</small>
       </footer>
     </div>
   );

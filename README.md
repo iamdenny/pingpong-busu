@@ -28,7 +28,7 @@ Korean table tennis player rank and tournament record search.
 - mock adapter와 fixture crawler, synthetic fixture로 검증한 애즈트리·대한탁구협회 디비전·마이티티·슈퍼스타탁구·용인탁구협회 다음 카페·아이핑 HTTP adapter
 - Supabase PostgreSQL migration, RLS, synthetic seed, Edge Functions
 - GitHub Actions CI, Pages 배포, 수동 crawler workflow
-- GitHub Pages 배포마다 자동 생성하는 `YYYY.WEEK.SEQ` 버전과 홈 하단 버전 표시
+- GitHub Pages 배포마다 자동 생성하는 `YYYY.WEEK.SEQ` 버전과 모든 페이지 하단 버전 표시
 
 ## 실행
 
@@ -98,7 +98,7 @@ pnpm crawl:fixture --query 김탁구 --version 2
 
 Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니다. 현재 커스텀 도메인 `https://busu.iamdenny.com/`은 asset base `/`로 배포하고 HTTP 요청은 HTTPS로 전환합니다. production repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. `http://iamdenny.com/pingpong-busu/`은 커스텀 도메인으로 이동하는 이전 진입점입니다. publishable key는 브라우저 공개용 값이며, service role/secret key는 Pages workflow에 넣지 않습니다.
 
-제품 버전의 단일 기준은 루트 `package.json`의 `version`이며 `YYYY.WEEK.SEQ` 형식을 사용합니다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가하며, 배포 변경은 `pnpm release:bump`로 같은 주의 순번을 올리거나 새 주에는 `0`으로 초기화합니다. web 화면은 이 값을 직접 읽어 홈 하단에 표시합니다. Pages workflow는 빌드가 통과한 뒤 `v{version}` 태그와 GitHub Release 및 자동 릴리즈 노트를 먼저 만들고 정적 사이트를 게시합니다. 이미 다른 커밋이 같은 태그를 사용하면 배포를 중단하므로 모든 배포 PR은 버전 변경을 포함해야 합니다.
+제품 버전의 단일 기준은 루트 `package.json`의 `version`이며 `YYYY.WEEK.SEQ` 형식을 사용합니다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가하며, 배포 변경은 `pnpm release:bump`로 같은 주의 순번을 올리거나 새 주에는 `0`으로 초기화합니다. web 화면은 이 값을 직접 읽어 홈·검색 결과·선수 상세를 포함한 모든 페이지의 공통 footer에 표시합니다. Pages workflow는 빌드가 통과한 뒤 `v{version}` 태그와 GitHub Release 및 자동 릴리즈 노트를 먼저 만들고 정적 사이트를 게시합니다. 이미 다른 커밋이 같은 태그를 사용하면 배포를 중단하므로 모든 배포 PR은 버전 변경을 포함해야 합니다.
 
 정적 HTML에는 홈의 기본 OG 메타데이터가 포함되고, React가 실행되면 검색어와 선수 상세 데이터에 맞게 title·description·canonical·Open Graph·Twitter 메타데이터를 갱신합니다. 현재 `HashRouter` 기반 GitHub Pages에서는 URL fragment가 서버로 전달되지 않으므로 자바스크립트를 실행하지 않는 SNS 미리보기 봇은 검색·상세 주소에서도 홈 기본 메타데이터를 표시할 수 있습니다. 검색·상세별 서버 생성 미리보기가 필요하면 별도 OG 렌더링 endpoint 또는 SSR 호스팅을 추가해야 합니다.
 

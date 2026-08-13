@@ -59,7 +59,7 @@ merge audit migration/RPC → service-role 권한 → migration contract test �
 
 ### 배포 버전 변경
 
-루트 `package.json` version → `release-version.ts` 검증·증가 → release version unit test → Pages tag/Release gate → `appVersion.ts` JSON import → 홈 footer component test.
+루트 `package.json` version → `release-version.ts` 검증·증가 → release version unit test → Pages tag/Release gate → `appVersion.ts` JSON import → 모든 라우트의 공통 footer component test.
 
 ## Generated and local-only artifacts
 
