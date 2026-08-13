@@ -16,6 +16,7 @@ import {
   clearManualRetryAttempts,
   SearchResultsPage,
   sourceRefreshFailureView,
+  sourceRetryKey,
 } from "./SearchResultsPage";
 
 function renderSearch(query: string) {
@@ -32,9 +33,10 @@ function renderSearch(query: string) {
 
 describe("SearchResultsPage", () => {
   it("resets the manual retry budget after a source succeeds", () => {
-    const key = "임대현\u0000airping";
+    const key = sourceRetryKey("임\n대현", "airping");
     const exhausted = { [key]: { attempts: 3, lastAttemptAt: 10_000 } };
 
+    expect(key).not.toContain("\n");
     const recovered = clearManualRetryAttempts(exhausted, [key]);
 
     expect(recovered).toEqual({});

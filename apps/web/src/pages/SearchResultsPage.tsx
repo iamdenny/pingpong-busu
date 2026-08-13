@@ -77,6 +77,13 @@ export interface ManualRetryAttempt {
   lastAttemptAt?: number;
 }
 
+export function sourceRetryKey(
+  query: string,
+  sourceCode: SourceCode,
+): string {
+  return JSON.stringify([query, sourceCode]);
+}
+
 export function clearManualRetryAttempts(
   current: Readonly<Record<string, ManualRetryAttempt>>,
   keys: readonly string[],
@@ -295,7 +302,7 @@ export function SearchResultsPage() {
   );
 
   function retryKey(sourceCode: SourceCode): string {
-    return `${query}\u0000${sourceCode}`;
+    return sourceRetryKey(query, sourceCode);
   }
 
   const successfulRetryKeys = refreshViews
