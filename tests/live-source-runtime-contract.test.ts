@@ -44,13 +44,12 @@ describe("live source database contract", () => {
     );
   });
 
-  it("persists only allow-listed failure codes and clears them on success", () => {
+  it("persists only allow-listed failure codes", () => {
     expect(migration).toContain("record_source_refresh_failure");
-    expect(migration).toContain("record_source_refresh_success");
     expect(migration).toContain("p_error_code = any");
-    expect(migration).toContain("last_error_code = null");
     expect(migration).not.toContain("p_error_message");
     expect(migration).not.toContain("p_raw_error");
+    expect(migration).not.toContain("record_source_refresh_success");
   });
 
   it("keeps claim and diagnostic transitions private to the service role", () => {
@@ -60,10 +59,7 @@ describe("live source database contract", () => {
     expect(migration).toMatch(
       /revoke all on function public\.record_source_refresh_failure/su,
     );
-    expect(migration).toMatch(
-      /revoke all on function public\.record_source_refresh_success/su,
-    );
-    expect(migration.match(/to service_role/g)).toHaveLength(3);
+    expect(migration.match(/to service_role/g)).toHaveLength(2);
   });
 });
 
@@ -79,9 +75,9 @@ describe("refresh-player live source contract", () => {
     expect(refreshPlayer).toContain("retryAfterMs: airpingRetryAfterMs");
   });
 
-  it("records sanitized failures and explicit successful recovery", () => {
+  it("records sanitized failures and leaves successful recovery to the upsert transaction", () => {
     expect(refreshPlayer).toContain("record_source_refresh_failure");
-    expect(refreshPlayer).toContain("record_source_refresh_success");
+    expect(refreshPlayer).not.toContain("record_source_refresh_success");
     expect(refreshPlayer).not.toContain("p_error_message:");
     expect(refreshPlayer).not.toContain("p_raw_error:");
   });

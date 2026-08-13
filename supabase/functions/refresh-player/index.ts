@@ -833,10 +833,6 @@ Deno.serve(async (request) => {
             "정규화한 출처 기록을 저장하지 못했습니다.",
           );
         refreshId = Number(summary.refreshId);
-        await client.rpc("record_source_refresh_success", {
-          p_source_code: sourceCode,
-          p_parser_version: parserVersion,
-        });
         results.push({
           sourceCode,
           status: "succeeded",

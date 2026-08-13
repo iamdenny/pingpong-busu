@@ -87,7 +87,7 @@ PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니�
 
 Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 아이핑을 포함한 `출처 + 정규화 검색어`별 5~60초 범위의 최소 호출 간격과 1분당 최대 4회 제한을 적용하며 `source_request_throttles`에 제한 구간과 시도 횟수를 저장합니다. 다른 이름 검색은 출처 전체 잠금 때문에 대기하지 않지만 아이핑은 `source_request_budgets`에서 계정 단위 분당 실제 요청 6회 예산을 원자적으로 적용합니다. 제한 응답이나 에어핑퐁 5초 단일 시도의 시간 초과에 `retryAfterMs`가 있으면 프런트가 남은 시간을 표시하고 최대 2회 자동 재시도합니다. 에어핑퐁 시간 초과 재시도 사이에는 최소 5초를 두며 아이핑 인증 시간 초과·인증·파서 실패는 자동 반복하지 않습니다. 실패 행의 수동 재시도는 출처별로 현재 검색 화면에서 최대 3회이며 5초 쿨다운을 두고, 성공하면 횟수를 초기화합니다. 페이지를 새로 열어 클라이언트 횟수가 초기화돼도 서버 제한은 계속 적용됩니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
 
-Edge가 장애를 기록할 때는 service role 전용 `record_source_refresh_failure` RPC에 출처 코드와 허용 목록의 오류 코드만 전달합니다. 검색어, query key, 원문 오류, 쿠키, HTML은 전달하거나 저장하지 않습니다. 다음 성공은 `record_source_refresh_success`로 `last_error_code`를 지우고 성공 시각과 parser version을 갱신합니다. 상태 기록 RPC 자체가 실패해도 사용자에게 반환할 원래 출처 오류를 다른 오류로 덮지 않습니다.
+Edge가 장애를 기록할 때는 service role 전용 `record_source_refresh_failure` RPC에 출처 코드와 허용 목록의 오류 코드만 전달합니다. 검색어, query key, 원문 오류, 쿠키, HTML은 전달하거나 저장하지 않습니다. 다음 성공은 기존 record upsert 트랜잭션 안에서 `last_error_code`를 지우고 성공 시각과 parser version을 갱신합니다. 별도 성공 상태 RPC를 두지 않아 동시 조회의 완료 순서를 뒤집지 않으며, 실패 상태 기록 자체가 실패해도 사용자에게 반환할 원래 출처 오류를 다른 오류로 덮지 않습니다.
 
 ## 동명이인 제보 검토
 
