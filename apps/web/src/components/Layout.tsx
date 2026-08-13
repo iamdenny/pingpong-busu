@@ -18,7 +18,7 @@ export function Layout() {
         </div>
       )}
       <header className="site-header">
-        <Link to="/" className="brand" aria-label="BUSU 홈">
+        <Link to="/" className="brand" aria-label="BUSU 홈" viewTransition>
           <img
             src={`${import.meta.env.BASE_URL}busu-logo.png`}
             alt=""

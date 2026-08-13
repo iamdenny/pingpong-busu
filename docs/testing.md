@@ -8,6 +8,10 @@ title: "테스트 전략"
 
 # 테스트 전략
 
+## 모션과 화면 전환 확인
+
+모션 변경은 홈 진입, 결과 필터, 결과→상세와 상세→결과 이동을 desktop과 390px에서 확인한다. reduced motion으로 반복해 transform, stagger, pulse, view-transition animation이 보이지 않는지 확인한다. 네이티브 view transition 미지원 환경에서도 즉시 정상 이동해야 한다. production JS gzip 전후를 기록하며 Motion에 따른 초기 JS 증가는 15 KiB 이하여야 한다.
+
 ## 테스트 계층
 
 | 계층               | 위치                                        | 검증 대상                                            |

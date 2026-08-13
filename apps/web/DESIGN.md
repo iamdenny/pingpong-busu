@@ -4,6 +4,13 @@
 
 BUSU는 기록 근거를 빠르게 비교하는 차분하고 신뢰감 있는 검색 도구다. 장식보다 정보 위계를 우선하고, 밝은 청색 강조과 넉넉한 흰 배경으로 공개 기록과 상태 변화를 명확히 보여준다.
 
+## 모션 원칙
+
+- 모션은 정보 위계와 상태 변경만 설명하며 콘텐츠 렌더링이나 DOM 읽기 순서를 늦추지 않는다.
+- 진입 효과는 opacity와 최대 8px 수직 이동만 사용한다. 후보·탭 전환은 240ms 안에 끝내고 후보 stagger는 여섯 번째 항목에서 상한을 둔다.
+- 라우트 이동은 React Router view transition을 점진적 향상으로 사용하고 root crossfade만 허용한다. 비동기 상세 데이터와 카드 사이의 가짜 shared-element morph는 만들지 않는다.
+- `prefers-reduced-motion: reduce`에서는 transform, stagger, source pulse, smooth scroll, view-transition animation을 제거한다.
+
 ## 1. Visual Theme & Atmosphere
 
 화면은 공공 데이터 도구처럼 안정적이되 딱딱하지 않아야 한다. 검색이 가장 강한 시각적 진입점이며, 결과에서는 후보·부수·출처 상태가 짧은 시선 이동으로 읽혀야 한다. 실제 공개 기록과 가상 데이터, 확정 정보와 추정 정보의 경계는 색과 문구로 분명히 구분한다.

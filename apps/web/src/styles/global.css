@@ -40,6 +40,15 @@ a {
 button {
   cursor: pointer;
 }
+button,
+a,
+summary {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
 button:disabled {
   cursor: wait;
   opacity: 0.65;
@@ -857,6 +866,17 @@ p {
   display: grid;
   gap: 0.65rem;
 }
+.candidate-motion-item {
+  min-inline-size: 0;
+}
+.tab-panel-entry {
+  animation: busu-tab-in 180ms ease-out both;
+}
+@keyframes busu-tab-in {
+  from {
+    opacity: 0;
+  }
+}
 .candidate-card {
   padding: 0.9rem 1rem;
 }
@@ -1635,4 +1655,25 @@ p {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
+
+@keyframes busu-view-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes busu-view-in {
+  from {
+    opacity: 0;
+  }
+}
+::view-transition-old(root) {
+  animation: 120ms ease-out both busu-view-out;
+}
+::view-transition-new(root) {
+  animation: 180ms ease-out both busu-view-in;
 }

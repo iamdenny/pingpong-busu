@@ -10,6 +10,7 @@ import {
   rememberRecentSearch,
 } from "../lib/recentSearches";
 import { playerRepository } from "../lib/runtime";
+import { useCalmEntry } from "../lib/motion";
 
 const homeTitle = "BUSU · 탁구 선수 부수·입상 기록 통합검색";
 const homeDescription =
@@ -31,6 +32,7 @@ const statusText = (
 };
 
 export function HomePage() {
+  const heroRef = useCalmEntry(".motion-entry");
   const navigate = useNavigate();
   const [recentSearches, setRecentSearches] = useState(loadRecentSearches);
   const sources = useQuery({
@@ -42,7 +44,9 @@ export function HomePage() {
     sources.data?.filter((source) => source.enabled).length ?? 0;
   const openSearch = (query: string) => {
     rememberRecentSearch(query);
-    void navigate(`/search?q=${encodeURIComponent(query)}`);
+    void navigate(`/search?q=${encodeURIComponent(query)}`, {
+      viewTransition: true,
+    });
   };
   const clearSearchHistory = () => {
     clearRecentSearches();
@@ -52,22 +56,26 @@ export function HomePage() {
   return (
     <div className="home-page">
       <PageMetadata title={homeTitle} description={homeDescription} />
-      <section className="hero">
-        <p className="eyebrow">탁구 기록, 근거부터 확인하세요</p>
-        <h1>
+      <section className="hero" ref={heroRef}>
+        <p className="eyebrow motion-entry">탁구 기록, 근거부터 확인하세요</p>
+        <h1 className="motion-entry">
           전국 탁구 선수
           <br />
           <span>부수·입상 통합조회</span>
         </h1>
-        <p className="hero__description">
+        <p className="hero__description motion-entry">
           여러 대회 사이트의 저장된 기록을 먼저 보고, 출처별 차이와 마지막 확인
           시각을 함께 비교합니다.
         </p>
-        <SearchForm
-          onSearch={(query) =>
-            navigate(`/search?q=${encodeURIComponent(query)}`)
-          }
-        />
+        <div className="motion-entry">
+          <SearchForm
+            onSearch={(query) =>
+              navigate(`/search?q=${encodeURIComponent(query)}`, {
+                viewTransition: true,
+              })
+            }
+          />
+        </div>
         <div className="examples">
           예시 검색어:{" "}
           {exampleQueries.map((query) => (
