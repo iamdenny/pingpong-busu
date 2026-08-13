@@ -8,7 +8,15 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
-import { SearchResultsPage } from "./SearchResultsPage";
+import {
+  SourceRefreshRateLimitError,
+  SourceRefreshTimeoutError,
+} from "../lib/sourceRefreshRetry";
+import {
+  clearManualRetryAttempts,
+  SearchResultsPage,
+  sourceRefreshFailureView,
+} from "./SearchResultsPage";
 
 function renderSearch(query: string) {
   render(
@@ -23,6 +31,36 @@ function renderSearch(query: string) {
 }
 
 describe("SearchResultsPage", () => {
+  it("resets the manual retry budget after a source succeeds", () => {
+    const key = "임대현\u0000airping";
+    const exhausted = { [key]: { attempts: 3, lastAttemptAt: 10_000 } };
+
+    const recovered = clearManualRetryAttempts(exhausted, [key]);
+
+    expect(recovered).toEqual({});
+    expect(clearManualRetryAttempts(recovered, [key])).toBe(recovered);
+  });
+
+  it("preserves timeout failure details after automatic retry exhaustion", () => {
+    expect(
+      sourceRefreshFailureView(new SourceRefreshTimeoutError(5_000, 10_000)),
+    ).toEqual({
+      errorCode: "source_timeout",
+      message: "자동 재시도 후에도 출처 응답 시간이 초과되었습니다.",
+      retryAt: 15_000,
+    });
+  });
+
+  it("keeps the existing rate-limit failure details", () => {
+    expect(
+      sourceRefreshFailureView(new SourceRefreshRateLimitError(5_000, 10_000)),
+    ).toEqual({
+      errorCode: "source_rate_limited",
+      message: "자동 재시도 후에도 호출 제한이 해제되지 않았습니다.",
+      retryAt: 15_000,
+    });
+  });
+
   it("shows dated award results, entry tabs, direct links, and whole-card detail links", async () => {
     renderSearch("김탁구");
 

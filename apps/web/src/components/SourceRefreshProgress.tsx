@@ -30,15 +30,20 @@ const errorLabels: Readonly<Record<string, string>> = {
   source_refresh_failed: "조회 실패",
 };
 
+function isAutomaticRetryReason(reason: string | undefined): boolean {
+  return reason === "source_rate_limited" || reason === "source_timeout";
+}
+
 export function sourceRefreshStateText(
   source: SourceRefreshView,
   now = Date.now(),
 ): string {
-  if (source.reason === "source_rate_limited" && source.retryAt !== undefined) {
+  if (isAutomaticRetryReason(source.reason) && source.retryAt !== undefined) {
+    const label = errorLabels[source.reason ?? ""] ?? "조회 지연";
     const remainingSeconds = Math.ceil((source.retryAt - now) / 1_000);
     return remainingSeconds > 0
-      ? `호출 제한 · ${remainingSeconds}초 후 자동 재시도`
-      : "호출 제한 · 자동 재시도 중";
+      ? `${label} · ${remainingSeconds}초 후 자동 재시도`
+      : `${label} · 자동 재시도 중`;
   }
   if (source.state === "waiting") return "조회 대기";
   if (source.state === "refreshing") return "조회 중";
@@ -189,8 +194,7 @@ export function SourceRefreshProgress({
   const [now, setNow] = useState(Date.now);
   const hasTimedRetry = sources.some(
     (source) =>
-      (source.reason === "source_rate_limited" &&
-        source.retryAt !== undefined) ||
+      (isAutomaticRetryReason(source.reason) && source.retryAt !== undefined) ||
       (source.state === "failed" &&
         source.manualRetryAt !== undefined &&
         source.manualRetryAt > now),

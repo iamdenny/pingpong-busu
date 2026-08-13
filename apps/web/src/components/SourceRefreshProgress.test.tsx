@@ -334,6 +334,29 @@ describe("SourceRefreshProgress", () => {
     );
   });
 
+  it("counts down an automatic timeout retry", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-13T00:00:00.000Z"));
+    render(
+      <SourceRefreshProgress
+        existingRecordCount={0}
+        sources={[
+          {
+            sourceCode: "airping",
+            sourceName: "에어핑퐁",
+            state: "waiting",
+            reason: "source_timeout",
+            retryAt: Date.now() + 4_500,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("시간 초과 · 5초 후 자동 재시도")).toBeVisible();
+    await act(() => vi.advanceTimersByTimeAsync(1_000));
+    expect(screen.getByText("시간 초과 · 4초 후 자동 재시도")).toBeVisible();
+  });
+
   it("offers a bounded manual retry only after the cooldown", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-13T00:00:00.000Z"));

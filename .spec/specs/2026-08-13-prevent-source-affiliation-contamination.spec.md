@@ -43,7 +43,7 @@ Airping 공개 원문에 적힌 `82개판5분전`은 parser 오류가 아니라 
 - [x] `packages/domain/src/observations.ts`에서 예선·조별 순위를 입상에서 제외한다.
 - [x] `packages/source-adapters/src/airping/parser.test.ts`와 privacy-safe synthetic fixture로 이상해 보이는 소속 원문이 손실 없이 보존됨을 검증한다.
 - [x] `tests/source-observation-boundary-migration.test.ts`에 canonical 소속 미승격, 원문 보존, 정밀 cleanup, SQL 입상 판정의 계약 테스트를 먼저 추가한다. (BSM-2, BSM-3, BSM-4)
-- [x] `supabase/migrations/202608130005_source_observation_boundary.sql`에서 수집 RPC와 DB 입상 판정기를 교체하고 알려진 canonical 오염을 정리한다.
+- [x] `supabase/migrations/202608130006_source_observation_boundary.sql`에서 수집 RPC와 DB 입상 판정기를 교체하고 알려진 canonical 오염을 정리한다.
 - [x] `docs/data-model.md`에 관측 소속과 검토된 대표 소속의 저장 경계를 명시한다.
 - [x] `docs/product-spec.md`에 예선·조별 순위 제외와 출처 소속 미승격 수용 규칙을 반영한다.
 - [x] 필수 게이트를 실행하고 회귀 증거를 기록한다.

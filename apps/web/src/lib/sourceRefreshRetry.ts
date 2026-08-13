@@ -4,6 +4,7 @@ import type { RefreshResponse } from "./repository";
 export const MAX_SOURCE_REFRESH_RETRIES = 2;
 export const MAX_MANUAL_SOURCE_REFRESH_RETRIES = 3;
 export const MANUAL_SOURCE_REFRESH_COOLDOWN_MS = 5_000;
+export const SOURCE_TIMEOUT_RETRY_DELAY_MS = 5_000;
 
 export interface ManualSourceRetryState {
   attempts: number;
@@ -52,7 +53,23 @@ export class SourceRefreshRateLimitError extends Error {
   }
 }
 
-export function requireRefreshWithoutRateLimit(
+export class SourceRefreshTimeoutError extends Error {
+  readonly retryAfterMs: number;
+  readonly retryAt: number;
+
+  constructor(retryAfterMs = SOURCE_TIMEOUT_RETRY_DELAY_MS, now = Date.now()) {
+    const safeDelay = Math.min(
+      60_000,
+      Math.max(SOURCE_TIMEOUT_RETRY_DELAY_MS, retryAfterMs),
+    );
+    super("출처 응답 시간 초과");
+    this.name = "SourceRefreshTimeoutError";
+    this.retryAfterMs = safeDelay;
+    this.retryAt = now + safeDelay;
+  }
+}
+
+export function requireRefreshWithoutRetryableFailure(
   response: RefreshResponse,
   sourceCode: SourceCode,
 ): RefreshResponse {
@@ -68,6 +85,14 @@ export function requireRefreshWithoutRateLimit(
   ) {
     throw new SourceRefreshRateLimitError(outcome.retryAfterMs);
   }
+  if (
+    sourceCode === "airping" &&
+    outcome?.status === "failed" &&
+    outcome.errorCode === "source_timeout" &&
+    outcome.retryAfterMs !== undefined
+  ) {
+    throw new SourceRefreshTimeoutError(outcome.retryAfterMs);
+  }
   return response;
 }
 
@@ -76,7 +101,8 @@ export function shouldRetrySourceRefresh(
   error: unknown,
 ): boolean {
   return (
-    error instanceof SourceRefreshRateLimitError &&
+    (error instanceof SourceRefreshRateLimitError ||
+      error instanceof SourceRefreshTimeoutError) &&
     failureCount < MAX_SOURCE_REFRESH_RETRIES
   );
 }
@@ -85,7 +111,11 @@ export function sourceRefreshRetryDelay(
   _failureCount: number,
   error: unknown,
 ): number {
-  if (!(error instanceof SourceRefreshRateLimitError)) return 0;
+  if (
+    !(error instanceof SourceRefreshRateLimitError) &&
+    !(error instanceof SourceRefreshTimeoutError)
+  )
+    return 0;
   return Math.max(0, error.retryAt - Date.now()) + 100;
 }
 
@@ -93,4 +123,10 @@ export function asRateLimitError(
   error: unknown,
 ): SourceRefreshRateLimitError | undefined {
   return error instanceof SourceRefreshRateLimitError ? error : undefined;
+}
+
+export function asTimeoutError(
+  error: unknown,
+): SourceRefreshTimeoutError | undefined {
+  return error instanceof SourceRefreshTimeoutError ? error : undefined;
 }

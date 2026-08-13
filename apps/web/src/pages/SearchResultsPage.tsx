@@ -33,16 +33,59 @@ import {
 } from "../lib/runtime";
 import {
   asRateLimitError,
+  asTimeoutError,
   manualSourceRetryAvailability,
-  requireRefreshWithoutRateLimit,
+  requireRefreshWithoutRetryableFailure,
   shouldRetrySourceRefresh,
   sourceRefreshRetryDelay,
 } from "../lib/sourceRefreshRetry";
 import { useCalmEntry } from "../lib/motion";
 
-interface ManualRetryAttempt {
+interface SourceRefreshFailureView {
+  errorCode: string;
+  message: string;
+  retryAt?: number;
+}
+
+export function sourceRefreshFailureView(
+  error: unknown,
+): SourceRefreshFailureView {
+  const rateLimitError = asRateLimitError(error);
+  if (rateLimitError)
+    return {
+      errorCode: "source_rate_limited",
+      message: "자동 재시도 후에도 호출 제한이 해제되지 않았습니다.",
+      retryAt: rateLimitError.retryAt,
+    };
+
+  const timeoutError = asTimeoutError(error);
+  if (timeoutError)
+    return {
+      errorCode: "source_timeout",
+      message: "자동 재시도 후에도 출처 응답 시간이 초과되었습니다.",
+      retryAt: timeoutError.retryAt,
+    };
+
+  return {
+    errorCode: "source_request_failed",
+    message: "BUSU 서버의 출처 조회 요청을 완료하지 못했습니다.",
+  };
+}
+
+export interface ManualRetryAttempt {
   attempts: number;
   lastAttemptAt?: number;
+}
+
+export function clearManualRetryAttempts(
+  current: Readonly<Record<string, ManualRetryAttempt>>,
+  keys: readonly string[],
+): Readonly<Record<string, ManualRetryAttempt>> {
+  const matchedKeys = keys.filter((key) => current[key] !== undefined);
+  if (matchedKeys.length === 0) return current;
+  const next = { ...current };
+  for (const key of matchedKeys) delete next[key];
+  return next;
 }
 
 const identityText = {
@@ -166,7 +209,7 @@ export function SearchResultsPage() {
           sourceCodes: [source.sourceCode],
           force: true,
         });
-        requireRefreshWithoutRateLimit(response, source.sourceCode);
+        requireRefreshWithoutRetryableFailure(response, source.sourceCode);
         void queryClient.invalidateQueries({ queryKey: ["players", query] });
         return response;
       },
@@ -180,14 +223,16 @@ export function SearchResultsPage() {
   const refreshViews: SourceRefreshView[] = activeSources.map(
     (source, index) => {
       const sourceQuery = refreshQueries[index];
-      const retryError = asRateLimitError(sourceQuery?.failureReason);
-      if (retryError && !sourceQuery?.isError)
+      const pendingFailure = sourceRefreshFailureView(
+        sourceQuery?.failureReason,
+      );
+      if (pendingFailure.retryAt !== undefined && !sourceQuery?.isError)
         return {
           sourceCode: source.sourceCode,
           sourceName: source.displayName,
           state: "waiting",
-          reason: "source_rate_limited",
-          retryAt: retryError.retryAt,
+          reason: pendingFailure.errorCode,
+          retryAt: pendingFailure.retryAt,
         };
       if (!sourceQuery || sourceQuery.isPending || sourceQuery.isFetching)
         return {
@@ -195,23 +240,21 @@ export function SearchResultsPage() {
           sourceName: source.displayName,
           state: "refreshing",
         };
-      if (sourceQuery.isError)
+      if (sourceQuery.isError) {
+        const failure = sourceRefreshFailureView(sourceQuery.error);
         return {
           sourceCode: source.sourceCode,
           sourceName: source.displayName,
           state: "failed",
-          errorCode: asRateLimitError(sourceQuery.error)
-            ? "source_rate_limited"
-            : "source_request_failed",
-          message: asRateLimitError(sourceQuery.error)
-            ? "자동 재시도 후에도 호출 제한이 해제되지 않았습니다."
-            : "BUSU 서버의 출처 조회 요청을 완료하지 못했습니다.",
+          errorCode: failure.errorCode,
+          message: failure.message,
           ...manualRetryView(
             source.sourceCode,
             sourceQuery.errorUpdatedAt,
-            asRateLimitError(sourceQuery.error)?.retryAt,
+            failure.retryAt,
           ),
         };
+      }
       const outcome = sourceQuery.data?.sources.find(
         (item) => item.sourceCode === source.sourceCode,
       );
@@ -255,6 +298,22 @@ export function SearchResultsPage() {
     return `${query}\u0000${sourceCode}`;
   }
 
+  const successfulRetryKeys = refreshViews
+    .filter((source) => source.state === "succeeded")
+    .map((source) => retryKey(source.sourceCode))
+    .join("\n");
+
+  useEffect(() => {
+    if (!successfulRetryKeys) return;
+    const nextAttempts = clearManualRetryAttempts(
+      manualRetryAttemptsRef.current,
+      successfulRetryKeys.split("\n"),
+    );
+    if (nextAttempts === manualRetryAttemptsRef.current) return;
+    manualRetryAttemptsRef.current = nextAttempts;
+    setManualRetryAttempts(nextAttempts);
+  }, [successfulRetryKeys]);
+
   function manualRetryView(
     sourceCode: SourceCode,
     failureAt: number,
@@ -290,8 +349,8 @@ export function SearchResultsPage() {
     const outcome = sourceQuery.data?.sources.find(
       (item) => item.sourceCode === sourceCode,
     );
-    const rateLimitRetryAt =
-      asRateLimitError(sourceQuery.error)?.retryAt ??
+    const automaticRetryAt =
+      sourceRefreshFailureView(sourceQuery.error).retryAt ??
       (outcome?.retryAfterMs !== undefined
         ? sourceQuery.dataUpdatedAt + outcome.retryAfterMs
         : undefined);
@@ -301,8 +360,8 @@ export function SearchResultsPage() {
       ...(current?.lastAttemptAt !== undefined
         ? { lastAttemptAt: current.lastAttemptAt }
         : {}),
-      ...(rateLimitRetryAt !== undefined
-        ? { notBeforeAt: rateLimitRetryAt }
+      ...(automaticRetryAt !== undefined
+        ? { notBeforeAt: automaticRetryAt }
         : {}),
     });
     if (!availability.canRetry) return;

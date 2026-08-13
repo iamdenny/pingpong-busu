@@ -5,8 +5,9 @@ import {
   MANUAL_SOURCE_REFRESH_COOLDOWN_MS,
   MAX_MANUAL_SOURCE_REFRESH_RETRIES,
   SourceRefreshRateLimitError,
+  SourceRefreshTimeoutError,
   manualSourceRetryAvailability,
-  requireRefreshWithoutRateLimit,
+  requireRefreshWithoutRetryableFailure,
   shouldRetrySourceRefresh,
   sourceRefreshRetryDelay,
 } from "./sourceRefreshRetry";
@@ -27,11 +28,11 @@ const rateLimitedResponse: RefreshResponse = {
 describe("source refresh retry", () => {
   it("turns a timed rate limit into a retryable error", () => {
     expect(() =>
-      requireRefreshWithoutRateLimit(rateLimitedResponse, "astree"),
+      requireRefreshWithoutRetryableFailure(rateLimitedResponse, "astree"),
     ).toThrow(SourceRefreshRateLimitError);
 
     expect(() =>
-      requireRefreshWithoutRateLimit(
+      requireRefreshWithoutRetryableFailure(
         {
           ...rateLimitedResponse,
           sources: [
@@ -63,6 +64,78 @@ describe("source refresh retry", () => {
     expect(sourceRefreshRetryDelay(0, error)).toBeGreaterThanOrEqual(2_000);
     expect(sourceRefreshRetryDelay(0, error)).toBeLessThanOrEqual(2_100);
   });
+
+  it("turns an explicit source timeout into a retryable error", () => {
+    expect(() =>
+      requireRefreshWithoutRetryableFailure(
+        {
+          refreshId: "refresh-timeout",
+          accepted: true,
+          sources: [
+            {
+              sourceCode: "airping",
+              status: "failed",
+              errorCode: "source_timeout",
+              retryAfterMs: 1_000,
+            },
+          ],
+        },
+        "airping",
+      ),
+    ).toThrow(SourceRefreshTimeoutError);
+  });
+
+  it("does not repeat an iPing authentication request after timeout", () => {
+    const response: RefreshResponse = {
+      refreshId: "refresh-iping-timeout",
+      accepted: true,
+      sources: [
+        {
+          sourceCode: "iping",
+          status: "failed",
+          errorCode: "source_timeout",
+          retryAfterMs: 5_000,
+        },
+      ],
+    };
+
+    expect(() =>
+      requireRefreshWithoutRetryableFailure(response, "iping"),
+    ).not.toThrow();
+  });
+
+  it("retries a source timeout at most twice with a five-second minimum delay", () => {
+    const now = Date.now();
+    const error = new SourceRefreshTimeoutError(1_000, now);
+
+    expect(shouldRetrySourceRefresh(0, error)).toBe(true);
+    expect(shouldRetrySourceRefresh(1, error)).toBe(true);
+    expect(shouldRetrySourceRefresh(2, error)).toBe(false);
+    expect(sourceRefreshRetryDelay(0, error)).toBeGreaterThanOrEqual(5_000);
+    expect(sourceRefreshRetryDelay(0, error)).toBeLessThanOrEqual(5_100);
+  });
+
+  it.each(["source_auth_failed", "source_schema_changed", "source_blocked"])(
+    "keeps deterministic failure %s non-retryable",
+    (errorCode) => {
+      const response: RefreshResponse = {
+        refreshId: `refresh-${errorCode}`,
+        accepted: true,
+        sources: [
+          {
+            sourceCode: "iping",
+            status: "failed",
+            errorCode,
+          },
+        ],
+      };
+
+      expect(() =>
+        requireRefreshWithoutRetryableFailure(response, "iping"),
+      ).not.toThrow();
+      expect(shouldRetrySourceRefresh(0, new Error(errorCode))).toBe(false);
+    },
+  );
 
   it("allows at most three manual retries with a five-second cooldown", () => {
     const first = manualSourceRetryAvailability(
