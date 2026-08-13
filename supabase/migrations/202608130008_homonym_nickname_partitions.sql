@@ -1,44 +1,17 @@
 alter table public.players
 add column homonym_nickname text,
-add constraint players_homonym_nickname_catalog_check
+add constraint players_homonym_nickname_check
 check (
   homonym_nickname is null
-  or homonym_nickname in (
-    'power-drive',
-    'loop-drive-champion',
-    'back-drive-master',
-    'amateur-best',
-    'chiquita-artisan',
-    'smash-solver',
-    'cut-defense-king',
-    'block-master',
-    'serve-ace',
-    'receive-artisan',
-    'rally-dominator',
-    'forehand-specialist',
-    'backhand-expert',
-    'topspin-master',
-    'backspin-strategist',
-    'sidespin-wizard',
-    'counter-drive',
-    'flick-specialist',
-    'short-play-master',
-    'lob-defense',
-    'drop-shot-artisan',
-    'third-ball-attacker',
-    'fifth-ball-winner',
-    'deuce-winner',
-    'edge-fairy',
-    'net-wizard',
-    'spin-restaurant',
-    'rally-zombie',
-    'table-commander',
-    'backhand-bulldozer'
+  or (
+    char_length(homonym_nickname) between 2 and 20
+    and homonym_nickname = regexp_replace(btrim(homonym_nickname), '\s+', ' ', 'g')
+    and homonym_nickname !~ '[<>[:cntrl:]]'
   )
 );
 
 create unique index players_active_name_homonym_nickname_uidx
-on public.players(normalized_name, homonym_nickname)
+on public.players(normalized_name, lower(homonym_nickname))
 where homonym_nickname is not null
   and merged_into_player_id is null;
 
@@ -182,37 +155,11 @@ language sql
 immutable
 set search_path = ''
 as $$
-  select case p_code
-    when 'power-drive' then '파워 드라이브'
-    when 'loop-drive-champion' then '루프 드라이브 최강자'
-    when 'back-drive-master' then '백드라이브 마스터'
-    when 'amateur-best' then '아마추어 최강'
-    when 'chiquita-artisan' then '치키타 장인'
-    when 'smash-solver' then '스매시 해결사'
-    when 'cut-defense-king' then '커트 수비왕'
-    when 'block-master' then '블록의 달인'
-    when 'serve-ace' then '서브 에이스'
-    when 'receive-artisan' then '리시브 장인'
-    when 'rally-dominator' then '랠리 지배자'
-    when 'forehand-specialist' then '포핸드 스페셜리스트'
-    when 'backhand-expert' then '백핸드 고수'
-    when 'topspin-master' then '톱스핀 마스터'
-    when 'backspin-strategist' then '백스핀 전략가'
-    when 'sidespin-wizard' then '사이드스핀 마법사'
-    when 'counter-drive' then '카운터 드라이브'
-    when 'flick-specialist' then '플릭 스페셜리스트'
-    when 'short-play-master' then '쇼트 플레이 장인'
-    when 'lob-defense' then '로빙 수비수'
-    when 'drop-shot-artisan' then '드롭샷 장인'
-    when 'third-ball-attacker' then '3구 공격수'
-    when 'fifth-ball-winner' then '5구 승부사'
-    when 'deuce-winner' then '듀스 승부사'
-    when 'edge-fairy' then '엣지의 요정'
-    when 'net-wizard' then '네트의 마법사'
-    when 'spin-restaurant' then '회전 맛집'
-    when 'rally-zombie' then '랠리 좀비'
-    when 'table-commander' then '탁구대 지휘자'
-    when 'backhand-bulldozer' then '백핸드 불도저'
+  select case
+    when p_code is not null
+      and char_length(btrim(p_code)) between 2 and 20
+      and p_code !~ '[<>[:cntrl:]]'
+      then regexp_replace(btrim(p_code), '\s+', ' ', 'g')
     else null
   end;
 $$;
@@ -244,7 +191,7 @@ declare
   v_merge_operation_id uuid;
 begin
   if jsonb_typeof(p_groups) is distinct from 'array'
-    or jsonb_array_length(p_groups) < 2
+    or jsonb_array_length(p_groups) < 1
     or p_editor_hash !~ '^[0-9a-f]{64}$'
     or p_fingerprint !~ '^[0-9a-f]{64}$'
     or (p_reason is not null and char_length(trim(p_reason)) not between 10 and 500)
@@ -267,7 +214,7 @@ begin
         else true
       end
   ) or (
-    select count(distinct group_item.value->>'nickname')
+    select count(distinct lower(group_item.value->>'nickname'))
     from jsonb_array_elements(p_groups) group_item(value)
   ) <> jsonb_array_length(p_groups)
   then
@@ -295,7 +242,7 @@ begin
     group_item.value->'player_public_ids'
   ) candidate(value);
 
-  if v_candidate_count < 2 or v_candidate_count <> v_recent_count then
+  if v_candidate_count < 1 or v_candidate_count <> v_recent_count then
     raise exception 'invalid_identity_partition';
   end if;
 
@@ -376,8 +323,8 @@ begin
     from public.players player
     where player.normalized_name = v_normalized_name
       and player.merged_into_player_id is null
-      and player.homonym_nickname in (
-        select group_item.value->>'nickname'
+      and lower(player.homonym_nickname) in (
+        select lower(group_item.value->>'nickname')
         from jsonb_array_elements(p_groups) group_item(value)
       )
       and player.public_id not in (
@@ -960,11 +907,11 @@ where p.merged_into_player_id is null
 group by p.id, c.canonical_name;
 
 comment on column public.players.homonym_nickname is
-  'Curated playful table-tennis alias used only to distinguish same-name public record groups; not a skill rating.';
+  'User-entered playful table-tennis alias used only to distinguish same-name public record groups; not a skill rating.';
 comment on table public.identity_partition_operations is
-  'Atomic, publicly auditable community partitions of same-name records into curated nickname groups.';
+  'Atomic, publicly auditable community partitions of same-name records into user-entered nickname groups.';
 comment on function public.apply_identity_partition_internal(jsonb, text, text, text) is
-  'Applies two or more explicit nickname groups without a candidate-count cap, preserving reversible merge snapshots.';
+  'Applies one or more explicit nickname groups without a candidate-count cap, preserving reversible merge snapshots.';
 comment on function public.revert_identity_partition_internal(uuid, text, text) is
   'Reverts every nickname and merge created by one identity partition as a single transaction.';
 comment on view public.public_player_search is

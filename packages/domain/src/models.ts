@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { HomonymNicknameCode } from "./homonymNicknames";
 
 export const sourceCodes = [
   "mock",
@@ -87,7 +86,7 @@ export interface PlayerSummary {
   sourceCount: number;
   lastCheckedAt: string;
   identityStatus: "unreviewed" | "likely" | "verified" | "disputed";
-  homonymNickname?: HomonymNicknameCode;
+  homonymNickname?: string;
   dataKind?: "demo" | "live";
 }
 

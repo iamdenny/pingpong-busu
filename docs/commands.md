@@ -84,7 +84,7 @@ npx --yes supabase@latest functions deploy revert-identity-edit --project-ref <p
 npx --yes supabase@latest functions deploy submit-feedback --project-ref <project-ref>
 ```
 
-`202608130001_reversible_player_merges.sql`부터 `202608130009_anonymous_feedback.sql`까지 파일명 순서로 적용한다. 참여 편집과 원복 운영 확인은 [운영 문서](operations.md)를 따른다.
+`202608130001_reversible_player_merges.sql`부터 `202608130012_anonymous_feedback.sql`까지 파일명 순서로 적용한다. 참여 편집과 원복 운영 확인은 [운영 문서](operations.md)를 따른다.
 
 로컬 DB에서 출처 관측 경계와 TypeScript/SQL 입상 truth table의 동등성을 확인할 때는 reset 후 트랜잭션 검증을 실행한다.
 

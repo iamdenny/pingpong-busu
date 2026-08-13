@@ -67,7 +67,7 @@ const parserVersions: Record<LiveSourceCode, string> = {
   okpingpong: "okpingpong-3",
   mytt: "mytt-2",
   superstar: "superstar-1",
-  yongintt: "yongintt-1",
+  yongintt: "yongintt-3",
   iping: "iping-2",
 };
 

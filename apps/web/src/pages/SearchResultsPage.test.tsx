@@ -98,7 +98,7 @@ describe("SearchResultsPage", () => {
     expect(within(awardSummary!).getByText("외 1건")).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
-        name: "김탁구 파워 드라이브 서울 스핀탁구클럽 상세 기록 보기",
+        name: "김탁구 파워 드라이브 전문가 서울 스핀탁구클럽 상세 기록 보기",
       }),
     ).toHaveAttribute("href", "/players/kim-seoul");
     expect(
@@ -106,7 +106,7 @@ describe("SearchResultsPage", () => {
     ).not.toBeInTheDocument();
     const playerCard = screen
       .getByRole("link", {
-        name: "김탁구 파워 드라이브 서울 스핀탁구클럽 상세 기록 보기",
+        name: "김탁구 파워 드라이브 전문가 서울 스핀탁구클럽 상세 기록 보기",
       })
       .querySelector("article");
     expect(playerCard?.querySelector(".candidate-card__footer")).toBeNull();
@@ -157,7 +157,7 @@ describe("SearchResultsPage", () => {
     ).toBeInTheDocument();
     expect(
       within(filteredList).queryByRole("link", {
-        name: "김탁구 파워 드라이브 서울 스핀탁구클럽 상세 기록 보기",
+        name: "김탁구 파워 드라이브 전문가 서울 스핀탁구클럽 상세 기록 보기",
       }),
     ).not.toBeInTheDocument();
 

@@ -1,5 +1,4 @@
 import type {
-  HomonymNicknameCode,
   PlayerDetail,
   PlayerRecord,
   PlayerSummary,
@@ -44,7 +43,7 @@ export interface RefreshStatus {
   state: "running" | "completed" | "partial";
 }
 export interface IdentityEditGroupInput {
-  nickname: HomonymNicknameCode;
+  nickname: string;
   candidateIds: string[];
 }
 export interface IdentityEditInput {
