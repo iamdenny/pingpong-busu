@@ -12,7 +12,7 @@ title: "개발 명령"
 
 - Node.js 24 (`.nvmrc`)
 - pnpm 11.17 (`package.json#packageManager`)
-- production DB/Edge 작업 시 Supabase CLI 로그인과 project link
+- hosted DB/Edge 작업 시 Supabase CLI 로그인과 대상별 project link
 
 ## 설치와 웹 개발
 
@@ -85,6 +85,18 @@ npx --yes supabase@latest functions deploy revert-identity-edit --project-ref <p
 
 `202608130001_reversible_player_merges.sql`부터 `202608130009_single_group_custom_nicknames.sql`까지 파일명 순서로 적용한다. 참여 편집과 원복 운영 확인은 [운영 문서](operations.md)를 따른다.
 
+독립 development 프로젝트의 최초 구성과 반복 배포는 main의 `Deploy Supabase development backend` workflow를 사용한다. 로컬에서 미리 볼 때도 production ref와 다른지 확인하고 development에만 seed를 포함한다.
+
+```bash
+supabase link --project-ref <development-project-ref>
+supabase projects list
+supabase db push --linked --dry-run --include-seed
+supabase db push --linked --include-seed
+supabase migration list --linked
+```
+
+`--include-seed`는 development 전용이다. production에는 사용하지 않는다. remote reset은 데이터를 삭제하므로 자동화하지 않으며, development를 폐기·재구성할 때만 대상 ref를 다시 확인하고 운영 절차에 따라 수동 실행한다.
+
 로컬 DB에서 출처 관측 경계와 TypeScript/SQL 입상 truth table의 동등성을 확인할 때는 reset 후 트랜잭션 검증을 실행한다.
 
 ```bash
@@ -97,7 +109,7 @@ DB 용량 확인:
 pnpm db:size
 ```
 
-PAT, service role key, DB password는 명령 문자열이나 문서에 기록하지 않는다.
+PAT, service role key, DB password는 명령 문자열이나 문서에 기록하지 않는다. development에는 production 데이터, Kakao key 또는 iPing 계정을 복제하지 않는다.
 
 ## 배포 버전 미리보기
 

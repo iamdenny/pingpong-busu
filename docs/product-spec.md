@@ -36,7 +36,7 @@ title: "BUSU 제품 스펙"
 - 부수 체계별 최근 관측값 요약
 - 활성 출처별 실시간 조회 진행 표시
 - 선수 상세의 최신순 대회 이력, 입상 필터, 출처 비교
-- demo, local live, Supabase production 실행 모드
+- demo, local live, hosted Supabase 실행 모드
 - 공개 HTTP 출처 adapter와 synthetic fixture 검증
 - Supabase RLS/public view/RPC/Edge Function
 - GitHub Pages 및 Supabase 배포 자동화
@@ -214,9 +214,9 @@ title: "BUSU 제품 스펙"
 | ---------- | -------------------------------------------------------- | -------------------------- |
 | Test/Demo  | test, `VITE_APP_MODE=demo`, 또는 Supabase 공개 설정 누락 | `DemoPlayerRepository`     |
 | Local live | Vite dev + `VITE_DEV_LIVE_SEARCH=true`                   | `DevLivePlayerRepository`  |
-| Production | URL/publishable key 존재, demo 아님                      | `SupabasePlayerRepository` |
+| Hosted     | URL/publishable key 존재, demo 아님                      | `SupabasePlayerRepository` |
 
-production에서 실시간 갱신 UI는 `VITE_SOURCE_REFRESH_ENABLED=true`일 때만 켜진다.
+hosted production에서 실시간 갱신 UI는 `VITE_SOURCE_REFRESH_ENABLED=true`일 때만 켜진다. hosted development는 별도 Supabase 프로젝트와 합성 seed를 사용하고 실출처 갱신을 켜지 않는다.
 
 ## 10. 보안과 개인정보
 
@@ -239,7 +239,7 @@ pnpm test
 pnpm build
 ```
 
-parser 변경은 synthetic fixture test가 필수다. 주요 사용자 흐름은 Playwright smoke로 검증한다. `main` push는 GitHub Pages를 빌드하고, production secret/variable이 준비된 경우 Supabase migration과 Edge Function을 배포한다. 제품 버전은 루트 `package.json`의 `YYYY.WEEK.SEQ` 한 곳에서 관리한다. Pages workflow는 검증과 build가 끝난 뒤 같은 버전의 태그·GitHub Release·자동 릴리즈 노트를 생성하고, 그 release가 성공한 경우에만 사이트를 게시한다.
+parser 변경은 synthetic fixture test가 필수다. 주요 사용자 흐름은 Playwright smoke로 검증한다. `main` push는 GitHub Pages를 빌드하고, production secret/variable이 준비된 경우 production Supabase migration과 Edge Function을 배포한다. development Supabase는 main의 수동 workflow에서만 migration과 반복 가능한 합성 seed를 적용하며 production project ref와 같으면 실패해야 한다. 제품 버전은 루트 `package.json`의 `YYYY.WEEK.SEQ` 한 곳에서 관리한다. Pages workflow는 검증과 build가 끝난 뒤 같은 버전의 태그·GitHub Release·자동 릴리즈 노트를 생성하고, 그 release가 성공한 경우에만 사이트를 게시한다.
 
 ## 12. 현재 제약과 다음 단계
 

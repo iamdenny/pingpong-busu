@@ -10,6 +10,8 @@ title: "아키텍처"
 
 BUSU는 pnpm monorepo 하나와 Supabase managed backend로 구성한다. 별도 상시 Node API 서버를 두지 않는다. React 컴포넌트는 `PlayerRepository` 계약만 사용하고, 선택된 repository가 demo·로컬 live middleware·Supabase public API 차이를 감춘다.
 
+Hosted Supabase는 production과 development 두 프로젝트로 분리한다. 두 환경은 같은 migration을 사용하지만 project ref, URL, publishable key, 데이터와 Edge secrets를 공유하지 않는다. Free 플랜에서는 유료 Branching 대신 두 번째 프로젝트를 사용하고, table 이름에 환경 prefix를 넣지 않는다. development에는 합성 seed만 두며 `mock` 외 출처와 live crawler를 항상 비활성화한다.
+
 ## 시스템 경계
 
 ```mermaid
