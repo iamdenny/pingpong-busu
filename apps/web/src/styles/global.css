@@ -1091,6 +1091,9 @@ p {
   padding: 0;
   margin: 0.8rem 0 0;
 }
+.source-refresh-progress ul[hidden] {
+  display: none;
+}
 .source-refresh-progress li {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
