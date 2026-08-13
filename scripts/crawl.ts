@@ -27,6 +27,8 @@ const value = (flag: string) => {
   return index >= 0 ? args[index + 1] : undefined;
 };
 const query = value("--query") ?? "김탁구";
+const reportedQuery =
+  process.env.CRAWLER_REDACT_QUERY === "true" ? "[redacted]" : query;
 const version = Number(value("--version") ?? "1") === 2 ? 2 : 1;
 const source = value("--source") ?? "mock";
 const statePath = resolve(".busu-crawler-state.json");
@@ -135,7 +137,7 @@ if (mode === "live" && process.env.CRAWL_LIVE !== "true") {
         JSON.stringify(
           {
             source: adapter.sourceCode,
-            query,
+            query: reportedQuery,
             found: result.records.length,
             ...summary,
             failed: 0,
@@ -151,7 +153,7 @@ if (mode === "live" && process.env.CRAWL_LIVE !== "true") {
         JSON.stringify(
           {
             source,
-            query,
+            query: reportedQuery,
             found: 0,
             inserted: 0,
             updated: 0,
