@@ -95,8 +95,8 @@ Deno Edge 환경은 workspace import를 그대로 배포하지 않는다. `pnpm 
 
 루트 `package.json`의 `version`이 유일한 제품 버전이며 `YYYY.WEEK.SEQ` 형식을 사용한다. `appVersion.ts`는 이 JSON 값을 직접 가져와 형식을 검증하고 공통 `Layout` footer에 표시해 모든 라우트에서 같은 버전을 제공한다. Pages workflow는 build 성공 뒤 같은 값으로 `v{version}` 태그와 GitHub Release/자동 릴리즈 노트를 생성하며, release job이 성공한 뒤에만 deploy job을 실행한다. 다른 커밋이 이미 같은 태그를 사용하면 배포를 중단한다.
 
-동명이인 참여 제보는 검색 결과의 같은 정규화 이름 후보에서만 시작한다. 브라우저는 선택한 공개 선수 ID, 사용자가 정한 숫자 4자리, 선택적 참고사항만 `submit-identity-claim`에 전달한다. Edge Function은 후보 이름을 재검증하고 숫자 원문을 서버 HMAC으로 변환한 뒤 service role 전용 RPC로 저장한다. public RLS 정책은 제보 table을 읽거나 직접 쓰는 권한을 주지 않는다. 제보 상태는 항상 검토 대기로 시작하며 identity merge와 분리된 경계다.
+동명이인 참여 편집은 검색 결과의 같은 정규화 이름 후보에서만 시작한다. 브라우저는 사용자가 두 개 이상의 검수된 탁구 별칭 그룹에 명시적으로 배정한 공개 선수 ID, 자동 생성한 익명 편집자 ID, 선택적 변경 근거만 `submit-identity-claim`에 전달한다. 확실하지 않은 후보는 전송하지 않고 후보 수에는 고정 상한을 두지 않는다. Edge Function은 별칭 catalog·중복 배정·후보 이름을 다시 검증하고 익명 ID 원문을 서버 HMAC으로 변환한 뒤 service role 전용 `apply_identity_partition_internal`을 호출한다. 익명 ID는 인증 정보가 아니며 유실되어도 기능을 제한하지 않는다. 브라우저가 service role이나 내부 table 쓰기 권한을 가지지는 않는다.
 
-승인된 후보를 실제로 합칠 때는 service role 전용 `merge_players_internal`만 사용한다. 이 RPC는 같은 정규화 이름, 활성 후보, 승인 제보의 후보 집합을 다시 검증하고 출처 identity의 이전 연결을 감사 table에 먼저 기록한 다음 대상 선수로 재연결한다. `revert_player_merge_internal`은 후속 병합과 현재 연결 충돌을 검사한 뒤 저장된 연결을 복구한다. 따라서 원복은 대회 결과를 복사하거나 삭제하는 작업이 아니라 `source_player_identities.player_id` 연결을 되돌리는 트랜잭션이다.
+참여 편집 RPC는 한 트랜잭션에서 후보 집합을 잠그고 같은 정규화 이름, 별칭 중복과 활성 상태를 검증한다. 각 별칭 그룹 안에서는 공개 기록과 출처 identity가 가장 많은 후보를 대표 선수로 안정적으로 고른 뒤 `merge_players_internal`로 이전 연결을 감사 table에 보존한다. singleton 그룹도 별칭과 이전 상태를 snapshot으로 남긴다. 공개 `list_identity_edit_history`는 개인정보와 HMAC을 제외한 변경 근거·후보별 별칭·상태만 반환한다. `revert-identity-edit`는 `revert_identity_partition_internal`을 통해 한 편집에 속한 모든 merge와 별칭을 역순으로 복구한다. 따라서 원복은 결과를 복사하거나 삭제하지 않고 `source_player_identities.player_id` 연결과 별칭을 이전 상태로 되돌리는 원자적 트랜잭션이다.
 
 디렉터리별 변경 영향은 [codemap](codemap.md), 기능 계약은 [제품 스펙](product-spec.md)을 참고한다.

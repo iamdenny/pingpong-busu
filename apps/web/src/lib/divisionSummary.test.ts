@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DivisionSystem, PlayerSummary } from "@busu/domain";
 import {
+  groupDivisionSummaries,
   matchesObservedDivision,
   summarizeObservedDivisions,
 } from "./divisionSummary";
@@ -129,6 +130,59 @@ describe("summarizeObservedDivisions", () => {
         awardCount: 1,
         participationCount: 0,
       },
+    ]);
+  });
+
+  it("groups observations into one row per displayed division system", () => {
+    const summaries = summarizeObservedDivisions([
+      player("1", "6부", "open"),
+      player("2", "5부", "integrated"),
+      player("3", "4부", "women"),
+      player("4", "3부", "regional"),
+      player("5", "T5", "division"),
+    ]);
+
+    const groups = groupDivisionSummaries(summaries);
+
+    expect(
+      groups.map(({ system, systemLabel }) => ({ system, systemLabel })),
+    ).toEqual([
+      { system: "open", systemLabel: "오픈부수" },
+      { system: "integrated", systemLabel: "통합부수" },
+      { system: "regional", systemLabel: "지역부수" },
+      { system: "division", systemLabel: "디비전부수" },
+    ]);
+    expect(groups[1]?.items.map(({ division }) => division)).toEqual([
+      "여자4부",
+      "5부",
+    ]);
+  });
+
+  it("orders player and numbered divisions from the strongest level upward", () => {
+    const summaries = summarizeObservedDivisions([
+      player("1", "7부", "open"),
+      player("2", "선수부", "open"),
+      player("3", "2부", "open"),
+      player("4", "0부", "open"),
+      player("5", "1부", "open"),
+      player("6", "신입생", "open"),
+      player("7", "T5", "division"),
+      player("8", "T2", "division"),
+    ]);
+
+    const groups = groupDivisionSummaries(summaries);
+
+    expect(groups[0]?.items.map(({ division }) => division)).toEqual([
+      "선수부",
+      "0부",
+      "1부",
+      "2부",
+      "7부",
+      "신입생",
+    ]);
+    expect(groups[1]?.items.map(({ division }) => division)).toEqual([
+      "T2",
+      "T5",
     ]);
   });
 

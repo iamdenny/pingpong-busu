@@ -2,7 +2,7 @@ import type { PlayerDetail } from '@busu/domain';
 
 export const demoPlayers: PlayerDetail[] = [
   {
-    id: 'kim-seoul', name: '김탁구', normalizedName: '김탁구', region: '서울', club: '스핀탁구클럽', recentObservedDivision: '5부', recentObservedDivisionSystem: 'open', resultCount: 3, sourceCount: 3, lastCheckedAt: '2026-08-12T04:30:00.000Z', identityStatus: 'likely', dataKind: 'demo',
+    id: 'kim-seoul', name: '김탁구', normalizedName: '김탁구', region: '서울', club: '스핀탁구클럽', recentObservedDivision: '5부', recentObservedDivisionSystem: 'open', resultCount: 3, sourceCount: 3, lastCheckedAt: '2026-08-12T04:30:00.000Z', identityStatus: 'likely', homonymNickname: 'power-drive', dataKind: 'demo',
     records: [
       { id: 'r1', date: '2026-07-20', tournament: '2026 가상 전국오픈', scale: 'national', event: '남자 단식', club: '스핀탁구클럽', division: '5부', divisionSystem: 'open', rank: '우승', sourceCode: 'mock', sourceName: '가상 출처', sourceUrl: 'https://example.invalid/mock/result/1', lastCheckedAt: '2026-08-12T04:30:00.000Z' },
       { id: 'r2', date: '2026-04-06', tournament: '서울 가상 생활체육대회', scale: 'province', event: '개인 단식', club: '스핀탁구클럽', division: '4부', divisionSystem: 'integrated', rank: '3위', sourceCode: 'airping', sourceName: '에어핑퐁', sourceUrl: 'https://airping.co.kr/', lastCheckedAt: '2026-08-11T18:00:00.000Z' },
@@ -16,7 +16,7 @@ export const demoPlayers: PlayerDetail[] = [
     ],
   },
   {
-    id: 'kim-busan', name: '김탁구', normalizedName: '김탁구', region: '부산', club: '블루라켓', recentObservedDivision: '6부', recentObservedDivisionSystem: 'integrated', resultCount: 0, sourceCount: 1, lastCheckedAt: '2026-08-09T03:00:00.000Z', identityStatus: 'unreviewed', dataKind: 'demo',
+    id: 'kim-busan', name: '김탁구', normalizedName: '김탁구', region: '부산', club: '블루라켓', recentObservedDivision: '6부', recentObservedDivisionSystem: 'integrated', resultCount: 0, sourceCount: 1, lastCheckedAt: '2026-08-09T03:00:00.000Z', identityStatus: 'unreviewed', homonymNickname: 'loop-drive-champion', dataKind: 'demo',
     records: [{ id: 'r4', date: '2025-09-14', tournament: '부산 가상 구대회', scale: 'district', event: '단식', club: '블루라켓', division: '6부', divisionSystem: 'integrated', rank: '8강', sourceCode: 'mock', sourceName: '가상 출처', sourceUrl: 'https://example.invalid/mock/result/2', lastCheckedAt: '2026-08-09T03:00:00.000Z' }],
     sources: [{ sourceCode: 'mock', sourceName: '가상 출처', latestRecordDate: '2025-09-14', latestClub: '블루라켓', recentObservedDivision: '6부', recentObservedDivisionSystem: 'integrated', resultCount: 0, lastCheckedAt: '2026-08-09T03:00:00.000Z', status: 'fresh' }],
   },

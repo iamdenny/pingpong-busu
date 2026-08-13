@@ -98,7 +98,7 @@ describe("SearchResultsPage", () => {
     expect(within(awardSummary!).getByText("외 1건")).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
-        name: "김탁구 서울 스핀탁구클럽 상세 기록 보기",
+        name: "김탁구 파워 드라이브 서울 스핀탁구클럽 상세 기록 보기",
       }),
     ).toHaveAttribute("href", "/players/kim-seoul");
     expect(
@@ -106,7 +106,7 @@ describe("SearchResultsPage", () => {
     ).not.toBeInTheDocument();
     const playerCard = screen
       .getByRole("link", {
-        name: "김탁구 서울 스핀탁구클럽 상세 기록 보기",
+        name: "김탁구 파워 드라이브 서울 스핀탁구클럽 상세 기록 보기",
       })
       .querySelector("article");
     expect(playerCard?.querySelector(".candidate-card__footer")).toBeNull();
@@ -116,11 +116,14 @@ describe("SearchResultsPage", () => {
 
     const summary = screen.getByRole("region", { name: "현재 추정 부수" });
     expect(
-      within(summary).getByRole("columnheader", { name: "오픈부수" }),
+      within(summary).getByRole("rowheader", { name: "오픈부수" }),
     ).toBeInTheDocument();
-    expect(
-      within(summary).getAllByRole("columnheader", { name: "통합부수" }),
-    ).toHaveLength(2);
+    const integratedRowHeader = within(summary).getByRole("rowheader", {
+      name: "통합부수",
+    });
+    const integratedRow = integratedRowHeader.closest("tr");
+    expect(integratedRow).not.toBeNull();
+    expect(within(integratedRow!).getAllByRole("button")).toHaveLength(2);
     expect(
       within(summary).getByRole("button", {
         name: "오픈부수 5부 입상 1건 참가 0건 결과 보기",
@@ -149,12 +152,12 @@ describe("SearchResultsPage", () => {
     await waitFor(() => expect(filteredList).toHaveFocus());
     expect(
       within(filteredList).getByRole("link", {
-        name: "김탁구 부산 블루라켓 상세 기록 보기",
+        name: "김탁구 루프 드라이브 최강자 부산 블루라켓 상세 기록 보기",
       }),
     ).toBeInTheDocument();
     expect(
       within(filteredList).queryByRole("link", {
-        name: "김탁구 서울 스핀탁구클럽 상세 기록 보기",
+        name: "김탁구 파워 드라이브 서울 스핀탁구클럽 상세 기록 보기",
       }),
     ).not.toBeInTheDocument();
 
@@ -181,15 +184,25 @@ describe("SearchResultsPage", () => {
     ).toHaveAttribute("href", "https://www.iping.club/?pg=Search");
 
     const tabs = screen.getByRole("tablist", { name: "검색 결과 구분" });
+    expect(tabs.closest(".result-tabs-sticky")).not.toBeNull();
+    expect(tabs).toHaveAttribute("data-active-tab", "awards");
     expect(within(tabs).getByRole("tab", { name: "입상 1건" })).toHaveAttribute(
       "aria-selected",
       "true",
     );
     fireEvent.click(within(tabs).getByRole("tab", { name: "출전 1건" }));
+    expect(tabs).toHaveAttribute("data-active-tab", "entries");
     const list = screen.getByRole("tabpanel", {
       name: "출전 선수 검색 결과 목록",
     });
+    expect(list).toHaveAttribute("data-transition-direction", "forward");
     expect(within(list).getByText("0건")).toBeInTheDocument();
+
+    fireEvent.click(within(tabs).getByRole("tab", { name: "입상 1건" }));
+    expect(tabs).toHaveAttribute("data-active-tab", "awards");
+    expect(
+      screen.getByRole("tabpanel", { name: "입상 선수 검색 결과 목록" }),
+    ).toHaveAttribute("data-transition-direction", "backward");
     expect(screen.getByText(/같은 이름의 선수가 여러 명/)).toBeInTheDocument();
   });
 
@@ -206,7 +219,9 @@ describe("SearchResultsPage", () => {
       "true",
     );
     expect(
-      screen.getByRole("link", { name: "김탁구 부산 블루라켓 상세 기록 보기" }),
+      screen.getByRole("link", {
+        name: "김탁구 루프 드라이브 최강자 부산 블루라켓 상세 기록 보기",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/같은 이름의 선수가 여러 명/),

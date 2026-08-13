@@ -9,11 +9,13 @@ import {
 } from "react-router-dom";
 import {
   formatDivisionObservation,
+  homonymNicknameLabel,
   parsePlayerSearchQuery,
   type AwardResultSummary,
   type SourceCode,
 } from "@busu/domain";
 import { IdentityClaimDialog } from "../components/IdentityClaimDialog";
+import { IdentityEditHistory } from "../components/IdentityEditHistory";
 import { PageMetadata } from "../components/PageMetadata";
 import { SearchForm } from "../components/SearchForm";
 import {
@@ -22,6 +24,7 @@ import {
 } from "../components/SourceRefreshProgress";
 import {
   divisionObservationForPlayer,
+  groupDivisionSummaries,
   matchesObservedDivision,
   summarizeObservedDivisions,
   type DivisionSummaryItem,
@@ -39,7 +42,6 @@ import {
   shouldRetrySourceRefresh,
   sourceRefreshRetryDelay,
 } from "../lib/sourceRefreshRetry";
-import { useCalmEntry } from "../lib/motion";
 
 interface SourceRefreshFailureView {
   errorCode: string;
@@ -95,11 +97,14 @@ export function clearManualRetryAttempts(
   return next;
 }
 
+type ResultTab = "awards" | "entries";
+type ResultTabDirection = "none" | "forward" | "backward";
+
 const identityText = {
-  unreviewed: "동일인 검토 전",
-  likely: "동일인 가능성 높음",
-  verified: "동일인 확인됨",
-  disputed: "동명이인 확인 필요",
+  unreviewed: "참여 확인 전",
+  likely: "같은 사람 가능성 있음",
+  verified: "참여 편집으로 연결됨",
+  disputed: "동명이인 이견 있음",
 } as const;
 const awardDateFormatter = new Intl.DateTimeFormat("ko-KR", {
   year: "numeric",
@@ -167,12 +172,15 @@ export function SearchResultsPage() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
-  const [resultTab, setResultTab] = useState<"awards" | "entries">("awards");
+  const [resultTab, setResultTab] = useState<ResultTab>("awards");
+  const [resultTabDirection, setResultTabDirection] =
+    useState<ResultTabDirection>("none");
   const [divisionSelection, setDivisionSelection] = useState<{
     query: string;
     system: DivisionSummaryItem["system"];
     division: string;
   } | null>(null);
+  const candidateListRef = useRef<HTMLElement>(null);
   const [manualRetryAttempts, setManualRetryAttempts] = useState<
     Readonly<Record<string, ManualRetryAttempt>>
   >({});
@@ -180,6 +188,7 @@ export function SearchResultsPage() {
     Readonly<Record<string, ManualRetryAttempt>>
   >({});
   const query = params.get("q")?.trim() ?? "";
+  const searchCycleKey = `${location.key}\u0000${query}`;
   const playerSearch = parsePlayerSearchQuery(query);
   const result = useQuery({
     queryKey: ["players", query],
@@ -190,8 +199,10 @@ export function SearchResultsPage() {
       }),
     enabled: playerSearch.name.length > 0,
   });
+
   const shouldRefresh =
     (isDevLiveMode || isSourceRefreshEnabled) && playerSearch.name.length >= 2;
+  const canStartSourceRefresh = shouldRefresh && result.isSuccess;
   const sourceStatuses = useQuery({
     queryKey: ["source-statuses"],
     queryFn: () => playerRepository.listSourceStatuses(),
@@ -220,14 +231,15 @@ export function SearchResultsPage() {
         void queryClient.invalidateQueries({ queryKey: ["players", query] });
         return response;
       },
-      enabled: shouldRefresh,
+      enabled: canStartSourceRefresh,
       staleTime: 0,
       gcTime: 0,
       retry: shouldRetrySourceRefresh,
       retryDelay: sourceRefreshRetryDelay,
     })),
   });
-  const refreshViews: SourceRefreshView[] = activeSources.map(
+  const refreshViews: SourceRefreshView[] = canStartSourceRefresh
+    ? activeSources.map(
     (source, index) => {
       const sourceQuery = refreshQueries[index];
       const pendingFailure = sourceRefreshFailureView(
@@ -298,8 +310,9 @@ export function SearchResultsPage() {
           : {}),
         ...(outcome.updated !== undefined ? { updated: outcome.updated } : {}),
       };
-    },
-  );
+      },
+    )
+    : [];
 
   function retryKey(sourceCode: SourceCode): string {
     return sourceRetryKey(query, sourceCode);
@@ -396,6 +409,7 @@ export function SearchResultsPage() {
         (source) => source.state === "waiting" || source.state === "refreshing",
       ));
   const divisionSummary = summarizeObservedDivisions(result.data ?? []);
+  const divisionSummaryGroups = groupDivisionSummaries(divisionSummary);
   const selectedDivision =
     divisionSelection?.query === query
       ? divisionSummary.find(
@@ -434,12 +448,6 @@ export function SearchResultsPage() {
         : "awards";
   const shownCandidates =
     activeResultTab === "awards" ? awardCandidates : entryCandidates;
-  const candidateIds = shownCandidates.map((player) => player.id).join(",");
-  const candidateMotionKey = `${query}-${selectedDivisionKey ?? "all"}-${activeResultTab}-${candidateIds}`;
-  const candidateMotionRef = useCalmEntry(
-    ".candidate-motion-item",
-    candidateMotionKey,
-  );
   const candidateListLabel = selectedDivision
     ? `${selectedDivision.systemLabel} ${selectedDivision.division} ${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`
     : `${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`;
@@ -454,12 +462,12 @@ export function SearchResultsPage() {
 
   useEffect(() => {
     if (!selectedDivisionKey) return;
-    const list = candidateMotionRef.current as HTMLElement | null;
-    list?.scrollIntoView?.({ block: "start" });
-    list?.focus({ preventScroll: true });
-  }, [candidateMotionRef, selectedDivisionKey]);
+    candidateListRef.current?.scrollIntoView?.({ block: "start" });
+    candidateListRef.current?.focus({ preventScroll: true });
+  }, [selectedDivisionKey]);
 
   function selectDivision(summary: DivisionSummaryItem) {
+    setResultTabDirection("none");
     setDivisionSelection({
       query,
       system: summary.system,
@@ -469,12 +477,19 @@ export function SearchResultsPage() {
   }
 
   function clearDivisionSelection() {
+    setResultTabDirection("none");
     setDivisionSelection(null);
     setResultTab(
       (result.data ?? []).some((player) => player.resultCount > 0)
         ? "awards"
         : "entries",
     );
+  }
+
+  function selectResultTab(nextTab: ResultTab) {
+    if (nextTab === activeResultTab) return;
+    setResultTabDirection(nextTab === "entries" ? "forward" : "backward");
+    setResultTab(nextTab);
   }
 
   return (
@@ -485,6 +500,7 @@ export function SearchResultsPage() {
         compact
         initialQuery={query}
         onSearch={(value) => {
+          setResultTabDirection("none");
           setResultTab("awards");
           setDivisionSelection(null);
           void navigate(`/search?q=${encodeURIComponent(value)}`, {
@@ -516,43 +532,45 @@ export function SearchResultsPage() {
               <caption className="visually-hidden">
                 부수 체계별 최근 관측 부수와 입상 및 참가 기록 수
               </caption>
-              <thead>
-                <tr>
-                  {divisionSummary.map(({ system, systemLabel, division }) => (
-                    <th scope="col" key={`${system}-${division}`}>
-                      {systemLabel}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
+              <colgroup>
+                <col className="division-overview__system-column" />
+                <col />
+              </colgroup>
               <tbody>
-                <tr>
-                  {divisionSummary.map((summary) => (
-                    <td key={`${summary.system}-${summary.division}`}>
-                      <button
-                        type="button"
-                        className="division-overview__filter"
-                        aria-controls="candidate-results"
-                        aria-pressed={
-                          selectedDivision?.system === summary.system &&
-                          selectedDivision.division === summary.division
-                        }
-                        aria-label={`${summary.systemLabel} ${summary.division} 입상 ${summary.awardCount}건 참가 ${summary.participationCount}건 결과 보기`}
-                        onClick={() => selectDivision(summary)}
-                      >
-                        <strong>{summary.division}</strong>
-                        <span className="division-overview__counts">
-                          <span>
-                            입상 <b>{summary.awardCount}건</b>
-                          </span>
-                          <span>
-                            참가 <b>{summary.participationCount}건</b>
-                          </span>
-                        </span>
-                      </button>
+                {divisionSummaryGroups.map((group) => (
+                  <tr key={group.system}>
+                    <th scope="row">{group.systemLabel}</th>
+                    <td>
+                      <ul className="division-overview__items">
+                        {group.items.map((summary) => (
+                          <li key={`${summary.system}-${summary.division}`}>
+                            <button
+                              type="button"
+                              className="division-overview__filter"
+                              aria-controls="candidate-results"
+                              aria-pressed={
+                                selectedDivision?.system === summary.system &&
+                                selectedDivision.division === summary.division
+                              }
+                              aria-label={`${summary.systemLabel} ${summary.division} 입상 ${summary.awardCount}건 참가 ${summary.participationCount}건 결과 보기`}
+                              onClick={() => selectDivision(summary)}
+                            >
+                              <strong>{summary.division}</strong>
+                              <span className="division-overview__counts">
+                                <span>
+                                  입상 <b>{summary.awardCount}건</b>
+                                </span>
+                                <span>
+                                  참가 <b>{summary.participationCount}건</b>
+                                </span>
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     </td>
-                  ))}
-                </tr>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -569,9 +587,10 @@ export function SearchResultsPage() {
       )}
       {refreshViews.length > 0 && (
         <SourceRefreshProgress
+          key={searchCycleKey}
           sources={refreshViews}
           existingRecordCount={result.data?.length ?? null}
-          searchKey={query}
+          searchKey={searchCycleKey}
           onRetry={retrySource}
         />
       )}
@@ -615,6 +634,9 @@ export function SearchResultsPage() {
           <IdentityClaimDialog candidates={identityCandidates} />
         </div>
       )}
+      {playerSearch.name.length > 0 && (
+        <IdentityEditHistory normalizedName={playerSearch.name} />
+      )}
       {result.isLoading && (
         <p aria-live="polite">저장된 기록을 불러오는 중입니다.</p>
       )}
@@ -629,152 +651,160 @@ export function SearchResultsPage() {
           <p>이름의 띄어쓰기나 소속 클럽을 바꿔 검색해 보세요.</p>
         </div>
       )}
-      {!result.isLoading && (result.data?.length ?? 0) > 0 && (
-        <>
-          {selectedDivision && (
-            <div className="division-result-filter">
-              <span role="status">
-                <strong>
-                  {selectedDivision.systemLabel} {selectedDivision.division}
-                </strong>{" "}
-                {divisionCandidates.length}건만 표시 중
-              </span>
-              <button type="button" onClick={clearDivisionSelection}>
-                부수 필터 해제
-              </button>
+      <div className="candidate-results-area">
+        {!result.isLoading && (result.data?.length ?? 0) > 0 && (
+          <>
+            {selectedDivision && (
+              <div className="division-result-filter">
+                <span role="status">
+                  <strong>
+                    {selectedDivision.systemLabel} {selectedDivision.division}
+                  </strong>{" "}
+                  {divisionCandidates.length}건만 표시 중
+                </span>
+                <button type="button" onClick={clearDivisionSelection}>
+                  부수 필터 해제
+                </button>
+              </div>
+            )}
+            <div className="result-tabs-sticky">
+              <div
+                className="result-tabs"
+                role="tablist"
+                aria-label="검색 결과 구분"
+                data-active-tab={activeResultTab}
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeResultTab === "awards"}
+                  disabled={awardCandidates.length === 0}
+                  onClick={() => selectResultTab("awards")}
+                >
+                  입상 <strong>{awardCandidates.length}건</strong>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeResultTab === "entries"}
+                  disabled={entryCandidates.length === 0}
+                  onClick={() => selectResultTab("entries")}
+                >
+                  출전 <strong>{entryCandidates.length}건</strong>
+                </button>
+              </div>
             </div>
-          )}
-          <div
-            className="result-tabs"
-            role="tablist"
-            aria-label="검색 결과 구분"
+          </>
+        )}
+        <div className="candidate-list-viewport">
+          <section
+            key={activeResultTab}
+            id="candidate-results"
+            ref={candidateListRef}
+            className="candidate-list"
+            data-transition-direction={resultTabDirection}
+            aria-label={candidateListLabel}
+            role="tabpanel"
+            tabIndex={-1}
           >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeResultTab === "awards"}
-              disabled={awardCandidates.length === 0}
-              onClick={() => setResultTab("awards")}
-            >
-              입상 <strong>{awardCandidates.length}건</strong>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeResultTab === "entries"}
-              disabled={entryCandidates.length === 0}
-              onClick={() => setResultTab("entries")}
-            >
-              출전 <strong>{entryCandidates.length}건</strong>
-            </button>
-          </div>
-        </>
-      )}
-      <section
-        id="candidate-results"
-        ref={candidateMotionRef}
-        className="candidate-list"
-        aria-label={candidateListLabel}
-        role="tabpanel"
-        tabIndex={-1}
-      >
-        {shownCandidates.map((player, index) => (
-          <div
-            className="candidate-motion-item"
-            key={player.id}
-            data-motion-index={Math.min(index, 5)}
-          >
-            <Link
-              className="candidate-card candidate-card--link"
-              to={`/players/${player.id}`}
-              state={{ searchQuery: query }}
-              viewTransition
-              aria-label={`${player.name}${player.region ? ` ${player.region}` : ""}${player.club ? ` ${player.club}` : ""} 상세 기록 보기`}
-            >
-              <article>
-                <div className="candidate-card__top">
-                  <div className="avatar" aria-hidden="true">
-                    {player.name.slice(0, 1)}
-                  </div>
-                  <div className="candidate-card__summary">
-                    <div className="candidate-name-row">
-                      <h2>{player.name}</h2>
+            {shownCandidates.map((player) => (
+              <Link
+                className="candidate-card candidate-card--link"
+                key={player.id}
+                to={`/players/${player.id}`}
+                state={{ searchQuery: query }}
+                aria-label={`${player.name}${player.homonymNickname ? ` ${homonymNicknameLabel(player.homonymNickname)}` : ""}${player.region ? ` ${player.region}` : ""}${player.club ? ` ${player.club}` : ""} 상세 기록 보기`}
+              >
+                <article>
+                  <div className="candidate-card__top">
+                    <div className="avatar" aria-hidden="true">
+                      {player.name.slice(0, 1)}
+                    </div>
+                    <div className="candidate-card__summary">
+                      <div className="candidate-name-row">
+                        <h2>{player.name}</h2>
+                        {player.homonymNickname && (
+                          <span className="homonym-nickname-badge">
+                            {homonymNicknameLabel(player.homonymNickname)}
+                          </span>
+                        )}
+                        <span
+                          className={`data-badge data-badge--${player.dataKind ?? "demo"}`}
+                        >
+                          {player.dataKind === "live"
+                            ? "실제 공개 기록"
+                            : "가상 데이터"}
+                        </span>
+                      </div>
+                      <p>
+                        <MapPin size={16} />{" "}
+                        {player.region
+                          ? `${player.dataKind === "live" ? "기록 기반 추정 · " : ""}${player.region}`
+                          : "지역 미상"}{" "}
+                        · {player.club ?? "소속 미상"}
+                      </p>
+                    </div>
+                    <div className="candidate-card__meta">
                       <span
-                        className={`data-badge data-badge--${player.dataKind ?? "demo"}`}
+                        className={`identity identity--${player.identityStatus}`}
                       >
-                        {player.dataKind === "live"
-                          ? "실제 공개 기록"
-                          : "가상 데이터"}
+                        {identityText[player.identityStatus]}
+                      </span>
+                      <span className="candidate-card__checked">
+                        최근 확인{" "}
+                        {new Intl.DateTimeFormat("ko-KR", {
+                          dateStyle: "medium",
+                        }).format(new Date(player.lastCheckedAt))}
+                        <ChevronRight aria-hidden="true" size={17} />
                       </span>
                     </div>
-                    <p>
-                      <MapPin size={16} />{" "}
-                      {player.region
-                        ? `${player.dataKind === "live" ? "기록 기반 추정 · " : ""}${player.region}`
-                        : "지역 미상"}{" "}
-                      · {player.club ?? "소속 미상"}
-                    </p>
                   </div>
-                  <div className="candidate-card__meta">
-                    <span
-                      className={`identity identity--${player.identityStatus}`}
-                    >
-                      {identityText[player.identityStatus]}
-                    </span>
-                    <span className="candidate-card__checked">
-                      최근 확인{" "}
-                      {new Intl.DateTimeFormat("ko-KR", {
-                        dateStyle: "medium",
-                      }).format(new Date(player.lastCheckedAt))}
-                      <ChevronRight aria-hidden="true" size={17} />
-                    </span>
-                  </div>
+                  <dl className="stats">
+                    <div>
+                      <dt>최근 관측 부수</dt>
+                      <dd>
+                        {formatDivisionObservation(
+                          player.recentObservedDivisionSystem,
+                          player.recentObservedDivision,
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>
+                        <Trophy size={15} /> 입상 성적 · 날짜
+                      </dt>
+                      <dd className="award-result-summary">
+                        <AwardResultSummary
+                          results={player.awardResults}
+                          resultCount={player.resultCount}
+                        />
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>
+                        <Waypoints size={15} /> 출처
+                      </dt>
+                      <dd>{player.sourceCount}곳</dd>
+                    </div>
+                  </dl>
+                </article>
+              </Link>
+            ))}
+            {!result.isLoading &&
+              (result.data?.length ?? 0) > 0 &&
+              shownCandidates.length === 0 && (
+                <div className="empty-state">
+                  <h2>
+                    {activeResultTab === "awards"
+                      ? "입상 기록이 없습니다."
+                      : "출전 기록만 있는 후보가 없습니다."}
+                  </h2>
+                  <p>다른 탭에서 확인해 보세요.</p>
                 </div>
-                <dl className="stats">
-                  <div>
-                    <dt>최근 관측 부수</dt>
-                    <dd>
-                      {formatDivisionObservation(
-                        player.recentObservedDivisionSystem,
-                        player.recentObservedDivision,
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>
-                      <Trophy size={15} /> 입상 성적 · 날짜
-                    </dt>
-                    <dd className="award-result-summary">
-                      <AwardResultSummary
-                        results={player.awardResults}
-                        resultCount={player.resultCount}
-                      />
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>
-                      <Waypoints size={15} /> 출처
-                    </dt>
-                    <dd>{player.sourceCount}곳</dd>
-                  </div>
-                </dl>
-              </article>
-            </Link>
-          </div>
-        ))}
-        {!result.isLoading &&
-          (result.data?.length ?? 0) > 0 &&
-          shownCandidates.length === 0 && (
-            <div className="empty-state">
-              <h2>
-                {activeResultTab === "awards"
-                  ? "입상 기록이 없습니다."
-                  : "출전 기록만 있는 후보가 없습니다."}
-              </h2>
-              <p>다른 탭에서 확인해 보세요.</p>
-            </div>
-          )}
-      </section>
+              )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

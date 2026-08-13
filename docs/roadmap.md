@@ -21,15 +21,16 @@ title: "제품 로드맵"
 9. `YYYY.WEEK.SEQ` 버전을 모든 페이지 footer에 표시하는 GitHub Pages 및 Supabase 배포 workflow
 10. 카카오 공식 무료 검색 API 기반 용인탁구협회 다음 카페 adapter
 11. 최근 출전 대회·원문 종목명 기반 동명이인 제보와 충돌 방지 병합·원복 RPC
+12. 관리자 없이 즉시 반영하는 탁구 별칭 기반 공개 동명이인 분류, 무제한 후보 배정과 전체 사용자 원복
 
 ## 다음 단계
 
 1. 공개 refresh에 gateway rate limit, quota, 운영 metric 추가
 2. 출처 정책·parser health 정기 점검과 실패 알림
 3. 일반 소속·지역 정정 제보와 근거 URL 제출
-4. 구현된 동명이인 merge/원복 RPC를 사용하는 관리자 인증 UI
+4. 참여 편집의 합의·이견 표시, 편집 품질 점수와 abuse control
 5. 대회 규정 근거를 이용한 최소 출전 가능 부수 검증 엔진
-6. 운영자 CSV 업로드와 provenance 검증
+6. provenance를 보존하는 공개 데이터 업로드
 
 ## 보류
 

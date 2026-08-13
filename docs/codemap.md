@@ -8,10 +8,12 @@ flowchart LR
   REPO --> DEMO["Demo data"]
   REPO --> PUBLIC["Supabase public views"]
   UI --> EDGE["refresh-player Edge Function"]
+  UI --> IDENTITY["identity edit Edge Functions"]
   EDGE --> ADAPTERS["source adapters"]
   ADAPTERS --> DOMAIN["domain normalization"]
   EDGE --> RPC["Supabase upsert RPC"]
   RPC --> PUBLIC
+  IDENTITY --> RPC
 ```
 
 ## Directory map
@@ -29,6 +31,8 @@ flowchart LR
 | `supabase/migrations`                             | timestamped SQL                                                                                                | schema, RLS, public views, RPC, source catalog                  | rollback 영향, production dry-run                  |
 | `supabase/functions/refresh-player`               | `index.ts`                                                                                                     | 출처 선택·안전 스위치·fetch·upsert                              | Edge auth, generated bundle, operations docs       |
 | `supabase/functions/refresh-status`               | `index.ts`                                                                                                     | refresh 공개 상태                                               | repository response schema                         |
+| `supabase/functions/submit-identity-claim`        | `index.ts`                                                                                                     | 참여형 동일인 연결, 익명 편집자 ID HMAC                         | public history, merge RPC, abuse control           |
+| `supabase/functions/revert-identity-edit`         | `index.ts`                                                                                                     | 공개 편집 원복, 익명 편집자 ID HMAC                             | merge snapshot, conflict guard                     |
 | `supabase/functions/_shared`                      | auth/http/normalize/generated                                                                                  | Edge 공통 경계                                                  | secret 노출, `pnpm edge:sync`                      |
 | `fixtures/sources`                                | 출처별 합성 응답                                                                                               | parser 회귀 입력                                                | 개인정보 제거 여부                                 |
 | `scripts`                                         | crawler, edge sync, DB size, `release-version.ts`                                                              | 로컬/운영 도구와 package 릴리즈 버전 검증·증가                  | commands/operations docs, root unit tests          |
@@ -49,9 +53,9 @@ source schema/parser/adapter → synthetic fixture → source code/catalog migra
 
 page/component → component test → `global.css` → desktop/mobile preview → `apps/web/DESIGN.md` → product spec acceptance criteria.
 
-### 동명이인 병합·원복 변경
+### 동명이인 참여 편집·원복 변경
 
-merge audit migration/RPC → service-role 권한 → migration contract test → rollback SQL integration → public view의 병합 선수 제외 → data-model/operations 문서.
+별칭 catalog → 기록별 그룹 배정 UI → Edge 입력 검증/HMAC → service-role atomic partition/merge RPC → 공개 이력 RPC → migration contract test → 전체 rollback SQL integration → public view의 활성 그룹·별칭 → data-model/operations 문서.
 
 ### 출처 재시도 변경
 

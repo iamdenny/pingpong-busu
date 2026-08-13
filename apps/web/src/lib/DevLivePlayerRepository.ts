@@ -1,20 +1,29 @@
 import { z } from "zod";
 import {
   divisionSystemSchema,
+  isHomonymNicknameCode,
+  type HomonymNicknameCode,
   type PlayerDetail,
   type PlayerSummary,
   type SourceStatus,
 } from "@busu/domain";
 import type {
   IdentityCandidateEvidence,
-  IdentityClaimInput,
-  IdentityClaimResponse,
+  IdentityEditHistoryEntry,
+  IdentityEditInput,
+  IdentityEditResponse,
   PlayerRepository,
   PlayerSearchInput,
   RefreshRequest,
   RefreshResponse,
   RefreshStatus,
+  RevertIdentityEditInput,
+  RevertIdentityEditResponse,
 } from "./repository";
+
+const homonymNicknameSchema = z.custom<HomonymNicknameCode>(
+  (value) => typeof value === "string" && isHomonymNicknameCode(value),
+);
 
 const summarySchema = z.object({
   id: z.string(),
@@ -41,6 +50,7 @@ const summarySchema = z.object({
   sourceCount: z.number(),
   lastCheckedAt: z.string(),
   identityStatus: z.enum(["unreviewed", "likely", "verified", "disputed"]),
+  homonymNickname: homonymNicknameSchema.optional(),
   dataKind: z.literal("live").optional(),
 });
 
@@ -140,6 +150,9 @@ export class DevLivePlayerRepository implements PlayerRepository {
           sourceCount: row.sourceCount,
           lastCheckedAt: row.lastCheckedAt,
           identityStatus: row.identityStatus,
+          ...(row.homonymNickname
+            ? { homonymNickname: row.homonymNickname }
+            : {}),
           ...(row.dataKind ? { dataKind: row.dataKind } : {}),
         };
       });
@@ -155,7 +168,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
     candidateIds: readonly string[],
   ): Promise<IdentityCandidateEvidence[]> {
     return Promise.all(
-      [...new Set(candidateIds)].slice(0, 30).map(async (candidateId) => {
+      [...new Set(candidateIds)].map(async (candidateId) => {
         const player = await this.getPlayer(candidateId);
         return {
           candidateId,
@@ -211,10 +224,30 @@ export class DevLivePlayerRepository implements PlayerRepository {
   async getRefreshStatus(refreshId: string): Promise<RefreshStatus> {
     return { refreshId, state: "completed" };
   }
-  async submitIdentityClaim(
-    input: IdentityClaimInput,
-  ): Promise<IdentityClaimResponse> {
-    void input;
-    return { accepted: true, referenceId: "DEV-CLAIM", status: "pending" };
+  async applyIdentityEdit(
+    input: IdentityEditInput,
+  ): Promise<IdentityEditResponse> {
+    return {
+      accepted: true,
+      referenceId: "DEV-EDIT",
+      operationId: "00000000-0000-4000-8000-000000000001",
+      status: "applied",
+      groupCount: input.groups.length,
+    };
+  }
+  async listIdentityEditHistory(
+    normalizedName: string,
+  ): Promise<IdentityEditHistoryEntry[]> {
+    void normalizedName;
+    return [];
+  }
+  async revertIdentityEdit(
+    input: RevertIdentityEditInput,
+  ): Promise<RevertIdentityEditResponse> {
+    return {
+      reverted: true,
+      operationId: input.operationId,
+      status: "reverted",
+    };
   }
 }

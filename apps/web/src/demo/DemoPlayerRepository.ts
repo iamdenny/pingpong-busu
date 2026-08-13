@@ -7,13 +7,16 @@ import {
 } from "@busu/domain";
 import type {
   IdentityCandidateEvidence,
-  IdentityClaimInput,
-  IdentityClaimResponse,
+  IdentityEditHistoryEntry,
+  IdentityEditInput,
+  IdentityEditResponse,
   PlayerRepository,
   PlayerSearchInput,
   RefreshRequest,
   RefreshResponse,
   RefreshStatus,
+  RevertIdentityEditInput,
+  RevertIdentityEditResponse,
 } from "../lib/repository";
 import { demoPlayers } from "./data";
 
@@ -134,6 +137,9 @@ export class DemoPlayerRepository implements PlayerRepository {
         sourceCount: player.sourceCount,
         lastCheckedAt: player.lastCheckedAt,
         identityStatus: player.identityStatus,
+        ...(player.homonymNickname
+          ? { homonymNickname: player.homonymNickname }
+          : {}),
       }));
   }
   async getPlayer(id: string) {
@@ -145,7 +151,7 @@ export class DemoPlayerRepository implements PlayerRepository {
   async getIdentityCandidateEvidence(
     candidateIds: readonly string[],
   ): Promise<IdentityCandidateEvidence[]> {
-    return [...new Set(candidateIds)].slice(0, 30).map((candidateId) => {
+    return [...new Set(candidateIds)].map((candidateId) => {
       const player = demoPlayers.find(
         (candidate) => candidate.id === candidateId,
       );
@@ -173,10 +179,30 @@ export class DemoPlayerRepository implements PlayerRepository {
   async getRefreshStatus(refreshId: string): Promise<RefreshStatus> {
     return { refreshId, state: "partial" };
   }
-  async submitIdentityClaim(
-    input: IdentityClaimInput,
-  ): Promise<IdentityClaimResponse> {
-    void input;
-    return { accepted: true, referenceId: "DEMO-CLAIM", status: "pending" };
+  async applyIdentityEdit(
+    input: IdentityEditInput,
+  ): Promise<IdentityEditResponse> {
+    return {
+      accepted: true,
+      referenceId: "DEMO-EDIT",
+      operationId: "00000000-0000-4000-8000-000000000001",
+      status: "applied",
+      groupCount: input.groups.length,
+    };
+  }
+  async listIdentityEditHistory(
+    normalizedName: string,
+  ): Promise<IdentityEditHistoryEntry[]> {
+    void normalizedName;
+    return [];
+  }
+  async revertIdentityEdit(
+    input: RevertIdentityEditInput,
+  ): Promise<RevertIdentityEditResponse> {
+    return {
+      reverted: true,
+      operationId: input.operationId,
+      status: "reverted",
+    };
   }
 }
