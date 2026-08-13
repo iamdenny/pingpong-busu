@@ -17,7 +17,13 @@ describe("Yongin photo-board cleanup migration", () => {
     expect(migration).toContain("match_status = 'disputed'");
     expect(migration).toContain("/yongintt/iwou/%");
     expect(migration).toContain("입상자[[:space:]]*사진");
-    expect(migration).toContain("parser_version = 'yongintt-2'");
+    expect(migration).toContain("and not exists (");
+    expect(migration).toContain(
+      "create or replace view public.public_player_search",
+    );
+    expect(migration).toContain("trusted_identity.match_status <> 'disputed'");
+    expect(migration).toContain("trusted_result.record_status <> 'disputed'");
+    expect(migration).toContain("parser_version = 'yongintt-3'");
   });
 
   it("retains the source audit trail", () => {

@@ -77,7 +77,7 @@ export class DemoPlayerRepository implements PlayerRepository {
         baseUrl: "https://cafe.daum.net/yongintt",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "yongintt-2",
+        parserVersion: "yongintt-3",
       },
       {
         sourceCode: "iping",

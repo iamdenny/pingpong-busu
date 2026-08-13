@@ -8,6 +8,11 @@ const uuidPattern =
 const legacyPrivateCodePattern = /^\d{4}$/u;
 const sensitiveNotePattern =
   /(?:01[016789][ -]?\d{3,4}[ -]?\d{4})|(?:[\w.+-]+@[\w.-]+\.[a-z]{2,})/iu;
+const sensitiveNicknamePatterns = [
+  /(?:19|20)\d{2}[./-]?(?:0[1-9]|1[0-2])[./-]?(?:0[1-9]|[12]\d|3[01])/u,
+  /\d{6}-?[1-4]\d{6}/u,
+  /(?:로|길|동|읍|면|리)\s*\d+(?:-\d+)?/u,
+] as const;
 const identityReasonCodes = new Set([
   "public-record-comparison",
   "club-and-region-comparison",
@@ -53,7 +58,8 @@ function isValidHomonymNickname(value: string): boolean {
     value.length <= homonymNicknameMaxLength &&
     homonymNicknameCharactersPattern.test(value) &&
     homonymNicknameLetterPattern.test(value) &&
-    !sensitiveNotePattern.test(value)
+    !sensitiveNotePattern.test(value) &&
+    !sensitiveNicknamePatterns.some((pattern) => pattern.test(value))
   );
 }
 

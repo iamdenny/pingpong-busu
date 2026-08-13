@@ -5,7 +5,7 @@ import { KAKAO_CAFE_SEARCH_URL, parseYonginCafeSearchResponse } from './parser';
 export class YonginTtSourceAdapter implements SourceAdapter {
   readonly sourceCode = 'yongintt';
   readonly mode = 'http';
-  readonly parserVersion = 'yongintt-2';
+  readonly parserVersion = 'yongintt-3';
 
   constructor(readonly enabled = false, private readonly apiKey?: string) {}
 

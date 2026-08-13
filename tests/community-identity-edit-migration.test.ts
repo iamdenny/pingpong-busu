@@ -23,6 +23,13 @@ const customNicknameMigration = readFileSync(
   ),
   "utf8",
 );
+const hardeningMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    "supabase/migrations/202608130011_harden_identity_aliases_and_orphans.sql",
+  ),
+  "utf8",
+);
 const submitEdgeFunction = readFileSync(
   resolve(process.cwd(), "supabase/functions/submit-identity-claim/index.ts"),
   "utf8",
@@ -78,6 +85,26 @@ describe("community identity edit migration", () => {
     expect(customNicknameMigration).toContain(
       "on public.players(normalized_name, lower(homonym_nickname))",
     );
+    expect(customNicknameMigration).toContain(
+      "pg_catalog.hashtextextended(p_fingerprint, 0)",
+    );
+    expect(customNicknameMigration).toContain(
+      "'identity-name:' || v_normalized_name",
+    );
+    expect(customNicknameMigration).toContain(
+      "perform public.claim_identity_global_request_internal()",
+    );
+    expect(customNicknameMigration).toContain("(19|20)[0-9]{2}");
+    expect(customNicknameMigration).toContain("(로|길|동|읍|면|리)");
+    expect(hardeningMigration).toContain(
+      "pg_catalog.hashtextextended(p_fingerprint, 0)",
+    );
+    expect(hardeningMigration).toContain(
+      "perform public.claim_identity_global_request_internal()",
+    );
+    expect(hardeningMigration).toContain(
+      "create or replace view public.public_player_search",
+    );
     expect(submitEdgeFunction).not.toMatch(
       /allCandidateIds\.length\s*>\s*\d+/u,
     );
@@ -85,6 +112,7 @@ describe("community identity edit migration", () => {
     expect(submitEdgeFunction).toContain("value.groups");
     expect(submitEdgeFunction).toContain("normalizeHomonymNickname");
     expect(submitEdgeFunction).toContain("isValidHomonymNickname");
+    expect(submitEdgeFunction).toContain("sensitiveNicknamePatterns");
     expect(submitEdgeFunction).not.toContain("homonymNicknameCodes");
     expect(submitEdgeFunction).toContain("value.editorId");
     expect(submitEdgeFunction).toContain("busu/anonymous-editor/v1");

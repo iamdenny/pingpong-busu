@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   homonymNicknameSuggestions,
   homonymNicknameLabel,
+  containsSensitiveHomonymNickname,
   isHomonymNickname,
   normalizeHomonymNickname,
   pickHomonymNicknameSuggestion,
@@ -19,6 +20,8 @@ describe("homonym nicknames", () => {
       "루프 드라이브 최강자",
     );
     expect(homonymNicknameLabel("power-drive")).toBe("파워 드라이브 전문가");
+    expect(homonymNicknameLabel("chiquita-artisan")).toBe("치키타 장인");
+    expect(homonymNicknameLabel("backhand-bulldozer")).toBe("백핸드 불도저");
   });
 
   it("accepts normalized user-entered aliases without a catalog", () => {
@@ -26,6 +29,10 @@ describe("homonym nicknames", () => {
     expect(isHomonymNickname("치키타 요정")).toBe(true);
     expect(isHomonymNickname("Denny-드라이브")).toBe(true);
     expect(isHomonymNickname("5030")).toBe(false);
+    expect(containsSensitiveHomonymNickname("홍길동19900101")).toBe(true);
+    expect(containsSensitiveHomonymNickname("성남동 123-4")).toBe(true);
+    expect(isHomonymNickname("홍길동19900101")).toBe(false);
+    expect(isHomonymNickname("성남동 123-4")).toBe(false);
     expect(isHomonymNickname("<script>")).toBe(false);
     expect(isHomonymNickname("가".repeat(21))).toBe(false);
   });

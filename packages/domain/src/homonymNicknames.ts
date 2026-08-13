@@ -61,10 +61,49 @@ const legacyNicknameLabels = new Map<string, string>([
   ["power-drive", "파워 드라이브 전문가"],
   ["loop-drive-champion", "루프 드라이브 최강자"],
   ["back-drive-master", "백드라이브 마스터"],
+  ["amateur-best", "아마추어 최강"],
+  ["chiquita-artisan", "치키타 장인"],
+  ["smash-solver", "스매시 해결사"],
+  ["cut-defense-king", "커트 수비왕"],
+  ["block-master", "블록의 달인"],
+  ["serve-ace", "서브 에이스"],
+  ["receive-artisan", "리시브 장인"],
+  ["rally-dominator", "랠리 지배자"],
+  ["forehand-specialist", "포핸드 스페셜리스트"],
+  ["backhand-expert", "백핸드 고수"],
+  ["topspin-master", "톱스핀 마스터"],
+  ["backspin-strategist", "백스핀 전략가"],
+  ["sidespin-wizard", "사이드스핀 마법사"],
+  ["counter-drive", "카운터 드라이브"],
+  ["flick-specialist", "플릭 스페셜리스트"],
+  ["short-play-master", "쇼트 플레이 장인"],
+  ["lob-defense", "로빙 수비수"],
+  ["drop-shot-artisan", "드롭샷 장인"],
+  ["third-ball-attacker", "3구 공격수"],
+  ["fifth-ball-winner", "5구 승부사"],
+  ["deuce-winner", "듀스 승부사"],
+  ["edge-fairy", "엣지의 요정"],
+  ["net-wizard", "네트의 마법사"],
+  ["spin-restaurant", "회전 맛집"],
+  ["rally-zombie", "랠리 좀비"],
+  ["table-commander", "탁구대 지휘자"],
+  ["backhand-bulldozer", "백핸드 불도저"],
 ]);
 
 const nicknameCharactersPattern = /^[\p{L}\p{N} ._·-]+$/u;
 const nicknameLetterPattern = /\p{L}/u;
+const nicknameSensitiveTextPatterns = [
+  /(?:19|20)\d{2}[./-]?(?:0[1-9]|1[0-2])[./-]?(?:0[1-9]|[12]\d|3[01])/u,
+  /\d{6}-?[1-4]\d{6}/u,
+  /(?:로|길|동|읍|면|리)\s*\d+(?:-\d+)?/u,
+] as const;
+
+export function containsSensitiveHomonymNickname(value: string): boolean {
+  const normalized = normalizeHomonymNickname(value);
+  return nicknameSensitiveTextPatterns.some((pattern) =>
+    pattern.test(normalized),
+  );
+}
 
 export function normalizeHomonymNickname(value: string): string {
   return value.normalize("NFKC").trim().replace(/\s+/gu, " ");
@@ -76,7 +115,8 @@ export function isHomonymNickname(value: string): boolean {
     normalized.length >= homonymNicknameMinLength &&
     normalized.length <= homonymNicknameMaxLength &&
     nicknameCharactersPattern.test(normalized) &&
-    nicknameLetterPattern.test(normalized)
+    nicknameLetterPattern.test(normalized) &&
+    !containsSensitiveHomonymNickname(normalized)
   );
 }
 
