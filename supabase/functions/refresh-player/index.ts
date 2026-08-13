@@ -2,6 +2,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import iconv from "npm:iconv-lite@0.7.0";
 import {
   classifyIpingSessionHtml,
+  extractIpingSessionCookie,
+  extractIpingSessionCookieFromHeader,
+  extractIpingSessionId,
+  extractIpingSessionIdFromCookie,
   fetchWithRetry,
   parseAirpingSearchHtml,
   parseAstreeSearchHtml,
@@ -334,7 +338,9 @@ function encodeIpingForm(fields: Readonly<Record<string, string>>): string {
 }
 
 function ipingCookie(response: Response): string | undefined {
-  return response.headers.get("set-cookie")?.split(";", 1)[0];
+  return extractIpingSessionCookieFromHeader(
+    response.headers.get("set-cookie"),
+  );
 }
 
 async function decodeIpingResponse(response: Response): Promise<string> {
@@ -386,17 +392,23 @@ async function fetchIpingRecords(
     { timeoutMs: 12_000, maxAttempts: 2, retryDelayMs: 250 },
   );
   assertIpingHtmlResponse(loginPage, "로그인 화면");
-  const initialCookie = ipingCookie(loginPage);
+  const loginPageHtml = await decodeIpingResponse(loginPage);
+  const initialCookie =
+    ipingCookie(loginPage) ?? extractIpingSessionCookie(loginPageHtml);
   if (!initialCookie)
     throw new SafeSourceError(
       "source_schema_changed",
       "아이핑 로그인 세션 구조 점검이 필요합니다.",
     );
+  const sessionId =
+    extractIpingSessionIdFromCookie(initialCookie) ??
+    extractIpingSessionId(loginPageHtml);
   const loginResponse = await fetch(loginUrl, {
     method: "POST",
     signal: AbortSignal.timeout(12_000),
     redirect: "manual",
     body: encodeIpingForm({
+      ...(sessionId ? { PHPSESSID: sessionId } : {}),
       path: "",
       pg: "login",
       Mid: username,
@@ -706,9 +718,12 @@ Deno.serve(async (request) => {
       const configuredMinimumIntervalMs = Number(
         Deno.env.get("CRAWLER_SOURCE_MIN_INTERVAL_MS") ?? 5000,
       );
-      const minimumIntervalMs = Number.isFinite(configuredMinimumIntervalMs)
-        ? Math.max(5000, configuredMinimumIntervalMs)
-        : 5000;
+      const minimumIntervalMs =
+        sourceCode === "iping"
+          ? 60_000
+          : Number.isFinite(configuredMinimumIntervalMs)
+            ? Math.max(5000, configuredMinimumIntervalMs)
+            : 5000;
       const { data: retryAfterMs, error: claimError } = await client.rpc(
         "claim_source_request",
         {

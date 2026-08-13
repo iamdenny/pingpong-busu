@@ -6,5 +6,11 @@ export { parseMyttSearchForm, parseMyttSearchHtml } from "../mytt/parser";
 export { parseSuperstarSearchHtml } from "../superstar/parser";
 export { parseYonginCafeSearchResponse } from "../yongintt/parser";
 export { parseIpingSearchHtml } from "../iping/parser";
-export { classifyIpingSessionHtml } from "../iping/session";
+export {
+  classifyIpingSessionHtml,
+  extractIpingSessionCookie,
+  extractIpingSessionCookieFromHeader,
+  extractIpingSessionId,
+  extractIpingSessionIdFromCookie,
+} from "../iping/session";
 export { fetchWithRetry } from "../resilient-fetch";

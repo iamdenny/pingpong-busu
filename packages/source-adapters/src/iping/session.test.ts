@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { classifyIpingSessionHtml } from "./session";
+import {
+  classifyIpingSessionHtml,
+  extractIpingSessionCookie,
+  extractIpingSessionCookieFromHeader,
+  extractIpingSessionId,
+  extractIpingSessionIdFromCookie,
+} from "./session";
 
 const fixtureDirectory = resolve(
   import.meta.dirname,
@@ -31,5 +37,55 @@ describe("classifyIpingSessionHtml", () => {
     expect(classifyIpingSessionHtml("<html>maintenance</html>")).toBe(
       "unknown",
     );
+  });
+});
+
+describe("extractIpingSessionCookie", () => {
+  it("uses the current login form session id when Set-Cookie is unavailable", () => {
+    const html = readFileSync(
+      resolve(fixtureDirectory, "login-form.html"),
+      "utf8",
+    );
+    expect(extractIpingSessionCookie(html)).toBe(
+      "PHPSESSID=0123456789abcdef0123456789abcdef",
+    );
+    expect(extractIpingSessionId(html)).toBe(
+      "0123456789abcdef0123456789abcdef",
+    );
+    expect(
+      extractIpingSessionIdFromCookie(
+        "PHPSESSID=0123456789abcdef0123456789abcdef",
+      ),
+    ).toBe("0123456789abcdef0123456789abcdef");
+  });
+
+  it("rejects malformed session ids", () => {
+    expect(
+      extractIpingSessionCookie(
+        '<input name="PHPSESSID" value="invalid; session">',
+      ),
+    ).toBeUndefined();
+    expect(
+      extractIpingSessionIdFromCookie("PHPSESSID=invalid; session"),
+    ).toBeUndefined();
+  });
+
+  it("accepts whitespace, reversed, and unquoted login form attributes", () => {
+    expect(
+      extractIpingSessionId(
+        '<input value=0123456789abcdef0123456789abcdef name = "PHPSESSID">',
+      ),
+    ).toBe("0123456789abcdef0123456789abcdef");
+  });
+
+  it("selects PHPSESSID from a combined Set-Cookie header", () => {
+    expect(
+      extractIpingSessionCookieFromHeader(
+        "locale=ko; Path=/, PHPSESSID=0123456789abcdef0123456789abcdef; Path=/; HttpOnly",
+      ),
+    ).toBe("PHPSESSID=0123456789abcdef0123456789abcdef");
+    expect(
+      extractIpingSessionCookieFromHeader("locale=ko; Path=/"),
+    ).toBeUndefined();
   });
 });
