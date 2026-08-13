@@ -1,9 +1,9 @@
 ---
-summary: 'BUSU의 설치, 개발, 검증, 수집, Supabase 배포 명령을 정리한다.'
+summary: "BUSU의 설치, 개발, 검증, 수집, Supabase 배포 명령을 정리한다."
 read_when:
   - 로컬 개발 환경을 실행할 때
   - 테스트나 crawler, Supabase 명령을 찾을 때
-title: '개발 명령'
+title: "개발 명령"
 ---
 
 # 개발 명령
@@ -74,11 +74,14 @@ pnpm crawl:live --query 임대현 --source iping
 supabase start
 supabase db reset
 supabase functions serve
+supabase migration list --linked
 npx --yes supabase@latest db push --linked --dry-run
 npx --yes supabase@latest db push --linked
 npx --yes supabase@latest functions deploy refresh-player --project-ref <project-ref>
 npx --yes supabase@latest functions deploy refresh-status --project-ref <project-ref>
 ```
+
+`202608130001_reversible_player_merges.sql`, `202608130002_bounded_source_retries.sql`, `202608130003_division_observation_counts.sql`은 이 순서로 적용한다. 운영 확인과 관리자 병합·원복 RPC 예시는 [운영 문서](operations.md)를 따른다.
 
 DB 용량 확인:
 
@@ -87,3 +90,11 @@ pnpm db:size
 ```
 
 PAT, service role key, DB password는 명령 문자열이나 문서에 기록하지 않는다.
+
+## 배포 버전 미리보기
+
+```bash
+VITE_APP_VERSION=2026.33.1 pnpm build
+```
+
+`YYYY.WEEK.SEQ` 형식의 값은 홈 하단에 표시된다. 실제 GitHub Pages 배포에서는 workflow가 Actions 실행 이력으로 값을 자동 생성하므로 repository variable로 고정하지 않는다. 값이 없거나 형식이 다르면 `버전 개발`로 표시된다.

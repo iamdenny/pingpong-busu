@@ -8,7 +8,7 @@ title: "데이터 모델"
 
 # 데이터 모델
 
-`sources`는 adapter 상태, `players`와 `clubs`는 검토된 canonical entity, `source_player_identities`는 출처별 후보를 담습니다. 이름 하나만으로 identity를 연결하지 않습니다. `tournaments`와 `results`는 정규화된 기록이며 `result_revisions`는 실제 내용 변경만 보존합니다. `source_refreshes`는 조회 요약, `refresh_jobs`는 비동기/browser 작업입니다. `source_request_throttles`는 다른 검색어와 사용자를 함께 막지 않도록 `출처 + 정규화 검색어`별 마지막 호출 시각만 보존합니다. `identity_claims`와 `identity_claim_candidates`는 참여자가 선택한 동일인 후보 묶음을, `identity_claim_reviews`는 관리자 상태 변경 감사 이력을 담습니다. `correction_requests`와 `rule_sets`는 후속 기능의 schema입니다.
+`sources`는 adapter 상태, `players`와 `clubs`는 검토된 canonical entity, `source_player_identities`는 출처별 후보를 담습니다. 이름 하나만으로 identity를 연결하지 않습니다. `tournaments`와 `results`는 정규화된 기록이며 `result_revisions`는 실제 내용 변경만 보존합니다. `source_refreshes`는 조회 요약, `refresh_jobs`는 비동기/browser 작업입니다. `source_request_throttles`는 다른 검색어와 사용자를 함께 막지 않도록 `출처 + 정규화 검색어`별 마지막 호출 시각, 1분 제한 시작 시각과 시도 횟수를 보존합니다. `identity_claims`와 `identity_claim_candidates`는 참여자가 선택한 동일인 후보 묶음을, `identity_claim_reviews`는 관리자 상태 변경 감사 이력을 담습니다. `correction_requests`와 `rule_sets`는 후속 기능의 schema입니다.
 
 기록 시간축은 대회 개최일 `tournaments.held_on`을 우선합니다. 게시판형 출처가 대회일을 제공하지 않으면 `results.source_published_on`을 사용하고, 공개 view의 `sort_date`는 두 값을 이 순서로 합성합니다. 크롤러의 `last_checked_at`은 동일 날짜의 보조 정렬 기준일 뿐 경기·게시 시점을 대신하지 않습니다.
 
@@ -18,9 +18,13 @@ title: "데이터 모델"
 
 `identity_claims.verification_hash`는 정규화 이름과 참여자가 정한 숫자 4자리를 서버 전용 key로 HMAC한 값입니다. 코드 원문, 휴대폰 번호, 생년월일은 저장하지 않습니다. `candidate_fingerprint`는 선택된 공개 선수 ID 정렬값의 SHA-256이며 중복 제보 판정에만 사용합니다. 제보는 항상 `pending`으로 생성되고 같은 정규화 이름의 후보만 연결할 수 있으며, 자동 merge를 실행하지 않습니다. 관리자 상태 변경은 trigger가 `identity_claim_reviews`에 이전·다음 상태와 처리자를 남깁니다. `identity_claim_review_queue`는 service role만 조회할 수 있습니다.
 
+관리자 병합은 `identity_merge_operations`에 대상 선수, 처리자, 사유, 선택적 제보 ID를 남기고 `identity_merge_operation_players`와 `identity_merge_operation_identities`에 병합 전 선수 상태·출처 identity 연결·match 상태를 저장합니다. 원본 `players`, `source_player_identities`, `results` 행은 삭제하지 않습니다. 병합된 source 선수는 `players.merged_into_player_id`로 숨기고 출처 identity만 대상 선수로 연결합니다. 원복은 저장된 스냅샷과 현재 연결이 일치하고 같은 대상의 후속 병합이 없을 때만 허용하며, 이전 연결과 상태를 정확히 복구합니다.
+
 향후 `correction_requests`는 참여자의 일반 정정·분리 제보와 근거를 받고 관리자가 승인·반려합니다. 승인 결과는 canonical metadata에 반영하되 수집된 원문 기록을 수정하지 않으며, 이전 값·근거 URL·처리자·처리 시각을 감사 이력으로 보존합니다.
 
 `results.division_value`는 `4부`, `A부`, `T5` 같은 관측값이고 `results.division_system`은 `open`, `integrated`, `women`, `regional`, `division`, `unknown` 중 하나입니다. 같은 숫자라도 서로 다른 체계는 합산하지 않습니다. 판정 우선순위는 대회별 수동 override → T1~T7/디비전 → 종목 내부의 지역 구분(`지역`, `지역남성`, `지역여성`, `지역혼성`) → 참가 종목의 여자·여성 → 오픈 명시 → 지역부수 명시 → 일반 숫자·문자 부수의 통합부수입니다. 수동 override는 코드와 migration에 근거를 남겨 재수집과 기존 데이터에 동일하게 적용합니다. 현재 제16회 이하 분당구청장기는 `regional`입니다. 종목 내부 지역 구분은 대회명에 `오픈`이 있더라도 `integrated`로 저장합니다. `women`은 그 지역 구분이 없는 여자 종목을 보존하기 위한 내부 subtype이며 사용자 화면에서는 `통합부수 여자6부`처럼 표현합니다. 시·군·구 등 대회 지역은 부수 체계 판정 근거가 아니며 일반 숫자 부수는 `integrated`가 기본입니다. 부수 값 자체가 없거나 해석할 수 없는 값은 `unknown`으로 보존합니다.
+
+`public_player_search.division_observations`는 논쟁 상태와 빈 부수값을 제외하고 `division_system + division_value`별 실제 기록을 JSON 배열로 집계합니다. 각 항목은 `{system, division, award_count, participation_count}`이며 `is_award_rank`가 참인 기록만 입상, 나머지는 참가로 서로 배타적으로 계산합니다. Supabase repository는 이를 `PlayerSummary.divisionObservations`의 `{system, division, awardCount, participationCount}`로 검증·변환하고, 로컬 live 경로는 같은 계약을 `summarizeDivisionObservations`로 생성합니다. 검색 화면은 여러 선수 후보의 이 배열을 합산하므로 같은 부수값이라도 오픈·통합·지역·디비전 체계는 분리됩니다.
 
 출처가 누락값을 `NULL`, `NULL부`, `undefined`, `none`, `N/A`로 보낼 때는 `division_value`를 저장하지 않습니다. 기존 sentinel 값도 migration으로 null 처리하며, 방어적 UI 표기는 `통합부수 확인 필요`처럼 표현해 `여자NULL부`를 만들지 않습니다.
 

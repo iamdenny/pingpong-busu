@@ -2,6 +2,42 @@ import type { SourceCode } from "@busu/domain";
 import type { RefreshResponse } from "./repository";
 
 export const MAX_SOURCE_REFRESH_RETRIES = 2;
+export const MAX_MANUAL_SOURCE_REFRESH_RETRIES = 3;
+export const MANUAL_SOURCE_REFRESH_COOLDOWN_MS = 5_000;
+
+export interface ManualSourceRetryState {
+  attempts: number;
+  failureAt: number;
+  lastAttemptAt?: number;
+  notBeforeAt?: number;
+}
+
+export interface ManualSourceRetryAvailability {
+  canRetry: boolean;
+  remainingAttempts: number;
+  retryAt: number;
+}
+
+export function manualSourceRetryAvailability(
+  state: ManualSourceRetryState,
+  now = Date.now(),
+): ManualSourceRetryAvailability {
+  const attempts = Math.max(0, Math.floor(state.attempts));
+  const remainingAttempts = Math.max(
+    0,
+    MAX_MANUAL_SOURCE_REFRESH_RETRIES - attempts,
+  );
+  const retryAt = Math.max(
+    Math.max(state.failureAt, state.lastAttemptAt ?? 0) +
+      MANUAL_SOURCE_REFRESH_COOLDOWN_MS,
+    state.notBeforeAt ?? 0,
+  );
+  return {
+    canRetry: remainingAttempts > 0 && now >= retryAt,
+    remainingAttempts,
+    retryAt,
+  };
+}
 
 export class SourceRefreshRateLimitError extends Error {
   readonly retryAfterMs: number;

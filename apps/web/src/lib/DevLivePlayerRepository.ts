@@ -6,6 +6,7 @@ import {
   type SourceStatus,
 } from "@busu/domain";
 import type {
+  IdentityCandidateEvidence,
   IdentityClaimInput,
   IdentityClaimResponse,
   PlayerRepository,
@@ -26,6 +27,16 @@ const summarySchema = z.object({
   resultCount: z.number(),
   awardResults: z
     .array(z.object({ rank: z.string(), date: z.string().optional() }))
+    .optional(),
+  divisionObservations: z
+    .array(
+      z.object({
+        system: divisionSystemSchema,
+        division: z.string().min(1),
+        awardCount: z.number().int().nonnegative(),
+        participationCount: z.number().int().nonnegative(),
+      }),
+    )
     .optional(),
   sourceCount: z.number(),
   lastCheckedAt: z.string(),
@@ -123,6 +134,9 @@ export class DevLivePlayerRepository implements PlayerRepository {
             : {}),
           resultCount: row.resultCount,
           ...(awardResults ? { awardResults } : {}),
+          ...(row.divisionObservations
+            ? { divisionObservations: row.divisionObservations }
+            : {}),
           sourceCount: row.sourceCount,
           lastCheckedAt: row.lastCheckedAt,
           identityStatus: row.identityStatus,
@@ -136,6 +150,19 @@ export class DevLivePlayerRepository implements PlayerRepository {
     if (!response.ok)
       throw new Error("개발용 선수 상세를 불러오지 못했습니다.");
     return (await response.json()) as PlayerDetail;
+  }
+  async getIdentityCandidateEvidence(
+    candidateIds: readonly string[],
+  ): Promise<IdentityCandidateEvidence[]> {
+    return Promise.all(
+      [...new Set(candidateIds)].slice(0, 30).map(async (candidateId) => {
+        const player = await this.getPlayer(candidateId);
+        return {
+          candidateId,
+          records: player?.records.slice(0, 2) ?? [],
+        };
+      }),
+    );
   }
   async requestRefresh(input: RefreshRequest): Promise<RefreshResponse> {
     const sourceCode = input.sourceCodes?.[0] ?? "astree";

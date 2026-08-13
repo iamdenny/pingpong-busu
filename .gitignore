@@ -11,3 +11,4 @@ test-results/
 .busu-crawler-state.json
 graphify-out/
 supabase/.temp/
+supabase/.branches/

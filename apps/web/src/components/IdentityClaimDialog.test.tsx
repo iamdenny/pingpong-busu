@@ -39,6 +39,42 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("IdentityClaimDialog", () => {
   it("submits selected candidates without exposing the private code", async () => {
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue([
+      {
+        candidateId: "candidate-seoul",
+        records: [
+          {
+            id: "record-seoul",
+            date: "2026-07-19",
+            tournament: "제1회 서울 라켓배 탁구대회",
+            scale: "district",
+            event: "개인단식(혼성 4~6부)",
+            sourceCode: "astree",
+            sourceName: "애즈트리",
+            sourceUrl: "https://example.com/seoul",
+            lastCheckedAt: "2026-08-12T00:00:00.000Z",
+          },
+        ],
+      },
+      {
+        candidateId: "candidate-busan",
+        records: [
+          {
+            id: "record-busan",
+            tournament: "제2회 부산 바다배 탁구대회",
+            scale: "district",
+            event: "여자 개인단식 5~7부",
+            sourceCode: "astree",
+            sourceName: "애즈트리",
+            sourceUrl: "https://example.com/busan",
+            lastCheckedAt: "2026-08-11T00:00:00.000Z",
+          },
+        ],
+      },
+    ]);
     const submit = vi
       .spyOn(playerRepository, "submitIdentityClaim")
       .mockResolvedValue({
@@ -57,6 +93,12 @@ describe("IdentityClaimDialog", () => {
     expect(
       screen.getByRole("dialog", { name: "동명이인 구분 제보" }),
     ).toHaveAttribute("open");
+    expect(
+      await screen.findByText("제1회 서울 라켓배 탁구대회"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("개인단식(혼성 4~6부)")).toBeInTheDocument();
+    expect(screen.getByText("제2회 부산 바다배 탁구대회")).toBeInTheDocument();
+    expect(screen.getByText("여자 개인단식 5~7부")).toBeInTheDocument();
 
     const submitButton = screen.getByRole("button", { name: "검토 요청" });
     fireEvent.submit(submitButton.closest("form")!);

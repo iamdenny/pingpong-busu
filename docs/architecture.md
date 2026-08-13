@@ -47,7 +47,11 @@ flowchart LR
 4. 각 출처의 완료 직후 선수 query cache를 무효화해 새 저장 결과를 반영한다.
 5. 출처 하나가 실패해도 다른 query와 기존 결과는 유지한다.
 
-현재 production refresh는 동기 Edge 요청이지만 UI에서는 활성 출처별로 분리해 실시간 진행 상태를 표현한다. 서버의 안전한 오류 코드로 시간 초과·접근 차단·구조 변경·인증 실패를 구분하며, `출처 + 정규화 검색어` 단위 호출 제한은 남은 시간을 반환해 클라이언트가 최대 2회 자동 재시도한다. `refresh-status`는 저장된 refresh ID 상태를 공개 응답으로 변환한다.
+현재 production refresh는 동기 Edge 요청이지만 UI에서는 활성 출처별로 분리해 실시간 진행 상태를 표현한다. 서버의 안전한 오류 코드로 시간 초과·접근 차단·구조 변경·인증 실패를 구분하며, `출처 + 정규화 검색어` 단위 호출 제한은 5초 하한·1분당 4회 상한과 남은 시간을 제공한다. 클라이언트는 호출 제한을 최대 2회 자동 재시도하고, 일반 실패는 사용자가 5초 간격·최대 3회 수동 재시도할 수 있다. `refresh-status`는 저장된 refresh ID 상태를 공개 응답으로 변환한다.
+
+출처 HTTP adapter의 `fetchWithRetry`는 호출자 취소를 보존하면서 네트워크·시간 초과와 HTTP 408·500·502·503·504만 최대 2회 시도한다. 에어핑퐁은 요청당 16초, 오케이핑퐁은 10초, 아이핑은 12초 이상의 출처별 제한을 사용하고 250ms 선형 지연 뒤 한 번만 재시도한다. 408을 제외한 4xx처럼 결정적인 응답과 아이핑 로그인 POST는 자동 재시도하지 않아 접근 제한이나 인증 요청을 불필요하게 반복하지 않는다.
+
+아이핑은 로그인 화면에서 받은 쿠키로 조회마다 임시 세션을 만들고 로그인 폼·로그아웃 표식·사람 확인 화면을 별도로 판별한다. 인증 후 참가·전국 입상·지역 입상 세 요청을 같은 세션으로 실행하되 쿠키를 저장소나 응답에 남기지 않는다. 세션 만료는 인증 실패, 사람 확인은 접근 차단, 알 수 없는 성공 화면은 구조 변경으로 분류한다. workspace adapter와 Edge Function은 같은 분류와 제한을 유지한다.
 
 ## 실행 모드 선택
 
@@ -62,7 +66,7 @@ flowchart LR
 
 ## Supabase 공개/비공개 경계
 
-- 검색·상세 읽기는 RLS가 적용된 `public_player_search`, `public_results`, `public_source_status` view를 사용한다.
+- 검색·상세 읽기는 RLS가 적용된 `public_player_search`, `public_results`, `public_source_status` view를 사용한다. `public_player_search.division_observations`는 체계·부수별 4강 이상 입상과 나머지 참가 건수를 집계한 공개 요약이다.
 - 브라우저는 publishable key만 가진다.
 - `refresh-player`는 publishable key를 검증한 뒤 service role로 source 상태와 upsert RPC에 접근한다.
 - 외부 HTTP는 Edge Function이 수행하고 브라우저는 출처에 직접 연결하지 않는다.
@@ -88,6 +92,10 @@ Deno Edge 환경은 workspace import를 그대로 배포하지 않는다. `pnpm 
 
 정적 `index.html`은 홈용 기본 title, description, canonical, Open Graph와 Twitter 메타데이터를 제공한다. React 라우트는 검색어 또는 로드된 선수 데이터에 맞춰 동일 메타데이터를 갱신하고 홈으로 돌아오면 기본값으로 복원한다. 다만 fragment는 HTTP 요청에 포함되지 않으므로 자바스크립트를 실행하지 않는 링크 미리보기 봇에는 검색·상세별 동적 값이 전달되지 않는다. 해당 요구가 생기면 서버에서 OG HTML을 생성하는 공유 URL을 별도 경계로 둔다.
 
+Pages workflow는 build 전에 GitHub Actions의 현재 ISO 주차 실행 이력을 읽어 `YYYY.WEEK.SEQ` 배포 버전을 생성한다. 같은 workflow run의 재실행 횟수도 주간 순번에 포함하며, 현재 실행이 API 목록에 아직 보이지 않으면 직접 더한다. 생성값은 공개 build 변수 `VITE_APP_VERSION`으로만 주입되고 React는 형식을 검증한 뒤 홈 footer에 표시한다. 값이 없거나 형식이 다르면 로컬 개발용 `개발` 표기를 사용한다.
+
 동명이인 참여 제보는 검색 결과의 같은 정규화 이름 후보에서만 시작한다. 브라우저는 선택한 공개 선수 ID, 사용자가 정한 숫자 4자리, 선택적 참고사항만 `submit-identity-claim`에 전달한다. Edge Function은 후보 이름을 재검증하고 숫자 원문을 서버 HMAC으로 변환한 뒤 service role 전용 RPC로 저장한다. public RLS 정책은 제보 table을 읽거나 직접 쓰는 권한을 주지 않는다. 제보 상태는 항상 검토 대기로 시작하며 identity merge와 분리된 경계다.
+
+승인된 후보를 실제로 합칠 때는 service role 전용 `merge_players_internal`만 사용한다. 이 RPC는 같은 정규화 이름, 활성 후보, 승인 제보의 후보 집합을 다시 검증하고 출처 identity의 이전 연결을 감사 table에 먼저 기록한 다음 대상 선수로 재연결한다. `revert_player_merge_internal`은 후속 병합과 현재 연결 충돌을 검사한 뒤 저장된 연결을 복구한다. 따라서 원복은 대회 결과를 복사하거나 삭제하는 작업이 아니라 `source_player_identities.player_id` 연결을 되돌리는 트랜잭션이다.
 
 디렉터리별 변경 영향은 [codemap](codemap.md), 기능 계약은 [제품 스펙](product-spec.md)을 참고한다.

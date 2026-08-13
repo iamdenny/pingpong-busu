@@ -1,6 +1,6 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, MapPin, Trophy, Waypoints } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Link,
   useLocation,
@@ -11,6 +11,7 @@ import {
   formatDivisionObservation,
   parsePlayerSearchQuery,
   type AwardResultSummary,
+  type SourceCode,
 } from "@busu/domain";
 import { IdentityClaimDialog } from "../components/IdentityClaimDialog";
 import { PageMetadata } from "../components/PageMetadata";
@@ -19,7 +20,12 @@ import {
   SourceRefreshProgress,
   type SourceRefreshView,
 } from "../components/SourceRefreshProgress";
-import { summarizeObservedDivisions } from "../lib/divisionSummary";
+import {
+  divisionObservationForPlayer,
+  matchesObservedDivision,
+  summarizeObservedDivisions,
+  type DivisionSummaryItem,
+} from "../lib/divisionSummary";
 import {
   isDevLiveMode,
   isSourceRefreshEnabled,
@@ -27,10 +33,16 @@ import {
 } from "../lib/runtime";
 import {
   asRateLimitError,
+  manualSourceRetryAvailability,
   requireRefreshWithoutRateLimit,
   shouldRetrySourceRefresh,
   sourceRefreshRetryDelay,
 } from "../lib/sourceRefreshRetry";
+
+interface ManualRetryAttempt {
+  attempts: number;
+  lastAttemptAt?: number;
+}
 
 const identityText = {
   unreviewed: "동일인 검토 전",
@@ -105,6 +117,18 @@ export function SearchResultsPage() {
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
   const [resultTab, setResultTab] = useState<"awards" | "entries">("awards");
+  const [divisionSelection, setDivisionSelection] = useState<{
+    query: string;
+    system: DivisionSummaryItem["system"];
+    division: string;
+  } | null>(null);
+  const candidateListRef = useRef<HTMLElement>(null);
+  const [manualRetryAttempts, setManualRetryAttempts] = useState<
+    Readonly<Record<string, ManualRetryAttempt>>
+  >({});
+  const manualRetryAttemptsRef = useRef<
+    Readonly<Record<string, ManualRetryAttempt>>
+  >({});
   const query = params.get("q")?.trim() ?? "";
   const playerSearch = parsePlayerSearchQuery(query);
   const result = useQuery({
@@ -182,6 +206,11 @@ export function SearchResultsPage() {
           message: asRateLimitError(sourceQuery.error)
             ? "자동 재시도 후에도 호출 제한이 해제되지 않았습니다."
             : "BUSU 서버의 출처 조회 요청을 완료하지 못했습니다.",
+          ...manualRetryView(
+            source.sourceCode,
+            sourceQuery.errorUpdatedAt,
+            asRateLimitError(sourceQuery.error)?.retryAt,
+          ),
         };
       const outcome = sourceQuery.data?.sources.find(
         (item) => item.sourceCode === source.sourceCode,
@@ -193,6 +222,13 @@ export function SearchResultsPage() {
           state: "failed",
           errorCode: outcome?.errorCode ?? "source_refresh_failed",
           message: outcome?.message ?? "출처 응답을 확인하지 못했습니다.",
+          ...manualRetryView(
+            source.sourceCode,
+            sourceQuery.dataUpdatedAt,
+            outcome?.retryAfterMs !== undefined
+              ? sourceQuery.dataUpdatedAt + outcome.retryAfterMs
+              : undefined,
+          ),
         };
       if (outcome.status === "skipped")
         return {
@@ -215,6 +251,73 @@ export function SearchResultsPage() {
     },
   );
 
+  function retryKey(sourceCode: SourceCode): string {
+    return `${query}\u0000${sourceCode}`;
+  }
+
+  function manualRetryView(
+    sourceCode: SourceCode,
+    failureAt: number,
+    notBeforeAt?: number,
+  ) {
+    const current = manualRetryAttempts[retryKey(sourceCode)];
+    const availability = manualSourceRetryAvailability({
+      attempts: current?.attempts ?? 0,
+      failureAt,
+      ...(current?.lastAttemptAt !== undefined
+        ? { lastAttemptAt: current.lastAttemptAt }
+        : {}),
+      ...(notBeforeAt !== undefined ? { notBeforeAt } : {}),
+    });
+    return {
+      manualRetryAt: availability.retryAt,
+      manualRetriesRemaining: availability.remainingAttempts,
+    };
+  }
+
+  function retrySource(sourceCode: SourceCode, attemptedAt: number) {
+    const sourceIndex = activeSources.findIndex(
+      (source) => source.sourceCode === sourceCode,
+    );
+    const sourceQuery = refreshQueries[sourceIndex];
+    if (!sourceQuery || sourceQuery.isFetching) return;
+    const key = retryKey(sourceCode);
+    const current = manualRetryAttemptsRef.current[key];
+    const failureAt = Math.max(
+      sourceQuery.errorUpdatedAt,
+      sourceQuery.dataUpdatedAt,
+    );
+    const outcome = sourceQuery.data?.sources.find(
+      (item) => item.sourceCode === sourceCode,
+    );
+    const rateLimitRetryAt =
+      asRateLimitError(sourceQuery.error)?.retryAt ??
+      (outcome?.retryAfterMs !== undefined
+        ? sourceQuery.dataUpdatedAt + outcome.retryAfterMs
+        : undefined);
+    const availability = manualSourceRetryAvailability({
+      attempts: current?.attempts ?? 0,
+      failureAt,
+      ...(current?.lastAttemptAt !== undefined
+        ? { lastAttemptAt: current.lastAttemptAt }
+        : {}),
+      ...(rateLimitRetryAt !== undefined
+        ? { notBeforeAt: rateLimitRetryAt }
+        : {}),
+    });
+    if (!availability.canRetry) return;
+    const nextAttempts = {
+      ...manualRetryAttemptsRef.current,
+      [key]: {
+        attempts: (current?.attempts ?? 0) + 1,
+        lastAttemptAt: attemptedAt,
+      },
+    };
+    manualRetryAttemptsRef.current = nextAttempts;
+    setManualRetryAttempts(nextAttempts);
+    void sourceQuery.refetch();
+  }
+
   const identityCandidates =
     result.data?.filter(
       (player) => player.normalizedName === result.data[0]?.normalizedName,
@@ -227,10 +330,34 @@ export function SearchResultsPage() {
         (source) => source.state === "waiting" || source.state === "refreshing",
       ));
   const divisionSummary = summarizeObservedDivisions(result.data ?? []);
-  const awardCandidates =
-    result.data?.filter((player) => player.resultCount > 0) ?? [];
-  const entryCandidates =
-    result.data?.filter((player) => player.resultCount === 0) ?? [];
+  const selectedDivision =
+    divisionSelection?.query === query
+      ? divisionSummary.find(
+          (item) =>
+            item.system === divisionSelection.system &&
+            item.division === divisionSelection.division,
+        )
+      : undefined;
+  const selectedDivisionKey = selectedDivision
+    ? `${query}\u0000${selectedDivision.system}\u0000${selectedDivision.division}`
+    : null;
+  const divisionCandidates = selectedDivision
+    ? (result.data ?? []).filter((player) =>
+        matchesObservedDivision(player, selectedDivision),
+      )
+    : (result.data ?? []);
+  const awardCandidates = divisionCandidates.filter((player) =>
+    selectedDivision
+      ? (divisionObservationForPlayer(player, selectedDivision)?.awardCount ??
+          0) > 0
+      : player.resultCount > 0,
+  );
+  const entryCandidates = divisionCandidates.filter((player) =>
+    selectedDivision
+      ? (divisionObservationForPlayer(player, selectedDivision)
+          ?.participationCount ?? 0) > 0
+      : player.resultCount === 0,
+  );
   const activeResultTab =
     resultTab === "awards"
       ? awardCandidates.length > 0 || entryCandidates.length === 0
@@ -241,6 +368,9 @@ export function SearchResultsPage() {
         : "awards";
   const shownCandidates =
     activeResultTab === "awards" ? awardCandidates : entryCandidates;
+  const candidateListLabel = selectedDivision
+    ? `${selectedDivision.systemLabel} ${selectedDivision.division} ${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`
+    : `${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`;
   const searchLabel =
     `${playerSearch.name}${playerSearch.region ? ` ${playerSearch.region}` : ""}`.trim();
   const pageTitle = searchLabel
@@ -249,6 +379,30 @@ export function SearchResultsPage() {
   const pageDescription = searchLabel
     ? `${searchLabel} 선수의 최근 관측 부수, 대회 출전·4강 이상 입상 기록과 원문 출처를 확인하세요.`
     : "탁구 선수 이름과 지역으로 최근 관측 부수, 대회 출전·입상 기록과 원문 출처를 검색하세요.";
+
+  useEffect(() => {
+    if (!selectedDivisionKey) return;
+    candidateListRef.current?.scrollIntoView?.({ block: "start" });
+    candidateListRef.current?.focus({ preventScroll: true });
+  }, [selectedDivisionKey]);
+
+  function selectDivision(summary: DivisionSummaryItem) {
+    setDivisionSelection({
+      query,
+      system: summary.system,
+      division: summary.division,
+    });
+    setResultTab(summary.awardCount > 0 ? "awards" : "entries");
+  }
+
+  function clearDivisionSelection() {
+    setDivisionSelection(null);
+    setResultTab(
+      (result.data ?? []).some((player) => player.resultCount > 0)
+        ? "awards"
+        : "entries",
+    );
+  }
 
   return (
     <div className="page">
@@ -259,6 +413,7 @@ export function SearchResultsPage() {
         initialQuery={query}
         onSearch={(value) => {
           setResultTab("awards");
+          setDivisionSelection(null);
           void navigate(`/search?q=${encodeURIComponent(value)}`);
         }}
       />
@@ -284,7 +439,7 @@ export function SearchResultsPage() {
           <div className="division-overview__table-wrap">
             <table>
               <caption className="visually-hidden">
-                부수 체계별 최근 관측 부수와 기록 수
+                부수 체계별 최근 관측 부수와 입상 및 참가 기록 수
               </caption>
               <thead>
                 <tr>
@@ -297,10 +452,29 @@ export function SearchResultsPage() {
               </thead>
               <tbody>
                 <tr>
-                  {divisionSummary.map(({ system, division, count }) => (
-                    <td key={`${system}-${division}`}>
-                      <strong>{division}</strong>
-                      <span>{count}건</span>
+                  {divisionSummary.map((summary) => (
+                    <td key={`${summary.system}-${summary.division}`}>
+                      <button
+                        type="button"
+                        className="division-overview__filter"
+                        aria-controls="candidate-results"
+                        aria-pressed={
+                          selectedDivision?.system === summary.system &&
+                          selectedDivision.division === summary.division
+                        }
+                        aria-label={`${summary.systemLabel} ${summary.division} 입상 ${summary.awardCount}건 참가 ${summary.participationCount}건 결과 보기`}
+                        onClick={() => selectDivision(summary)}
+                      >
+                        <strong>{summary.division}</strong>
+                        <span className="division-overview__counts">
+                          <span>
+                            입상 <b>{summary.awardCount}건</b>
+                          </span>
+                          <span>
+                            참가 <b>{summary.participationCount}건</b>
+                          </span>
+                        </span>
+                      </button>
                     </td>
                   ))}
                 </tr>
@@ -319,7 +493,7 @@ export function SearchResultsPage() {
         </div>
       )}
       {refreshViews.length > 0 && (
-        <SourceRefreshProgress sources={refreshViews} />
+        <SourceRefreshProgress sources={refreshViews} onRetry={retrySource} />
       )}
       {directSources.length > 0 && (
         <aside
@@ -376,31 +550,53 @@ export function SearchResultsPage() {
         </div>
       )}
       {!result.isLoading && (result.data?.length ?? 0) > 0 && (
-        <div className="result-tabs" role="tablist" aria-label="검색 결과 구분">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeResultTab === "awards"}
-            disabled={awardCandidates.length === 0}
-            onClick={() => setResultTab("awards")}
+        <>
+          {selectedDivision && (
+            <div className="division-result-filter">
+              <span role="status">
+                <strong>
+                  {selectedDivision.systemLabel} {selectedDivision.division}
+                </strong>{" "}
+                {divisionCandidates.length}건만 표시 중
+              </span>
+              <button type="button" onClick={clearDivisionSelection}>
+                부수 필터 해제
+              </button>
+            </div>
+          )}
+          <div
+            className="result-tabs"
+            role="tablist"
+            aria-label="검색 결과 구분"
           >
-            입상 <strong>{awardCandidates.length}건</strong>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeResultTab === "entries"}
-            disabled={entryCandidates.length === 0}
-            onClick={() => setResultTab("entries")}
-          >
-            출전 <strong>{entryCandidates.length}건</strong>
-          </button>
-        </div>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeResultTab === "awards"}
+              disabled={awardCandidates.length === 0}
+              onClick={() => setResultTab("awards")}
+            >
+              입상 <strong>{awardCandidates.length}건</strong>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeResultTab === "entries"}
+              disabled={entryCandidates.length === 0}
+              onClick={() => setResultTab("entries")}
+            >
+              출전 <strong>{entryCandidates.length}건</strong>
+            </button>
+          </div>
+        </>
       )}
       <section
+        id="candidate-results"
+        ref={candidateListRef}
         className="candidate-list"
-        aria-label={`${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`}
+        aria-label={candidateListLabel}
         role="tabpanel"
+        tabIndex={-1}
       >
         {shownCandidates.map((player) => (
           <Link

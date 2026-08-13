@@ -1,8 +1,15 @@
-import { act, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   SourceRefreshProgress,
   sourceRefreshStateText,
+  type SourceRefreshView,
 } from "./SourceRefreshProgress";
 
 describe("SourceRefreshProgress", () => {
@@ -45,6 +52,41 @@ describe("SourceRefreshProgress", () => {
     expect(screen.getByText("마이티티").closest("li")).toHaveTextContent(
       "조회 중",
     );
+    expect(
+      screen.getByRole("button", { name: "실시간 출처 조회 상세 접기" }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("collapses details when every source finishes and allows reopening", async () => {
+    const refreshingSource: SourceRefreshView = {
+      sourceCode: "astree",
+      sourceName: "애즈트리",
+      state: "refreshing",
+    };
+    const { rerender } = render(
+      <SourceRefreshProgress sources={[refreshingSource]} />,
+    );
+
+    expect(screen.getByRole("list")).toBeVisible();
+
+    rerender(
+      <SourceRefreshProgress
+        sources={[{ ...refreshingSource, state: "succeeded" }]}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("list", { hidden: true })).not.toBeVisible(),
+    );
+    const toggle = screen.getByRole("button", {
+      name: "실시간 출처 조회 상세 보기",
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole("list")).toBeVisible();
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 
   it.each([
@@ -107,5 +149,71 @@ describe("SourceRefreshProgress", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "1곳 중 0곳 완료 · 1곳 조회 중",
     );
+  });
+
+  it("offers a bounded manual retry only after the cooldown", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-13T00:00:00.000Z"));
+    const onRetry = vi.fn();
+    render(
+      <SourceRefreshProgress
+        sources={[
+          {
+            sourceCode: "airping",
+            sourceName: "에어핑퐁",
+            state: "failed",
+            errorCode: "source_timeout",
+            manualRetryAt: Date.now() + 5_000,
+            manualRetriesRemaining: 3,
+          },
+        ]}
+        onRetry={onRetry}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "실시간 출처 조회 상세 보기",
+      }),
+    );
+
+    const button = screen.getByRole("button", {
+      name: "에어핑퐁 재시도, 5초 후 가능",
+    });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(button);
+    expect(onRetry).not.toHaveBeenCalled();
+
+    await act(() => vi.advanceTimersByTimeAsync(5_000));
+    const availableButton = screen.getByRole("button", {
+      name: "에어핑퐁 재시도, 3회 남음",
+    });
+    expect(availableButton).toHaveAttribute("aria-disabled", "false");
+    fireEvent.click(availableButton);
+    expect(onRetry).toHaveBeenCalledWith("airping", Date.now());
+  });
+
+  it("keeps an exhausted retry button visible with its reason", () => {
+    render(
+      <SourceRefreshProgress
+        sources={[
+          {
+            sourceCode: "iping",
+            sourceName: "아이핑",
+            state: "failed",
+            manualRetryAt: 0,
+            manualRetriesRemaining: 0,
+          },
+        ]}
+        onRetry={vi.fn()}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "실시간 출처 조회 상세 보기",
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "아이핑 재시도, 한도 도달" }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 });

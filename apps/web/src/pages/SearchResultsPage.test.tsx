@@ -79,14 +79,47 @@ describe("SearchResultsPage", () => {
       within(summary).getByRole("columnheader", { name: "오픈부수" }),
     ).toBeInTheDocument();
     expect(
-      within(summary).getByRole("columnheader", { name: "통합부수" }),
+      within(summary).getAllByRole("columnheader", { name: "통합부수" }),
+    ).toHaveLength(2);
+    expect(
+      within(summary).getByRole("button", {
+        name: "오픈부수 5부 입상 1건 참가 0건 결과 보기",
+      }),
     ).toBeInTheDocument();
     expect(
-      within(summary).getByRole("cell", { name: "5부1건" }),
+      within(summary).getByRole("button", {
+        name: "통합부수 4부 입상 1건 참가 0건 결과 보기",
+      }),
+    ).toBeInTheDocument();
+    const integratedSix = within(summary).getByRole("button", {
+      name: "통합부수 6부 입상 0건 참가 1건 결과 보기",
+    });
+    expect(integratedSix).toHaveAttribute("aria-controls", "candidate-results");
+
+    fireEvent.click(integratedSix);
+
+    expect(integratedSix).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByText("통합부수 6부", { selector: "strong" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1건만 표시 중")).toBeInTheDocument();
+    const filteredList = screen.getByRole("tabpanel", {
+      name: "통합부수 6부 출전 선수 검색 결과 목록",
+    });
+    await waitFor(() => expect(filteredList).toHaveFocus());
+    expect(
+      within(filteredList).getByRole("link", {
+        name: "김탁구 부산 블루라켓 상세 기록 보기",
+      }),
     ).toBeInTheDocument();
     expect(
-      within(summary).getByRole("cell", { name: "6부1건" }),
-    ).toBeInTheDocument();
+      within(filteredList).queryByRole("link", {
+        name: "김탁구 서울 스핀탁구클럽 상세 기록 보기",
+      }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "부수 필터 해제" }));
+    expect(integratedSix).toHaveAttribute("aria-pressed", "false");
 
     const direct = await screen.findByRole("complementary", {
       name: "원문 사이트 직접 검색",

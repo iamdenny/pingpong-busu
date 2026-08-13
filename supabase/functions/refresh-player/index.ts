@@ -1,6 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import iconv from "npm:iconv-lite@0.7.0";
 import {
+  classifyIpingSessionHtml,
+  fetchWithRetry,
   parseAirpingSearchHtml,
   parseAstreeSearchHtml,
   parseIpingSearchHtml,
@@ -58,11 +60,11 @@ const parserVersions: Record<LiveSourceCode, string> = {
   airping: "airping-2",
   astree: "astree-4",
   ttadivision: "ttadivision-1",
-  okpingpong: "okpingpong-2",
+  okpingpong: "okpingpong-3",
   mytt: "mytt-2",
   superstar: "superstar-1",
   yongintt: "yongintt-1",
-  iping: "iping-1",
+  iping: "iping-2",
 };
 
 function parseInput(value: unknown): RefreshInput {
@@ -217,11 +219,16 @@ async function fetchSimpleHtmlRecords(
       : new URL("http://okpingpong.co.kr/04match/08.php");
   url.searchParams.set("key", sourceCode === "airping" ? "r_name" : "name");
   url.searchParams.set("keyword", name);
-  const response = await fetch(url, {
-    signal: AbortSignal.timeout(8000),
-    headers: { accept: "text/html", "user-agent": userAgent },
-    redirect: "follow",
-  });
+  const response = await fetchWithRetry(
+    url,
+    {
+      headers: { accept: "text/html", "user-agent": userAgent },
+      redirect: "follow",
+    },
+    sourceCode === "airping"
+      ? { timeoutMs: 16_000, maxAttempts: 2, retryDelayMs: 250 }
+      : { timeoutMs: 10_000, maxAttempts: 2, retryDelayMs: 250 },
+  );
   assertPublicHtmlResponse(response, sourceCode);
   const html = await response.text();
   return (
@@ -373,11 +380,11 @@ async function fetchIpingRecords(
     "user-agent": userAgent,
   };
   const loginUrl = `${ipingBaseUrl}?pg=login`;
-  const loginPage = await fetch(loginUrl, {
-    signal: AbortSignal.timeout(8000),
-    headers: baseHeaders,
-    redirect: "manual",
-  });
+  const loginPage = await fetchWithRetry(
+    loginUrl,
+    { headers: baseHeaders, redirect: "manual" },
+    { timeoutMs: 12_000, maxAttempts: 2, retryDelayMs: 250 },
+  );
   assertIpingHtmlResponse(loginPage, "로그인 화면");
   const initialCookie = ipingCookie(loginPage);
   if (!initialCookie)
@@ -387,7 +394,7 @@ async function fetchIpingRecords(
     );
   const loginResponse = await fetch(loginUrl, {
     method: "POST",
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(12_000),
     redirect: "manual",
     body: encodeIpingForm({
       path: "",
@@ -416,49 +423,63 @@ async function fetchIpingRecords(
   if (loginResponse.status >= 400)
     throw new Error(`아이핑 로그인 HTTP ${loginResponse.status}`);
   const sessionCookie = ipingCookie(loginResponse) ?? initialCookie;
-  const destination = new URL(
-    loginResponse.status >= 300 && loginResponse.status < 400
-      ? (loginResponse.headers.get("location") ?? "/")
-      : "/",
-    ipingBaseUrl,
-  ).toString();
-  const verificationResponse = await fetch(destination, {
-    signal: AbortSignal.timeout(8000),
-    headers: { ...baseHeaders, cookie: sessionCookie, referer: loginUrl },
-    redirect: "follow",
-  });
+  let verificationResponse = loginResponse;
+  if (loginResponse.status >= 300 && loginResponse.status < 400) {
+    const destination = new URL(
+      loginResponse.headers.get("location") ?? "/",
+      ipingBaseUrl,
+    ).toString();
+    verificationResponse = await fetchWithRetry(
+      destination,
+      {
+        headers: { ...baseHeaders, cookie: sessionCookie, referer: loginUrl },
+        redirect: "follow",
+      },
+      { timeoutMs: 12_000, maxAttempts: 2, retryDelayMs: 250 },
+    );
+  }
   assertIpingHtmlResponse(verificationResponse, "로그인 확인");
   const verificationHtml = await decodeIpingResponse(verificationResponse);
-  if (/자동등록방지|Please prove that you are human/iu.test(verificationHtml))
+  const verificationPage = classifyIpingSessionHtml(verificationHtml);
+  if (verificationPage === "challenge")
     throw new SafeSourceError(
       "source_blocked",
       "아이핑 사람 확인 절차가 필요합니다.",
     );
-  if (!verificationHtml.includes("mb_logout.php"))
+  if (verificationPage === "guest")
     throw new SafeSourceError(
       "source_auth_failed",
       "아이핑 계정 인증에 실패했습니다.",
     );
+  if (verificationPage !== "authenticated")
+    throw new SafeSourceError(
+      "source_schema_changed",
+      "아이핑 로그인 성공 화면 구조를 확인하지 못했습니다.",
+    );
 
   const search = async (suffix: string): Promise<string> => {
     const query = encodeIpingForm({ pg: "Search", SchVal: name });
-    const response = await fetch(`${ipingBaseUrl}?${query}${suffix}`, {
-      signal: AbortSignal.timeout(8000),
-      headers: {
-        ...baseHeaders,
-        cookie: sessionCookie,
-        referer: `${ipingBaseUrl}?pg=Search`,
+    const response = await fetchWithRetry(
+      `${ipingBaseUrl}?${query}${suffix}`,
+      {
+        headers: {
+          ...baseHeaders,
+          cookie: sessionCookie,
+          referer: `${ipingBaseUrl}?pg=Search`,
+        },
+        redirect: "follow",
       },
-      redirect: "follow",
-    });
+      { timeoutMs: 12_000, maxAttempts: 2, retryDelayMs: 250 },
+    );
     assertIpingHtmlResponse(response, "선수 검색");
     const html = await decodeIpingResponse(response);
-    if (/자동등록방지|Please prove that you are human/iu.test(html))
+    const sessionPage = classifyIpingSessionHtml(html);
+    if (sessionPage === "challenge")
       throw new SafeSourceError(
         "source_blocked",
         "아이핑 사람 확인 절차가 필요합니다.",
       );
-    if (html.includes('name="Mid"') && html.includes('name="Pwd"'))
+    if (sessionPage === "guest")
       throw new SafeSourceError(
         "source_auth_failed",
         "아이핑 인증 세션이 만료되었습니다.",
@@ -683,11 +704,11 @@ Deno.serve(async (request) => {
         }
       }
       const configuredMinimumIntervalMs = Number(
-        Deno.env.get("CRAWLER_SOURCE_MIN_INTERVAL_MS") ?? 2000,
+        Deno.env.get("CRAWLER_SOURCE_MIN_INTERVAL_MS") ?? 5000,
       );
       const minimumIntervalMs = Number.isFinite(configuredMinimumIntervalMs)
-        ? Math.max(1000, configuredMinimumIntervalMs)
-        : 2000;
+        ? Math.max(5000, configuredMinimumIntervalMs)
+        : 5000;
       const { data: retryAfterMs, error: claimError } = await client.rpc(
         "claim_source_request",
         {

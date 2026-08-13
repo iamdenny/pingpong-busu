@@ -46,7 +46,7 @@ export function publicSourceError(error: unknown): PublicSourceError {
   ) {
     return {
       code: "source_timeout",
-      message: "출처 응답이 8초 안에 도착하지 않았습니다.",
+      message: "재시도 후에도 출처 응답 시간이 초과되었습니다.",
     };
   }
   if (

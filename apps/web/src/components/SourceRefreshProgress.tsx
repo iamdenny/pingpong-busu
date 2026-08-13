@@ -1,3 +1,4 @@
+import { ChevronDown, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SourceCode } from "@busu/domain";
 
@@ -12,6 +13,8 @@ export interface SourceRefreshView {
   errorCode?: string;
   message?: string;
   retryAt?: number;
+  manualRetryAt?: number;
+  manualRetriesRemaining?: number;
 }
 
 const errorLabels: Readonly<Record<string, string>> = {
@@ -62,15 +65,115 @@ function statusClass(source: SourceRefreshView): string {
   return "delayed";
 }
 
-export function SourceRefreshProgress({
+function SourceRefreshDisclosure({
   sources,
+  now,
+  summary,
+  isComplete,
+  onRetry,
 }: {
   sources: SourceRefreshView[];
+  now: number;
+  summary: string;
+  isComplete: boolean;
+  onRetry?: (sourceCode: SourceCode, attemptedAt: number) => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(!isComplete);
+
+  return (
+    <section
+      className="source-refresh-progress"
+      aria-labelledby="source-refresh-title"
+    >
+      <div className="source-refresh-progress__heading">
+        <div>
+          <p className="eyebrow">실시간 출처 조회</p>
+          <h2 id="source-refresh-title">{summary}</h2>
+        </div>
+        <p
+          className="visually-hidden"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {summary}
+        </p>
+        <button
+          type="button"
+          className="source-refresh-progress__toggle"
+          aria-controls="source-refresh-details"
+          aria-expanded={isExpanded}
+          aria-label={`실시간 출처 조회 상세 ${isExpanded ? "접기" : "보기"}`}
+          onClick={() => setIsExpanded((expanded) => !expanded)}
+        >
+          상세 {isExpanded ? "접기" : "보기"}
+          <ChevronDown aria-hidden="true" size={16} />
+        </button>
+      </div>
+      <ul id="source-refresh-details" role="list" hidden={!isExpanded}>
+        {sources.map((source) => {
+          const retrySeconds = Math.max(
+            0,
+            Math.ceil(((source.manualRetryAt ?? 0) - now) / 1_000),
+          );
+          const retriesRemaining = source.manualRetriesRemaining ?? 0;
+          const retryDisabled = retrySeconds > 0 || retriesRemaining === 0;
+          const retryText =
+            retriesRemaining === 0
+              ? "한도 도달"
+              : retrySeconds > 0
+                ? `${retrySeconds}초`
+                : "재시도";
+          return (
+            <li key={source.sourceCode}>
+              <span className="source-refresh-progress__source">
+                <i
+                  className={`status-dot status-dot--${statusClass(source)}`}
+                  aria-hidden="true"
+                />
+                {source.sourceName}
+              </span>
+              <span className="source-refresh-progress__result">
+                <strong>{sourceRefreshStateText(source, now)}</strong>
+                {source.message && <small>{source.message}</small>}
+              </span>
+              {source.state === "failed" && onRetry && (
+                <button
+                  type="button"
+                  className="source-refresh-progress__retry"
+                  aria-disabled={retryDisabled}
+                  aria-label={`${source.sourceName} 재시도${retrySeconds > 0 ? `, ${retrySeconds}초 후 가능` : retriesRemaining > 0 ? `, ${retriesRemaining}회 남음` : ", 한도 도달"}`}
+                  onClick={() => {
+                    if (!retryDisabled) onRetry(source.sourceCode, now);
+                  }}
+                >
+                  <RotateCcw aria-hidden="true" size={12} />
+                  {retryText}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+export function SourceRefreshProgress({
+  sources,
+  onRetry,
+}: {
+  sources: SourceRefreshView[];
+  onRetry?: (sourceCode: SourceCode, attemptedAt: number) => void;
 }) {
   const [now, setNow] = useState(Date.now);
   const hasTimedRetry = sources.some(
     (source) =>
-      source.reason === "source_rate_limited" && source.retryAt !== undefined,
+      (source.reason === "source_rate_limited" &&
+        source.retryAt !== undefined) ||
+      (source.state === "failed" &&
+        source.manualRetryAt !== undefined &&
+        source.manualRetryAt > now),
   );
 
   useEffect(() => {
@@ -95,43 +198,16 @@ export function SourceRefreshProgress({
       : needsAttention > 0
         ? `${sources.length}곳 조회 완료 · ${needsAttention}곳 확인 필요`
         : `${sources.length}곳 조회 완료`;
+  const isComplete = refreshing === 0;
 
   return (
-    <section
-      className="source-refresh-progress"
-      aria-labelledby="source-refresh-title"
-    >
-      <div className="source-refresh-progress__heading">
-        <div>
-          <p className="eyebrow">실시간 출처 조회</p>
-          <h2 id="source-refresh-title">{summary}</h2>
-        </div>
-        <p
-          className="visually-hidden"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {summary}
-        </p>
-      </div>
-      <ul role="list">
-        {sources.map((source) => (
-          <li key={source.sourceCode}>
-            <span className="source-refresh-progress__source">
-              <i
-                className={`status-dot status-dot--${statusClass(source)}`}
-                aria-hidden="true"
-              />
-              {source.sourceName}
-            </span>
-            <span className="source-refresh-progress__result">
-              <strong>{sourceRefreshStateText(source, now)}</strong>
-              {source.message && <small>{source.message}</small>}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <SourceRefreshDisclosure
+      key={isComplete ? "complete" : "in-progress"}
+      sources={sources}
+      now={now}
+      summary={summary}
+      isComplete={isComplete}
+      {...(onRetry ? { onRetry } : {})}
+    />
   );
 }

@@ -1,5 +1,6 @@
 import type {
   PlayerDetail,
+  PlayerRecord,
   PlayerSummary,
   SourceCode,
   SourceStatus,
@@ -52,10 +53,17 @@ export interface IdentityClaimResponse {
   referenceId: string;
   status: "pending";
 }
+export interface IdentityCandidateEvidence {
+  candidateId: string;
+  records: PlayerRecord[];
+}
 export interface PlayerRepository {
   listSourceStatuses(): Promise<SourceStatus[]>;
   searchPlayers(input: PlayerSearchInput): Promise<PlayerSummary[]>;
   getPlayer(id: string): Promise<PlayerDetail | null>;
+  getIdentityCandidateEvidence(
+    candidateIds: readonly string[],
+  ): Promise<IdentityCandidateEvidence[]>;
   requestRefresh(input: RefreshRequest): Promise<RefreshResponse>;
   getRefreshStatus(refreshId: string): Promise<RefreshStatus>;
   submitIdentityClaim(

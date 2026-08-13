@@ -1,22 +1,43 @@
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
-import { Layout } from './Layout';
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { describe, expect, it } from "vitest";
+import { Layout } from "./Layout";
 
-describe('Layout', () => {
-  it('shows the demo mode banner, brand, and data policy', () => {
+describe("Layout", () => {
+  it("shows the demo mode banner, brand, and data policy", () => {
     const { container } = render(
       <MemoryRouter>
         <Layout />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('현재 화면은 개발용 가상 데이터입니다.')).toBeInTheDocument();
-    expect(screen.getByLabelText('BUSU 홈')).toHaveTextContent('BUSU탁구 기록 통합검색');
-    expect(container.querySelector('.brand img')?.getAttribute('src')).toMatch(/\/busu-logo\.png$/);
     expect(
-      screen.getByText('공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후 반영합니다.'),
+      screen.getByText("현재 화면은 개발용 가상 데이터입니다."),
     ).toBeInTheDocument();
-    expect(screen.queryByText('라이선스는 아직 결정되지 않음')).not.toBeInTheDocument();
+    expect(screen.getByLabelText("BUSU 홈")).toHaveTextContent(
+      "BUSU탁구 기록 통합검색",
+    );
+    expect(container.querySelector(".brand img")?.getAttribute("src")).toMatch(
+      /\/busu-logo\.png$/,
+    );
+    expect(
+      screen.getByText(
+        "공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후 반영합니다.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("버전 개발")).toBeInTheDocument();
+    expect(
+      screen.queryByText("라이선스는 아직 결정되지 않음"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the compact version label on the home route only", () => {
+    render(
+      <MemoryRouter initialEntries={["/search"]}>
+        <Layout />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText("버전 개발")).not.toBeInTheDocument();
   });
 });
