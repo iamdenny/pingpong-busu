@@ -27,8 +27,8 @@ Inter, Pretendard, Apple system sans 순서의 글꼴을 사용한다. hero 제�
 
 ## 4. Component Stylings
 
-Primary button은 Rally Blue 표면과 12px radius, 최소 44~48px touch target을 갖는다. 일반 후보는 16px radius의 흰 카드와 얇은 border를 사용하지만, 부수 요약은 카드 반복을 피하고 하나의 compact 2행 표로 표시한다. 상태 badge는 pill 형태지만 핵심 데이터 자체를 pill 남용으로 표현하지 않는다. 경고는 옅은 amber 배경, 실제 기록은 옅은 teal 배경을 사용한다.
+Primary button은 Rally Blue 표면과 12px radius, 최소 44~48px touch target을 갖는다. 일반 후보는 16px radius의 흰 카드와 얇은 border를 사용하지만, 부수 요약은 카드 반복을 피하고 하나의 compact 2행 표로 표시한다. 표의 부수 항목은 입상·참가 건수를 함께 보여주는 버튼이며 선택하면 같은 체계와 부수의 결과 목록으로 초점을 이동한다. 상태 badge는 pill 형태지만 핵심 데이터 자체를 pill 남용으로 표현하지 않는다. 경고는 옅은 amber 배경, 실제 기록은 옅은 teal 배경을 사용한다. 실시간 출처 상세는 조회 중 펼쳐 두고 완료 후 자동으로 접으며, 실패 행의 재시도는 작은 보조 동작으로 남은 대기 시간이나 한도 상태를 함께 표시한다.
 
 ## 5. Layout Principles
 
-페이지 본문은 최대 1120px이고 중앙 정렬한다. desktop에서는 정보가 가로 grid/table로 정렬되며, 700px 이하에서는 후보와 상세 이력을 세로 흐름으로 전환한다. 긴 부수 요약은 페이지 높이를 늘리지 않고 해당 표 컨테이너만 가로 스크롤한다. 상세 기록은 desktop table, mobile card를 사용하되 DOM 의미와 날짜·원문 순서는 동일하게 유지한다.
+페이지 본문은 최대 1120px이고 중앙 정렬한다. desktop에서는 정보가 가로 grid/table로 정렬되며, 700px 이하에서는 후보와 상세 이력을 세로 흐름으로 전환한다. 긴 부수 요약은 페이지 높이를 늘리지 않고 해당 표 컨테이너만 가로 스크롤한다. 상세 기록은 desktop table, mobile card를 사용하되 DOM 의미와 날짜·원문 순서는 동일하게 유지한다. 배포 버전은 홈 footer에만 가장 낮은 정보 위계의 작은 문자로 배치하고 검색 결과와 선수 상세에는 반복하지 않는다.

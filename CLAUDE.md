@@ -17,7 +17,7 @@
 - 구현과 문서가 다르면 테스트된 소스 동작을 확인한 뒤 기준 문서를 함께 갱신한다.
 - 외부 parser 변경은 synthetic fixture와 parser version을 함께 올린다.
 - 공개 웹 번들에는 publishable key 외의 Supabase 비밀값을 넣지 않는다.
-- 완료 전 `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`를 모두 통과시킨다.
+- 완료 전 `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm docs-check:scan`을 모두 통과시킨다.
 
 ## Knowledge graph
 

@@ -14,6 +14,21 @@ title: "운영"
 
 에어핑퐁은 16초, 오케이핑퐁은 10초, 아이핑은 12초 안에 응답이 없으면 같은 GET을 한 번 더 시도합니다. 두 번 모두 실패한 경우에만 시간 초과를 표시합니다. 아이핑이 `인증 실패`이면 Secret 값과 계정 상태를 확인하고, `사이트 구조 변경`이면 로그인 성공 화면 식별자가 달라졌는지 확인합니다. 로그인 POST는 중복 인증 시도를 막기 위해 자동 재시도하지 않습니다.
 
+실시간 조회의 사용자 표시와 우선 대응은 다음과 같습니다.
+
+| 표시             | 코드                    | 우선 대응                                                                       |
+| ---------------- | ----------------------- | ------------------------------------------------------------------------------- |
+| 시간 초과        | `source_timeout`        | 출처 응답 지연을 확인하고 자동 GET 재시도도 실패했는지 본다.                    |
+| 접근 차단        | `source_blocked`        | 403 또는 사람 확인 절차를 확인하고 해당 출처를 끈다. 우회하지 않는다.           |
+| 사이트 구조 변경 | `source_schema_changed` | 합성 fixture와 parser 식별자를 갱신하고 parser version을 올린다.                |
+| 응답 해석 실패   | `source_parse_error`    | 개인정보를 제거한 응답 형태로 parser 실패를 재현한다.                           |
+| 연동 설정 누락   | `source_not_configured` | 서버 Secret과 출처별 운영 스위치를 확인한다.                                    |
+| 인증 실패        | `source_auth_failed`    | 서버 전용 계정·키의 만료와 계정 상태를 확인한다.                                |
+| 연결 실패        | `source_request_failed` | DNS, TLS, 출처 장애를 확인한다.                                                 |
+| 저장 실패        | `source_persist_failed` | upsert RPC와 migration 적용 상태를 확인한다.                                    |
+| 호출 제한        | `source_rate_limited`   | 화면의 남은 시간을 기다린다. 제한 시간이 없는 장기 제한은 자동 반복하지 않는다. |
+| 조회 실패        | `source_refresh_failed` | 공개 메시지 뒤의 서버 로그를 확인하되 stack과 Secret은 노출하지 않는다.         |
+
 ## 용량과 보존
 
 `pnpm db:size`의 project RPC를 운영 Supabase에 연결해 350MB에서 경고하고 500MB 전에 조치합니다. 완료 refresh 상세는 7~30일, 실패 요약은 진단 기간 뒤 정리합니다. revisions는 변경 이력 요구와 용량을 검토해 archive하며 최근 records를 삭제하지 않습니다.
@@ -30,6 +45,14 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 2. `supabase db push`로 미적용 migration 적용
 3. crawler 안전 플래그를 Edge Function secrets에 동기화
 4. `refresh-player`, `refresh-status`, `submit-identity-claim` Edge Function 배포
+
+이번 변경의 migration은 파일명 순서대로 적용해야 합니다.
+
+1. `202608130001_reversible_player_merges.sql`: 삭제 없는 관리자 병합·원복 RPC와 감사 로그
+2. `202608130002_bounded_source_retries.sql`: 출처·정규화 검색어별 5초 하한과 분당 4회 제한
+3. `202608130003_division_observation_counts.sql`: 공개 검색 view의 체계·부수별 입상·참가 건수
+
+배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 세 파일의 순서를 확인합니다. 배포 후에는 `player_merge_review_log`가 일반 공개 역할에 노출되지 않는지, `claim_source_request`가 service role 전용인지, `public_player_search.division_observations`가 조회되는지 확인합니다. 세 번째 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
 GitHub의 `production` environment에 아래 값을 설정합니다.
 
@@ -54,11 +77,11 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 
 GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. 커스텀 도메인은 `https://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. 이 중 source refresh 값은 브라우저에서 갱신 UI를 켜는 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다.
 
-Pages workflow는 GitHub Actions 실행 이력을 읽어 UTC 기준 ISO 주차별 배포 순번을 계산하고 `YYYY.WEEK.SEQ` 형식으로 빌드에 주입합니다. 재실행도 별도 순번으로 계산하며, 실패·취소된 실행은 배포되지는 않지만 다음 성공 버전의 순번에 공백을 남길 수 있습니다. 버전 계산이 실패하면 잘못된 버전을 게시하지 않도록 build를 중단합니다. `VITE_APP_VERSION`은 workflow가 자동 설정하므로 repository variable로 등록하지 않습니다.
+Pages workflow는 `actions: read` 권한으로 GitHub Actions 실행 이력을 읽어 UTC 기준 ISO 주차별 배포 순번을 계산하고 `YYYY.WEEK.SEQ` 형식으로 빌드에 주입합니다. 재실행도 별도 순번으로 계산하며, 실패·취소된 실행은 배포되지는 않지만 다음 성공 버전의 순번에 공백을 남길 수 있습니다. 버전 계산이 실패하면 잘못된 버전을 게시하지 않도록 build를 중단합니다. `VITE_APP_VERSION`은 workflow가 자동 설정하므로 repository variable로 등록하지 않습니다. 배포 버전은 홈 하단에만 작게 표시되고, 값이 없는 로컬 빌드는 `버전 개발`로 표시됩니다.
 
 PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키와 아이핑 자격증명은 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 아이핑을 켤 때는 두 Secret을 먼저 등록한 뒤 `CRAWLER_SOURCE_IPING_ENABLED=true`, 마지막으로 DB `sources.enabled=true` 순서로 활성화합니다. 어느 하나라도 없으면 요청하지 않습니다.
 
-Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 `출처 + 정규화 검색어`별 5초 최소 호출 간격과 1분당 최대 4회 제한을 적용하며 `source_request_throttles`에 제한 구간과 시도 횟수를 저장합니다. 제한 응답의 `retryAfterMs` 또는 외부 출처의 `Retry-After`가 있으면 프런트가 남은 시간을 표시하고 최대 2회 자동 재시도합니다. 실패 행의 수동 재시도는 화면당 최대 3회이며 5초 쿨다운을 둡니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
+Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 `출처 + 정규화 검색어`별 5초 최소 호출 간격과 1분당 최대 4회 제한을 적용하며 `source_request_throttles`에 제한 구간과 시도 횟수를 저장합니다. 제한 응답의 `retryAfterMs` 또는 외부 출처의 `Retry-After`가 있으면 프런트가 남은 시간을 표시하고 최대 2회 자동 재시도합니다. 이 자동 재시도는 호출 제한 응답에만 적용되며 임의의 인증·파서·연결 실패를 반복하지 않습니다. 실패 행의 수동 재시도는 출처별로 현재 검색 화면에서 최대 3회이며 5초 쿨다운을 둡니다. 페이지를 새로 열어 클라이언트 횟수가 초기화돼도 서버의 5초·분당 4회 제한은 계속 적용됩니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
 
 ## 동명이인 제보 검토
 

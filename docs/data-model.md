@@ -24,6 +24,8 @@ title: "데이터 모델"
 
 `results.division_value`는 `4부`, `A부`, `T5` 같은 관측값이고 `results.division_system`은 `open`, `integrated`, `women`, `regional`, `division`, `unknown` 중 하나입니다. 같은 숫자라도 서로 다른 체계는 합산하지 않습니다. 판정 우선순위는 대회별 수동 override → T1~T7/디비전 → 종목 내부의 지역 구분(`지역`, `지역남성`, `지역여성`, `지역혼성`) → 참가 종목의 여자·여성 → 오픈 명시 → 지역부수 명시 → 일반 숫자·문자 부수의 통합부수입니다. 수동 override는 코드와 migration에 근거를 남겨 재수집과 기존 데이터에 동일하게 적용합니다. 현재 제16회 이하 분당구청장기는 `regional`입니다. 종목 내부 지역 구분은 대회명에 `오픈`이 있더라도 `integrated`로 저장합니다. `women`은 그 지역 구분이 없는 여자 종목을 보존하기 위한 내부 subtype이며 사용자 화면에서는 `통합부수 여자6부`처럼 표현합니다. 시·군·구 등 대회 지역은 부수 체계 판정 근거가 아니며 일반 숫자 부수는 `integrated`가 기본입니다. 부수 값 자체가 없거나 해석할 수 없는 값은 `unknown`으로 보존합니다.
 
+`public_player_search.division_observations`는 논쟁 상태와 빈 부수값을 제외하고 `division_system + division_value`별 실제 기록을 JSON 배열로 집계합니다. 각 항목은 `{system, division, award_count, participation_count}`이며 `is_award_rank`가 참인 기록만 입상, 나머지는 참가로 서로 배타적으로 계산합니다. Supabase repository는 이를 `PlayerSummary.divisionObservations`의 `{system, division, awardCount, participationCount}`로 검증·변환하고, 로컬 live 경로는 같은 계약을 `summarizeDivisionObservations`로 생성합니다. 검색 화면은 여러 선수 후보의 이 배열을 합산하므로 같은 부수값이라도 오픈·통합·지역·디비전 체계는 분리됩니다.
+
 출처가 누락값을 `NULL`, `NULL부`, `undefined`, `none`, `N/A`로 보낼 때는 `division_value`를 저장하지 않습니다. 기존 sentinel 값도 migration으로 null 처리하며, 방어적 UI 표기는 `통합부수 확인 필요`처럼 표현해 `여자NULL부`를 만들지 않습니다.
 
 내부 key는 bigint identity, 외부 선수 식별자는 별도 UUID `public_id`입니다. natural key는 출처·source identity·대회 날짜/이름·종목을 canonical JSON으로 hash하여 논리적 동일성을 찾습니다. content hash는 소속·부수·순위·파트너의 변경을 찾습니다. 동일 content면 확인 시각만 갱신하고, 다르면 이전/다음 값과 changed fields를 revision에 남깁니다. 사라진 기록은 즉시 삭제하지 않습니다.
