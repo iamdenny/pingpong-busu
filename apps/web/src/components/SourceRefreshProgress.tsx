@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SourceCode } from "@busu/domain";
 
@@ -62,6 +63,70 @@ function statusClass(source: SourceRefreshView): string {
   return "delayed";
 }
 
+function SourceRefreshDisclosure({
+  sources,
+  now,
+  summary,
+  isComplete,
+}: {
+  sources: SourceRefreshView[];
+  now: number;
+  summary: string;
+  isComplete: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(!isComplete);
+
+  return (
+    <section
+      className="source-refresh-progress"
+      aria-labelledby="source-refresh-title"
+    >
+      <div className="source-refresh-progress__heading">
+        <div>
+          <p className="eyebrow">실시간 출처 조회</p>
+          <h2 id="source-refresh-title">{summary}</h2>
+        </div>
+        <p
+          className="visually-hidden"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {summary}
+        </p>
+        <button
+          type="button"
+          className="source-refresh-progress__toggle"
+          aria-controls="source-refresh-details"
+          aria-expanded={isExpanded}
+          aria-label={`실시간 출처 조회 상세 ${isExpanded ? "접기" : "보기"}`}
+          onClick={() => setIsExpanded((expanded) => !expanded)}
+        >
+          상세 {isExpanded ? "접기" : "보기"}
+          <ChevronDown aria-hidden="true" size={16} />
+        </button>
+      </div>
+      <ul id="source-refresh-details" role="list" hidden={!isExpanded}>
+        {sources.map((source) => (
+          <li key={source.sourceCode}>
+            <span className="source-refresh-progress__source">
+              <i
+                className={`status-dot status-dot--${statusClass(source)}`}
+                aria-hidden="true"
+              />
+              {source.sourceName}
+            </span>
+            <span className="source-refresh-progress__result">
+              <strong>{sourceRefreshStateText(source, now)}</strong>
+              {source.message && <small>{source.message}</small>}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function SourceRefreshProgress({
   sources,
 }: {
@@ -95,43 +160,15 @@ export function SourceRefreshProgress({
       : needsAttention > 0
         ? `${sources.length}곳 조회 완료 · ${needsAttention}곳 확인 필요`
         : `${sources.length}곳 조회 완료`;
+  const isComplete = refreshing === 0;
 
   return (
-    <section
-      className="source-refresh-progress"
-      aria-labelledby="source-refresh-title"
-    >
-      <div className="source-refresh-progress__heading">
-        <div>
-          <p className="eyebrow">실시간 출처 조회</p>
-          <h2 id="source-refresh-title">{summary}</h2>
-        </div>
-        <p
-          className="visually-hidden"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {summary}
-        </p>
-      </div>
-      <ul role="list">
-        {sources.map((source) => (
-          <li key={source.sourceCode}>
-            <span className="source-refresh-progress__source">
-              <i
-                className={`status-dot status-dot--${statusClass(source)}`}
-                aria-hidden="true"
-              />
-              {source.sourceName}
-            </span>
-            <span className="source-refresh-progress__result">
-              <strong>{sourceRefreshStateText(source, now)}</strong>
-              {source.message && <small>{source.message}</small>}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <SourceRefreshDisclosure
+      key={isComplete ? "complete" : "in-progress"}
+      sources={sources}
+      now={now}
+      summary={summary}
+      isComplete={isComplete}
+    />
   );
 }

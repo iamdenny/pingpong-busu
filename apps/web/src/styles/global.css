@@ -983,7 +983,7 @@ p {
 }
 .source-refresh-progress__heading {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
 }
@@ -991,6 +991,31 @@ p {
   margin: 0;
   font-size: 1rem;
   letter-spacing: -0.02em;
+}
+.source-refresh-progress__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 0 0 auto;
+  border: 1px solid #cddcff;
+  border-radius: 999px;
+  background: #f5f8ff;
+  color: var(--primary);
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.source-refresh-progress__toggle svg {
+  transition: rotate 160ms ease;
+}
+.source-refresh-progress__toggle[aria-expanded="true"] svg {
+  rotate: 180deg;
+}
+.source-refresh-progress__toggle:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
 }
 .source-refresh-progress ul {
   list-style: none;

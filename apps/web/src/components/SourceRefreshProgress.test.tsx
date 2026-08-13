@@ -1,8 +1,15 @@
-import { act, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   SourceRefreshProgress,
   sourceRefreshStateText,
+  type SourceRefreshView,
 } from "./SourceRefreshProgress";
 
 describe("SourceRefreshProgress", () => {
@@ -45,6 +52,41 @@ describe("SourceRefreshProgress", () => {
     expect(screen.getByText("마이티티").closest("li")).toHaveTextContent(
       "조회 중",
     );
+    expect(
+      screen.getByRole("button", { name: "실시간 출처 조회 상세 접기" }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("collapses details when every source finishes and allows reopening", async () => {
+    const refreshingSource: SourceRefreshView = {
+      sourceCode: "astree",
+      sourceName: "애즈트리",
+      state: "refreshing",
+    };
+    const { rerender } = render(
+      <SourceRefreshProgress sources={[refreshingSource]} />,
+    );
+
+    expect(screen.getByRole("list")).toBeVisible();
+
+    rerender(
+      <SourceRefreshProgress
+        sources={[{ ...refreshingSource, state: "succeeded" }]}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("list", { hidden: true })).not.toBeVisible(),
+    );
+    const toggle = screen.getByRole("button", {
+      name: "실시간 출처 조회 상세 보기",
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole("list")).toBeVisible();
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 
   it.each([
