@@ -22,7 +22,15 @@ describe("release version", () => {
   it("resets the sequence in a new ISO week", () => {
     expect(
       nextCalendarVersion("2026.33.28", new Date("2026-08-17T03:00:00Z")),
-    ).toBe("2026.34.1");
+    ).toBe("2026.34.0");
+  });
+
+  it("accepts zero as the first sequence of an ISO week", () => {
+    expect(parseCalendarVersion("2026.34.0")).toEqual({
+      year: 2026,
+      week: 34,
+      sequence: 0,
+    });
   });
 
   it("rejects invalid package versions", () => {

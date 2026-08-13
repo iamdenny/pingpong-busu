@@ -32,7 +32,7 @@ BUSU는 여러 공개 탁구 대회 출처의 선수 부수·소속·입상 기�
 - 변경 후 README와 관련 문서를 함께 갱신한다.
 - 테스트 실패를 무시하거나 삭제해서 통과시키지 않는다.
 - 제품 버전의 단일 기준은 루트 `package.json`의 `version`이다. workspace package, 소스, 환경 변수에 별도 버전을 중복 기록하지 않는다.
-- 배포 PR은 `pnpm release:bump`로 `YYYY.WEEK.SEQ` 버전을 먼저 올리고 변경을 함께 커밋한다.
+- 배포 PR은 `pnpm release:bump`로 `YYYY.WEEK.SEQ` 버전을 먼저 올리고 변경을 함께 커밋한다. `SEQ`는 ISO 주마다 `0`에서 시작해 배포마다 하나씩 증가한다.
 - `main` 배포는 같은 버전 태그가 없어야 하며, Pages 게시 전에 `v{version}` 태그와 GitHub Release 및 자동 릴리즈 노트를 생성한다. 버전을 올리지 않은 배포는 실패해야 한다.
 
 ## Domain invariants

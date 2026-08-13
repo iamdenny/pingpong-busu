@@ -22,7 +22,7 @@ Korean table tennis player rank and tournament record search.
 - 세로 여백을 줄인 검색 카드의 최신 입상 등수와 다음 줄 대회일 요약, 카드 전체 상세 이동
 - 대회일 우선·게시일 보조 최신순 선수 상세 타임라인, 출처 대회에 표시된 전체 종목명, 최근 관측 부수, 출처 비교와 독립 갱신 상태
 - 홈에서 운영 source catalog를 작은 요약으로 표시하고, 상세 펼침에서 상태와 원문 URL 제공
-- 검색 시 활성 출처만 갱신하고 시간 초과·접근 차단·구조 변경 등 실제 원인, 호출 제한 남은 시간과 자동 재시도를 표시하며 완료 후 출처별 상세는 자동으로 접기. 실패한 출처는 5초 간격·최대 3회 수동 재시도 가능
+- 검색 시 활성 출처만 갱신하고 시간 초과·접근 차단·구조 변경 등 실제 원인, 호출 제한 남은 시간과 자동 재시도를 표시. 저장된 기록이 없을 때만 조회 중 상세를 기본으로 펼치고, 기록이 있거나 조회가 완료되면 요약만 표시. 실패한 출처는 5초 간격·최대 3회 수동 재시도 가능
 - 승인된 에어핑퐁·오케이핑퐁 공개 선수 검색을 출처별 opt-in 수집으로 제공하고, 긴급 중지 시 원문 검색 링크로 대체
 - strict TypeScript domain 정규화, 안정 해시, diff/revision 판정
 - mock adapter와 fixture crawler, synthetic fixture로 검증한 애즈트리·대한탁구협회 디비전·마이티티·슈퍼스타탁구·용인탁구협회 다음 카페·아이핑 HTTP adapter
@@ -98,7 +98,7 @@ pnpm crawl:fixture --query 김탁구 --version 2
 
 Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니다. 현재 커스텀 도메인 `https://busu.iamdenny.com/`은 asset base `/`로 배포하고 HTTP 요청은 HTTPS로 전환합니다. production repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. `http://iamdenny.com/pingpong-busu/`은 커스텀 도메인으로 이동하는 이전 진입점입니다. publishable key는 브라우저 공개용 값이며, service role/secret key는 Pages workflow에 넣지 않습니다.
 
-제품 버전의 단일 기준은 루트 `package.json`의 `version`이며 `YYYY.WEEK.SEQ` 형식을 사용합니다. 배포 변경은 `pnpm release:bump`로 같은 주의 순번을 올리거나 새 주에는 `1`로 시작합니다. web 화면은 이 값을 직접 읽어 홈 하단에 표시합니다. Pages workflow는 빌드가 통과한 뒤 `v{version}` 태그와 GitHub Release 및 자동 릴리즈 노트를 먼저 만들고 정적 사이트를 게시합니다. 이미 다른 커밋이 같은 태그를 사용하면 배포를 중단하므로 모든 배포 PR은 버전 변경을 포함해야 합니다.
+제품 버전의 단일 기준은 루트 `package.json`의 `version`이며 `YYYY.WEEK.SEQ` 형식을 사용합니다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가하며, 배포 변경은 `pnpm release:bump`로 같은 주의 순번을 올리거나 새 주에는 `0`으로 초기화합니다. web 화면은 이 값을 직접 읽어 홈 하단에 표시합니다. Pages workflow는 빌드가 통과한 뒤 `v{version}` 태그와 GitHub Release 및 자동 릴리즈 노트를 먼저 만들고 정적 사이트를 게시합니다. 이미 다른 커밋이 같은 태그를 사용하면 배포를 중단하므로 모든 배포 PR은 버전 변경을 포함해야 합니다.
 
 정적 HTML에는 홈의 기본 OG 메타데이터가 포함되고, React가 실행되면 검색어와 선수 상세 데이터에 맞게 title·description·canonical·Open Graph·Twitter 메타데이터를 갱신합니다. 현재 `HashRouter` 기반 GitHub Pages에서는 URL fragment가 서버로 전달되지 않으므로 자바스크립트를 실행하지 않는 SNS 미리보기 봇은 검색·상세 주소에서도 홈 기본 메타데이터를 표시할 수 있습니다. 검색·상세별 서버 생성 미리보기가 필요하면 별도 OG 렌더링 endpoint 또는 SSR 호스팅을 추가해야 합니다.
 

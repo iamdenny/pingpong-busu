@@ -27,7 +27,7 @@ Inter, Pretendard, Apple system sans 순서의 글꼴을 사용한다. hero 제�
 
 ## 4. Component Stylings
 
-Primary button은 Rally Blue 표면과 12px radius, 최소 44~48px touch target을 갖는다. 일반 후보는 16px radius의 흰 카드와 얇은 border를 사용하지만, 부수 요약은 카드 반복을 피하고 하나의 compact 2행 표로 표시한다. 표의 부수 항목은 입상·참가 건수를 함께 보여주는 버튼이며 선택하면 같은 체계와 부수의 결과 목록으로 초점을 이동한다. 상태 badge는 pill 형태지만 핵심 데이터 자체를 pill 남용으로 표현하지 않는다. 경고는 옅은 amber 배경, 실제 기록은 옅은 teal 배경을 사용한다. 실시간 출처 상세는 조회 중 펼쳐 두고 완료 후 자동으로 접으며, 실패 행의 재시도는 작은 보조 동작으로 남은 대기 시간이나 한도 상태를 함께 표시한다.
+Primary button은 Rally Blue 표면과 12px radius, 최소 44~48px touch target을 갖는다. 일반 후보는 16px radius의 흰 카드와 얇은 border를 사용하지만, 부수 요약은 카드 반복을 피하고 하나의 compact 2행 표로 표시한다. 표의 부수 항목은 입상·참가 건수를 함께 보여주는 버튼이며 선택하면 같은 체계와 부수의 결과 목록으로 초점을 이동한다. 상태 badge는 pill 형태지만 핵심 데이터 자체를 pill 남용으로 표현하지 않는다. 경고는 옅은 amber 배경, 실제 기록은 옅은 teal 배경을 사용한다. 실시간 출처 상세는 저장된 검색 결과가 없을 때만 조회 중 기본으로 펼치고, 기존 결과가 있거나 조회가 완료되면 요약만 남긴다. 실패 행의 재시도는 작은 보조 동작으로 남은 대기 시간이나 한도 상태를 함께 표시한다.
 
 ## 5. Layout Principles
 

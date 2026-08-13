@@ -38,7 +38,7 @@ export function parseCalendarVersion(value: string): CalendarVersion {
   const year = Number(match[1]);
   const week = Number(match[2]);
   const sequence = Number(match[3]);
-  if (week < 1 || week > 53 || sequence < 1) {
+  if (week < 1 || week > 53 || sequence < 0) {
     throw new Error("package.json version의 주차와 순번이 올바르지 않습니다.");
   }
   return { year, week, sequence };
@@ -50,7 +50,7 @@ export function nextCalendarVersion(current: string, now: Date): string {
   const sequence =
     previous.year === year && previous.week === week
       ? previous.sequence + 1
-      : 1;
+      : 0;
   return `${year}.${String(week).padStart(2, "0")}.${sequence}`;
 }
 

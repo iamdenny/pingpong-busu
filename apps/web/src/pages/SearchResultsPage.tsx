@@ -493,7 +493,12 @@ export function SearchResultsPage() {
         </div>
       )}
       {refreshViews.length > 0 && (
-        <SourceRefreshProgress sources={refreshViews} onRetry={retrySource} />
+        <SourceRefreshProgress
+          sources={refreshViews}
+          existingRecordCount={result.data?.length ?? null}
+          searchKey={query}
+          onRetry={retrySource}
+        />
       )}
       {directSources.length > 0 && (
         <aside

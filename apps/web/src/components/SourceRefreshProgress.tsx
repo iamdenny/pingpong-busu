@@ -1,5 +1,5 @@
 import { ChevronDown, RotateCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SourceCode } from "@busu/domain";
 
 export interface SourceRefreshView {
@@ -69,16 +69,29 @@ function SourceRefreshDisclosure({
   sources,
   now,
   summary,
+  initiallyExpanded,
   isComplete,
   onRetry,
 }: {
   sources: SourceRefreshView[];
   now: number;
   summary: string;
+  initiallyExpanded: boolean;
   isComplete: boolean;
   onRetry?: (sourceCode: SourceCode, attemptedAt: number) => void;
 }) {
-  const [isExpanded, setIsExpanded] = useState(!isComplete);
+  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
+  const hasUserToggled = useRef(false);
+  const wasComplete = useRef(isComplete);
+
+  useEffect(() => {
+    if (isComplete && !wasComplete.current) {
+      setIsExpanded(false);
+    } else if (!hasUserToggled.current && !isComplete) {
+      setIsExpanded(initiallyExpanded);
+    }
+    wasComplete.current = isComplete;
+  }, [initiallyExpanded, isComplete]);
 
   return (
     <section
@@ -104,7 +117,10 @@ function SourceRefreshDisclosure({
           aria-controls="source-refresh-details"
           aria-expanded={isExpanded}
           aria-label={`실시간 출처 조회 상세 ${isExpanded ? "접기" : "보기"}`}
-          onClick={() => setIsExpanded((expanded) => !expanded)}
+          onClick={() => {
+            hasUserToggled.current = true;
+            setIsExpanded((expanded) => !expanded);
+          }}
         >
           상세 {isExpanded ? "접기" : "보기"}
           <ChevronDown aria-hidden="true" size={16} />
@@ -161,9 +177,13 @@ function SourceRefreshDisclosure({
 
 export function SourceRefreshProgress({
   sources,
+  existingRecordCount,
+  searchKey = "default",
   onRetry,
 }: {
   sources: SourceRefreshView[];
+  existingRecordCount: number | null;
+  searchKey?: string;
   onRetry?: (sourceCode: SourceCode, attemptedAt: number) => void;
 }) {
   const [now, setNow] = useState(Date.now);
@@ -199,13 +219,15 @@ export function SourceRefreshProgress({
         ? `${sources.length}곳 조회 완료 · ${needsAttention}곳 확인 필요`
         : `${sources.length}곳 조회 완료`;
   const isComplete = refreshing === 0;
+  const initiallyExpanded = !isComplete && existingRecordCount === 0;
 
   return (
     <SourceRefreshDisclosure
-      key={isComplete ? "complete" : "in-progress"}
+      key={searchKey}
       sources={sources}
       now={now}
       summary={summary}
+      initiallyExpanded={initiallyExpanded}
       isComplete={isComplete}
       {...(onRetry ? { onRetry } : {})}
     />
