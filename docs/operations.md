@@ -78,7 +78,7 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 
 GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. 커스텀 도메인은 `https://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. 이 중 source refresh 값은 브라우저에서 갱신 UI를 켜는 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다.
 
-제품 버전은 루트 `package.json`에서만 관리하며 `YYYY.WEEK.SEQ` 형식이다. 배포 변경을 준비할 때 `pnpm release:bump`를 실행하면 같은 ISO 주에는 순번을 하나 올리고 새 주에는 `1`로 초기화한다. workspace package와 환경 변수에는 별도 제품 버전을 두지 않으며 web build도 루트 값을 직접 읽는다.
+제품 버전은 루트 `package.json`에서만 관리하며 `YYYY.WEEK.SEQ` 형식이다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가한다. 배포 변경을 준비할 때 `pnpm release:bump`를 실행하면 같은 ISO 주에는 순번을 하나 올리고 새 주에는 `0`으로 초기화한다. workspace package와 환경 변수에는 별도 제품 버전을 두지 않으며 web build도 루트 값을 직접 읽는다.
 
 Pages workflow는 lint·typecheck·test·build를 먼저 통과시킨 뒤 `v{version}` 태그와 GitHub Release를 만들고 GitHub 자동 릴리즈 노트를 작성한다. release job이 성공해야 deploy job이 시작된다. 동일 태그가 현재 커밋을 가리키고 Release도 존재하면 재실행을 허용하지만, 다른 커밋을 가리키면 버전 미증가로 판단해 배포를 중단한다. 따라서 모든 배포 PR은 루트 `package.json` 버전 변경을 포함해야 한다.
 
