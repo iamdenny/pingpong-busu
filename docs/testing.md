@@ -54,19 +54,19 @@ docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sq
 
 ## 기능별 최소 검증
 
-| 변경                  | 필요한 검증                                                                                          |
-| --------------------- | ---------------------------------------------------------------------------------------------------- |
-| 부수·입상·지역 규칙   | domain unit + 영향을 받는 parser fixture                                                             |
-| 부수별 입상·참가 요약 | domain aggregation + public view migration contract + repository/component test                      |
-| 검색 결과/상세 UI     | component test + desktop/mobile 미리보기                                                             |
-| 동명이인 구분 제보    | component test + 원문 코드 비저장 확인 + migration dry-run                                           |
-| 동명이인 병합·원복    | migration dry-run + source identity 연결/복구 + 후속 작업 충돌 확인                                  |
-| Supabase view/RPC     | 새 migration + 공개 view 응답 확인                                                                   |
-| Edge Function         | auth test + local/remote 호출 결과                                                                   |
-| 출처 활성화           | 정책 문서 + synthetic fixture + opt-in live test                                                     |
-| 출처 요청 복원력      | 일시적 HTTP/timeout만 재시도 + 호출자 취소 유지 + 출처별 timeout 확인                                |
-| 아이핑 인증           | guest/authenticated/challenge/unknown fixture + 쿠키 비저장 + 로그인 POST 단일 시도                  |
-| 배포 workflow         | package 버전 형식·주차 순번 unit test + 태그/Release 선행 + GitHub Actions 성공 + 실제 URL 버전 확인 |
+| 변경                  | 필요한 검증                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 부수·입상·지역 규칙   | domain unit + 영향을 받는 parser fixture                                                                       |
+| 부수별 입상·참가 요약 | domain aggregation + public view migration contract + repository/component test                                |
+| 검색 결과/상세 UI     | component test + desktop/mobile 미리보기                                                                       |
+| 동명이인 구분 제보    | component test + 원문 코드 비저장 확인 + migration dry-run                                                     |
+| 동명이인 병합·원복    | migration dry-run + source identity 연결/복구 + 후속 작업 충돌 확인                                            |
+| Supabase view/RPC     | 새 migration + 공개 view 응답 확인                                                                             |
+| Edge Function         | auth test + local/remote 호출 결과                                                                             |
+| 출처 활성화           | 정책 문서 + synthetic fixture + opt-in live test                                                               |
+| 출처 요청 복원력      | 일시적 HTTP/timeout만 재시도 + 호출자 취소 유지 + 출처별 timeout 확인                                          |
+| 아이핑 인증           | guest/authenticated/challenge/unknown fixture + hidden session POST 전달 + 쿠키 비저장 + 로그인 POST 단일 시도 |
+| 배포 workflow         | package 버전 형식·주차 순번 unit test + 태그/Release 선행 + GitHub Actions 성공 + 실제 URL 버전 확인           |
 
 ## 수동 화면 확인
 

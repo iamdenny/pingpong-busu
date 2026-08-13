@@ -17,7 +17,13 @@ import {
   IPING_SEARCH_URL,
   parseIpingSearchHtml,
 } from "./parser";
-import { classifyIpingSessionHtml } from "./session";
+import {
+  classifyIpingSessionHtml,
+  extractIpingSessionCookie,
+  extractIpingSessionCookieFromHeader,
+  extractIpingSessionId,
+  extractIpingSessionIdFromCookie,
+} from "./session";
 import { fetchWithRetry } from "../resilient-fetch";
 
 export interface IpingCredentials {
@@ -26,7 +32,9 @@ export interface IpingCredentials {
 }
 
 function responseCookie(response: Response): string | undefined {
-  return response.headers.get("set-cookie")?.split(";", 1)[0];
+  return extractIpingSessionCookieFromHeader(
+    response.headers.get("set-cookie"),
+  );
 }
 
 function assertHtmlResponse(response: Response, label: string): void {
@@ -105,12 +113,18 @@ async function createAuthenticatedSession(
     redirect: "manual",
   });
   assertHtmlResponse(loginPage, "로그인 화면");
-  const initialCookie = responseCookie(loginPage);
+  const loginPageHtml = await responseHtml(loginPage);
+  const initialCookie =
+    responseCookie(loginPage) ?? extractIpingSessionCookie(loginPageHtml);
   if (!initialCookie)
     throw new SourceSchemaChangedError(
       "아이핑 로그인 세션 쿠키를 찾지 못했습니다.",
     );
+  const sessionId =
+    extractIpingSessionIdFromCookie(initialCookie) ??
+    extractIpingSessionId(loginPageHtml);
   const body = encodeIpingForm({
+    ...(sessionId ? { PHPSESSID: sessionId } : {}),
     path: "",
     pg: "login",
     Mid: credentials.username,

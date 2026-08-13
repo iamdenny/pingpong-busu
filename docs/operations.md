@@ -51,8 +51,9 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 1. `202608130001_reversible_player_merges.sql`: 삭제 없는 관리자 병합·원복 RPC와 감사 로그
 2. `202608130002_bounded_source_retries.sql`: 출처·정규화 검색어별 5초 하한과 분당 4회 제한
 3. `202608130003_division_observation_counts.sql`: 공개 검색 view의 체계·부수별 입상·참가 건수
+4. `202608130004_iping_global_throttle.sql`: 인증형 아이핑 출처 전체의 60초 간격 제한
 
-배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 세 파일의 순서를 확인합니다. 배포 후에는 `player_merge_review_log`가 일반 공개 역할에 노출되지 않는지, `claim_source_request`가 service role 전용인지, `public_player_search.division_observations`가 조회되는지 확인합니다. 세 번째 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
+배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 네 파일의 순서를 확인합니다. 배포 후에는 `player_merge_review_log`가 일반 공개 역할에 노출되지 않는지, `claim_source_request`가 service role 전용인지, `public_player_search.division_observations`가 조회되는지 확인합니다. 세 번째 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
 GitHub의 `production` environment에 아래 값을 설정합니다.
 
@@ -70,7 +71,7 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 | Variable  | `CRAWLER_SOURCE_OKPINGPONG_ENABLED`  | 오케이핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                           |
 | Variable  | `CRAWLER_SOURCE_IPING_ENABLED`       | 아이핑 인증형 adapter 스위치. 전용 계정 Secret 설정 전 기본 `false`                                        |
 | Generated | `CRAWLER_USER_AGENT`                 | 배포 시 루트 package 버전으로 만드는 `BUSU/{version}` 출처 요청 식별자                                     |
-| Variable  | `CRAWLER_SOURCE_MIN_INTERVAL_MS`     | 출처·정규화 검색어별 최소 호출 간격. 기본 및 최저 5초                                                      |
+| Variable  | `CRAWLER_SOURCE_MIN_INTERVAL_MS`     | 출처·정규화 검색어별 최소 호출 간격. 기본 및 최저 5초이며 아이핑은 전체 60초로 고정                        |
 | Secret    | `KAKAO_REST_API_KEY`                 | 카카오 공식 Daum 카페 검색 API 키. 브라우저와 로그에 노출하지 않음                                         |
 | Secret    | `IPING_USERNAME`                     | 아이핑 조회 전용 최소권한 계정 ID. Supabase Edge 런타임에만 전달                                           |
 | Secret    | `IPING_PASSWORD`                     | 아이핑 조회 전용 계정 비밀번호. Supabase Edge 런타임에만 전달                                              |
@@ -83,7 +84,7 @@ Pages workflow는 lint·typecheck·test·build를 먼저 통과시킨 뒤 `v{ver
 
 PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키와 아이핑 자격증명은 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 아이핑을 켤 때는 두 Secret을 먼저 등록한 뒤 `CRAWLER_SOURCE_IPING_ENABLED=true`, 마지막으로 DB `sources.enabled=true` 순서로 활성화합니다. 어느 하나라도 없으면 요청하지 않습니다.
 
-Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 `출처 + 정규화 검색어`별 5초 최소 호출 간격과 1분당 최대 4회 제한을 적용하며 `source_request_throttles`에 제한 구간과 시도 횟수를 저장합니다. 제한 응답의 `retryAfterMs` 또는 외부 출처의 `Retry-After`가 있으면 프런트가 남은 시간을 표시하고 최대 2회 자동 재시도합니다. 이 자동 재시도는 호출 제한 응답에만 적용되며 임의의 인증·파서·연결 실패를 반복하지 않습니다. 실패 행의 수동 재시도는 출처별로 현재 검색 화면에서 최대 3회이며 5초 쿨다운을 둡니다. 페이지를 새로 열어 클라이언트 횟수가 초기화돼도 서버의 5초·분당 4회 제한은 계속 적용됩니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
+Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 일반 호출은 같은 이름의 최근 6시간 성공 결과를 재사용할 수 있지만, 현재 검색 화면은 사용자의 명시적 검색마다 `force=true`를 전달합니다. 서버는 강제 갱신에도 `출처 + 정규화 검색어`별 5초 최소 호출 간격과 1분당 최대 4회 제한을 적용하며 `source_request_throttles`에 제한 구간과 시도 횟수를 저장합니다. 인증형 아이핑은 추가로 `sources.last_attempt_at`을 행 잠금 아래 확인해 검색어와 무관하게 출처 전체에 60초 간격을 적용합니다. 제한 응답의 `retryAfterMs` 또는 외부 출처의 `Retry-After`가 있으면 프런트가 남은 시간을 표시하고 최대 2회 자동 재시도합니다. 이 자동 재시도는 호출 제한 응답에만 적용되며 임의의 인증·파서·연결 실패를 반복하지 않습니다. 실패 행의 수동 재시도는 출처별로 현재 검색 화면에서 최대 3회이며 5초 쿨다운을 둡니다. 페이지를 새로 열어 클라이언트 횟수가 초기화돼도 서버 제한은 계속 적용됩니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
 
 ## 동명이인 제보 검토
 
