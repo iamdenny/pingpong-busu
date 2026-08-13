@@ -42,6 +42,12 @@ pnpm build
 
 실패한 테스트를 삭제하거나 skip 처리해 통과시키지 않는다. build의 chunk-size 경고는 실패가 아니지만 증가 원인을 검토한다.
 
+로컬 Supabase가 실행 중이면 병합·원복 SQL 통합 검증을 트랜잭션으로 실행하고 마지막에 롤백한다.
+
+```bash
+docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/reversible-player-merge.sql
+```
+
 ## 기능별 최소 검증
 
 | 변경 | 필요한 검증 |
@@ -49,6 +55,7 @@ pnpm build
 | 부수·입상·지역 규칙 | domain unit + 영향을 받는 parser fixture |
 | 검색 결과/상세 UI | component test + desktop/mobile 미리보기 |
 | 동명이인 구분 제보 | component test + 원문 코드 비저장 확인 + migration dry-run |
+| 동명이인 병합·원복 | migration dry-run + source identity 연결/복구 + 후속 작업 충돌 확인 |
 | Supabase view/RPC | 새 migration + 공개 view 응답 확인 |
 | Edge Function | auth test + local/remote 호출 결과 |
 | 출처 활성화 | 정책 문서 + synthetic fixture + opt-in live test |

@@ -18,6 +18,8 @@ title: "데이터 모델"
 
 `identity_claims.verification_hash`는 정규화 이름과 참여자가 정한 숫자 4자리를 서버 전용 key로 HMAC한 값입니다. 코드 원문, 휴대폰 번호, 생년월일은 저장하지 않습니다. `candidate_fingerprint`는 선택된 공개 선수 ID 정렬값의 SHA-256이며 중복 제보 판정에만 사용합니다. 제보는 항상 `pending`으로 생성되고 같은 정규화 이름의 후보만 연결할 수 있으며, 자동 merge를 실행하지 않습니다. 관리자 상태 변경은 trigger가 `identity_claim_reviews`에 이전·다음 상태와 처리자를 남깁니다. `identity_claim_review_queue`는 service role만 조회할 수 있습니다.
 
+관리자 병합은 `identity_merge_operations`에 대상 선수, 처리자, 사유, 선택적 제보 ID를 남기고 `identity_merge_operation_players`와 `identity_merge_operation_identities`에 병합 전 선수 상태·출처 identity 연결·match 상태를 저장합니다. 원본 `players`, `source_player_identities`, `results` 행은 삭제하지 않습니다. 병합된 source 선수는 `players.merged_into_player_id`로 숨기고 출처 identity만 대상 선수로 연결합니다. 원복은 저장된 스냅샷과 현재 연결이 일치하고 같은 대상의 후속 병합이 없을 때만 허용하며, 이전 연결과 상태를 정확히 복구합니다.
+
 향후 `correction_requests`는 참여자의 일반 정정·분리 제보와 근거를 받고 관리자가 승인·반려합니다. 승인 결과는 canonical metadata에 반영하되 수집된 원문 기록을 수정하지 않으며, 이전 값·근거 URL·처리자·처리 시각을 감사 이력으로 보존합니다.
 
 `results.division_value`는 `4부`, `A부`, `T5` 같은 관측값이고 `results.division_system`은 `open`, `integrated`, `women`, `regional`, `division`, `unknown` 중 하나입니다. 같은 숫자라도 서로 다른 체계는 합산하지 않습니다. 판정 우선순위는 대회별 수동 override → T1~T7/디비전 → 종목 내부의 지역 구분(`지역`, `지역남성`, `지역여성`, `지역혼성`) → 참가 종목의 여자·여성 → 오픈 명시 → 지역부수 명시 → 일반 숫자·문자 부수의 통합부수입니다. 수동 override는 코드와 migration에 근거를 남겨 재수집과 기존 데이터에 동일하게 적용합니다. 현재 제16회 이하 분당구청장기는 `regional`입니다. 종목 내부 지역 구분은 대회명에 `오픈`이 있더라도 `integrated`로 저장합니다. `women`은 그 지역 구분이 없는 여자 종목을 보존하기 위한 내부 subtype이며 사용자 화면에서는 `통합부수 여자6부`처럼 표현합니다. 시·군·구 등 대회 지역은 부수 체계 판정 근거가 아니며 일반 숫자 부수는 `integrated`가 기본입니다. 부수 값 자체가 없거나 해석할 수 없는 값은 `unknown`으로 보존합니다.

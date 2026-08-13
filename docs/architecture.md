@@ -90,4 +90,6 @@ Deno Edge 환경은 workspace import를 그대로 배포하지 않는다. `pnpm 
 
 동명이인 참여 제보는 검색 결과의 같은 정규화 이름 후보에서만 시작한다. 브라우저는 선택한 공개 선수 ID, 사용자가 정한 숫자 4자리, 선택적 참고사항만 `submit-identity-claim`에 전달한다. Edge Function은 후보 이름을 재검증하고 숫자 원문을 서버 HMAC으로 변환한 뒤 service role 전용 RPC로 저장한다. public RLS 정책은 제보 table을 읽거나 직접 쓰는 권한을 주지 않는다. 제보 상태는 항상 검토 대기로 시작하며 identity merge와 분리된 경계다.
 
+승인된 후보를 실제로 합칠 때는 service role 전용 `merge_players_internal`만 사용한다. 이 RPC는 같은 정규화 이름, 활성 후보, 승인 제보의 후보 집합을 다시 검증하고 출처 identity의 이전 연결을 감사 table에 먼저 기록한 다음 대상 선수로 재연결한다. `revert_player_merge_internal`은 후속 병합과 현재 연결 충돌을 검사한 뒤 저장된 연결을 복구한다. 따라서 원복은 대회 결과를 복사하거나 삭제하는 작업이 아니라 `source_player_identities.player_id` 연결을 되돌리는 트랜잭션이다.
+
 디렉터리별 변경 영향은 [codemap](codemap.md), 기능 계약은 [제품 스펙](product-spec.md)을 참고한다.

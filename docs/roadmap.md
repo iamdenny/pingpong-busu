@@ -26,7 +26,7 @@ title: "제품 로드맵"
 1. 공개 refresh에 gateway rate limit, quota, 운영 metric 추가
 2. 출처 정책·parser health 정기 점검과 실패 알림
 3. 일반 소속·지역 정정 제보와 근거 URL 제출
-4. 관리자 인증 UI와 승인된 동명이인 merge/split 실행
+4. 구현된 동명이인 merge/원복 RPC를 사용하는 관리자 인증 UI
 5. 대회 규정 근거를 이용한 최소 출전 가능 부수 검증 엔진
 6. 운영자 CSV 업로드와 provenance 검증
 

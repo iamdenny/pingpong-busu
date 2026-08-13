@@ -71,7 +71,33 @@ where id = '<claim-id>'
   and status = 'pending';
 ```
 
-반려는 `status='rejected'`로 기록합니다. 상태 변경 trigger가 이전·다음 상태와 처리 정보를 `identity_claim_reviews`에 남깁니다. 승인은 검토 완료 표시일 뿐 선수를 자동 병합하지 않으며, canonical merge/split은 별도 운영 기능이 구현되기 전까지 수행하지 않습니다.
+반려는 `status='rejected'`로 기록합니다. 상태 변경 trigger가 이전·다음 상태와 처리 정보를 `identity_claim_reviews`에 남깁니다. 승인은 검토 완료 표시일 뿐 선수를 자동 병합하지 않습니다.
+
+승인된 후보를 병합할 때는 삭제나 직접 `player_id` 수정을 하지 않고 service role 전용 RPC를 사용합니다. 첫 UUID는 유지할 대상 선수, 배열은 그 대상으로 합칠 후보입니다. 승인 제보를 근거로 삼는 경우 제보 ID까지 전달하며, RPC가 후보 집합과 정규화 이름을 다시 검증합니다.
+
+```sql
+select public.merge_players_internal(
+  '<target-player-public-id>'::uuid,
+  array['<source-player-public-id>']::uuid[],
+  'iamdenny',
+  '원문 대회와 소속 이력을 대조해 동일인으로 확인함',
+  '<approved-claim-id>'::uuid
+);
+```
+
+반환된 UUID가 병합 작업 ID입니다. `player_merge_review_log`에서 대상·원본 후보·처리 사유·원복 여부를 확인할 수 있습니다. 병합은 원본 선수와 대회 결과를 삭제하지 않고 출처 identity 연결만 이동합니다.
+
+잘못 병합했다면 같은 작업 ID로 원복합니다.
+
+```sql
+select public.revert_player_merge_internal(
+  '<merge-operation-id>'::uuid,
+  'iamdenny',
+  '원문 출처를 재확인해 서로 다른 동명이인으로 판정함'
+);
+```
+
+원복 RPC는 병합 당시 저장한 선수 상태, 출처 identity의 이전 선수 연결과 match 상태를 복구합니다. 병합 뒤 해당 연결이 별도로 수정됐거나 같은 대상 선수에 더 최근 병합이 있으면 자동 실행하지 않고 오류를 냅니다. 이 경우 `player_merge_review_log`에서 최신 작업부터 역순으로 검토·원복합니다. 원복 전후에는 검색 결과에서 후보 수와 각 후보의 원문 대회·종목이 다시 분리되는지 확인합니다.
 
 [source catalog migration](../supabase/migrations/202608120003_source_catalog.sql)은 production DB에 기본 source 메타데이터를 생성하고, 후속 migration이 검증을 마친 출처를 개별 활성화합니다. 합성 선수와 대회 데이터는 `seed.sql`에 남아 있어 `db push` production 배포에는 포함되지 않습니다.
 
