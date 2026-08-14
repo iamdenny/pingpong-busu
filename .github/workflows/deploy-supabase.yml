@@ -60,11 +60,11 @@ jobs:
         run: node --import tsx scripts/release-version.ts output >> "$GITHUB_OUTPUT"
       - name: Validate deployment configuration
         env:
-          GITHUB_ISSUES_TOKEN: ${{ secrets.GITHUB_ISSUES_TOKEN }}
+          FEEDBACK_GITHUB_TOKEN: ${{ secrets.FEEDBACK_GITHUB_TOKEN }}
         run: |
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_PROJECT_ID"
-          test -n "$GITHUB_ISSUES_TOKEN"
+          test -n "$FEEDBACK_GITHUB_TOKEN"
       - name: Prepare Edge Function shared modules
         run: pnpm edge:sync
       - name: Link production project
@@ -93,11 +93,11 @@ jobs:
           FEEDBACK_ALLOWED_ORIGINS="$FEEDBACK_ALLOWED_ORIGINS"
       - name: Configure GitHub Issues token
         env:
-          GITHUB_ISSUES_TOKEN: ${{ secrets.GITHUB_ISSUES_TOKEN }}
+          FEEDBACK_GITHUB_TOKEN: ${{ secrets.FEEDBACK_GITHUB_TOKEN }}
         run: >-
           supabase secrets set
           --project-ref "$SUPABASE_PROJECT_ID"
-          GITHUB_ISSUES_TOKEN="$GITHUB_ISSUES_TOKEN"
+          GITHUB_ISSUES_TOKEN="$FEEDBACK_GITHUB_TOKEN"
       - name: Configure Kakao REST API key
         if: env.KAKAO_REST_API_KEY != ''
         run: >-

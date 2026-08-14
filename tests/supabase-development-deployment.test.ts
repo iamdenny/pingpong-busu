@@ -114,9 +114,12 @@ describe("Supabase production deployment contract", () => {
     );
 
     expect(validationStep).toContain(
-      "GITHUB_ISSUES_TOKEN: ${{ secrets.GITHUB_ISSUES_TOKEN }}",
+      "FEEDBACK_GITHUB_TOKEN: ${{ secrets.FEEDBACK_GITHUB_TOKEN }}",
     );
-    expect(validationStep).toContain('test -n "$GITHUB_ISSUES_TOKEN"');
+    expect(validationStep).toContain('test -n "$FEEDBACK_GITHUB_TOKEN"');
+    expect(validationStep).not.toContain(
+      "${{ secrets.GITHUB_ISSUES_TOKEN }}",
+    );
     expect(validationStep).not.toContain("continue-on-error:");
 
     const validationIndex = productionWorkflow.indexOf(
@@ -144,7 +147,7 @@ describe("Supabase production deployment contract", () => {
         env: {
           SUPABASE_ACCESS_TOKEN: "test-access-token",
           SUPABASE_PROJECT_ID: "test-project-id",
-          GITHUB_ISSUES_TOKEN: "",
+          FEEDBACK_GITHUB_TOKEN: "",
         },
       },
     );
@@ -155,7 +158,7 @@ describe("Supabase production deployment contract", () => {
         env: {
           SUPABASE_ACCESS_TOKEN: "test-access-token",
           SUPABASE_PROJECT_ID: "test-project-id",
-          GITHUB_ISSUES_TOKEN: "test-issues-token",
+          FEEDBACK_GITHUB_TOKEN: "test-issues-token",
         },
       },
     );
@@ -166,7 +169,7 @@ describe("Supabase production deployment contract", () => {
 
   it("keeps the GitHub Issues token out of the production job environment", () => {
     expect(getJobEnvironment(productionWorkflow)).not.toContain(
-      "GITHUB_ISSUES_TOKEN",
+      "FEEDBACK_GITHUB_TOKEN",
     );
   });
 
@@ -177,11 +180,12 @@ describe("Supabase production deployment contract", () => {
     );
 
     expect(configurationStep).toContain(
-      "GITHUB_ISSUES_TOKEN: ${{ secrets.GITHUB_ISSUES_TOKEN }}",
+      "FEEDBACK_GITHUB_TOKEN: ${{ secrets.FEEDBACK_GITHUB_TOKEN }}",
     );
-    expect(configurationStep).not.toContain(
-      "if: env.GITHUB_ISSUES_TOKEN != ''",
+    expect(configurationStep).toContain(
+      'GITHUB_ISSUES_TOKEN="$FEEDBACK_GITHUB_TOKEN"',
     );
+    expect(configurationStep).not.toContain("if:");
     expect(
       productionWorkflow.indexOf("- name: Configure GitHub Issues token"),
     ).toBeLessThan(productionWorkflow.indexOf("- name: Deploy Edge Functions"));
