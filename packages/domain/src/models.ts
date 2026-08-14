@@ -29,6 +29,8 @@ export type DivisionSystem = z.infer<typeof divisionSystemSchema>;
 export interface AwardResultSummary {
   rank: string;
   date?: string;
+  tournament?: string;
+  lastCheckedAt?: string;
 }
 
 export interface DivisionObservationSummary {
@@ -82,6 +84,9 @@ export interface PlayerSummary {
   recentObservedDivisionSystem?: DivisionSystem;
   resultCount: number;
   awardResults?: AwardResultSummary[];
+  latestParticipationDate?: string;
+  latestParticipationTournament?: string;
+  latestParticipationCheckedAt?: string;
   divisionObservations?: DivisionObservationSummary[];
   sourceCount: number;
   lastCheckedAt: string;

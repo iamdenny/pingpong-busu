@@ -2,7 +2,9 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { z } from "zod";
 import {
+  isAwardRank,
   normalizePlayerName,
+  sortPlayerRecordsByLatest,
   type PlayerDetail,
   type PlayerSummary,
 } from "@busu/domain";
@@ -41,6 +43,24 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
   return JSON.parse(body) as unknown;
 }
 
+function latestParticipationSummary(player: PlayerDetail): {
+  latestParticipationDate?: string;
+  latestParticipationTournament?: string;
+  latestParticipationCheckedAt?: string;
+} {
+  const latestParticipation = sortPlayerRecordsByLatest(
+    player.records.filter((record) => !isAwardRank(record.rank)),
+  )[0];
+  if (!latestParticipation) return {};
+  return {
+    ...(latestParticipation.date
+      ? { latestParticipationDate: latestParticipation.date }
+      : {}),
+    latestParticipationTournament: latestParticipation.tournament,
+    latestParticipationCheckedAt: latestParticipation.lastCheckedAt,
+  };
+}
+
 function summaries(details: readonly PlayerDetail[]): PlayerSummary[] {
   return details.map((player) => ({
     id: player.id,
@@ -56,6 +76,7 @@ function summaries(details: readonly PlayerDetail[]): PlayerSummary[] {
       : {}),
     resultCount: player.resultCount,
     ...(player.awardResults ? { awardResults: player.awardResults } : {}),
+    ...latestParticipationSummary(player),
     sourceCount: player.sourceCount,
     lastCheckedAt: player.lastCheckedAt,
     ...(player.divisionObservations

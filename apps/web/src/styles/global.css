@@ -1929,26 +1929,60 @@ p {
   line-height: 1.35;
 }
 .award-result-summary__list {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-  flex-wrap: wrap;
+  display: grid;
+  gap: 0.35rem;
 }
 .award-result-summary__item {
   display: grid;
-  gap: 0.05rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.45rem;
+  align-items: start;
 }
 .award-result-summary__item time {
+  grid-column: 1;
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 600;
   white-space: nowrap;
 }
+.award-result-summary__tournament {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-inline-size: 0;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
 .award-result-summary__remaining {
-  align-self: flex-end;
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 700;
+}
+.participation-result-summary {
+  display: grid;
+  gap: 0.05rem;
+  min-inline-size: 0;
+}
+.participation-result-summary strong {
+  color: #334155;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.participation-result-summary time {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 .back-link {
   display: inline-flex;

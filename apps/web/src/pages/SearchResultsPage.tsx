@@ -1,5 +1,11 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, MapPin, Trophy, Waypoints } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronRight,
+  MapPin,
+  Trophy,
+  Waypoints,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   Link,
@@ -11,6 +17,7 @@ import {
   formatDivisionObservation,
   homonymNicknameLabel,
   parsePlayerSearchQuery,
+  sortPlayerSearchResults,
   type AwardResultSummary,
   type SourceCode,
 } from "@busu/domain";
@@ -79,10 +86,7 @@ export interface ManualRetryAttempt {
   lastAttemptAt?: number;
 }
 
-export function sourceRetryKey(
-  query: string,
-  sourceCode: SourceCode,
-): string {
+export function sourceRetryKey(query: string, sourceCode: SourceCode): string {
   return JSON.stringify([query, sourceCode]);
 }
 
@@ -128,7 +132,7 @@ function AwardResultSummary({
       {shown.map((result, index) => (
         <span
           className="award-result-summary__item"
-          key={`${result.rank}-${result.date ?? "unknown"}-${index}`}
+          key={`${result.rank}-${result.date ?? "unknown"}-${result.tournament ?? "unknown"}-${index}`}
         >
           <strong>{result.rank}</strong>
           {result.date && (
@@ -136,12 +140,40 @@ function AwardResultSummary({
               {awardDateFormatter.format(new Date(`${result.date}T00:00:00`))}
             </time>
           )}
+          {result.tournament && (
+            <span
+              className="award-result-summary__tournament"
+              title={result.tournament}
+            >
+              {result.tournament}
+            </span>
+          )}
         </span>
       ))}
       {remaining > 0 && (
         <span className="award-result-summary__remaining">
           외 {remaining}건
         </span>
+      )}
+    </span>
+  );
+}
+
+function ParticipationResultSummary({
+  tournament,
+  date,
+}: {
+  tournament: string | undefined;
+  date: string | undefined;
+}) {
+  if (!tournament && !date) return <>대회명 확인 필요</>;
+  return (
+    <span className="participation-result-summary">
+      <strong title={tournament}>{tournament ?? "대회명 확인 필요"}</strong>
+      {date && (
+        <time dateTime={date}>
+          {awardDateFormatter.format(new Date(`${date}T00:00:00`))}
+        </time>
       )}
     </span>
   );
@@ -239,79 +271,79 @@ export function SearchResultsPage() {
     })),
   });
   const refreshViews: SourceRefreshView[] = canStartSourceRefresh
-    ? activeSources.map(
-    (source, index) => {
-      const sourceQuery = refreshQueries[index];
-      const pendingFailure = sourceRefreshFailureView(
-        sourceQuery?.failureReason,
-      );
-      if (pendingFailure.retryAt !== undefined && !sourceQuery?.isError)
+    ? activeSources.map((source, index) => {
+        const sourceQuery = refreshQueries[index];
+        const pendingFailure = sourceRefreshFailureView(
+          sourceQuery?.failureReason,
+        );
+        if (pendingFailure.retryAt !== undefined && !sourceQuery?.isError)
+          return {
+            sourceCode: source.sourceCode,
+            sourceName: source.displayName,
+            state: "waiting",
+            reason: pendingFailure.errorCode,
+            retryAt: pendingFailure.retryAt,
+          };
+        if (!sourceQuery || sourceQuery.isPending || sourceQuery.isFetching)
+          return {
+            sourceCode: source.sourceCode,
+            sourceName: source.displayName,
+            state: "refreshing",
+          };
+        if (sourceQuery.isError) {
+          const failure = sourceRefreshFailureView(sourceQuery.error);
+          return {
+            sourceCode: source.sourceCode,
+            sourceName: source.displayName,
+            state: "failed",
+            errorCode: failure.errorCode,
+            message: failure.message,
+            ...manualRetryView(
+              source.sourceCode,
+              sourceQuery.errorUpdatedAt,
+              failure.retryAt,
+            ),
+          };
+        }
+        const outcome = sourceQuery.data?.sources.find(
+          (item) => item.sourceCode === source.sourceCode,
+        );
+        if (!outcome || outcome.status === "failed")
+          return {
+            sourceCode: source.sourceCode,
+            sourceName: source.displayName,
+            state: "failed",
+            errorCode: outcome?.errorCode ?? "source_refresh_failed",
+            message: outcome?.message ?? "출처 응답을 확인하지 못했습니다.",
+            ...manualRetryView(
+              source.sourceCode,
+              sourceQuery.dataUpdatedAt,
+              outcome?.retryAfterMs !== undefined
+                ? sourceQuery.dataUpdatedAt + outcome.retryAfterMs
+                : undefined,
+            ),
+          };
+        if (outcome.status === "skipped")
+          return {
+            sourceCode: source.sourceCode,
+            sourceName: source.displayName,
+            state: "skipped",
+            ...(outcome.reason ? { reason: outcome.reason } : {}),
+            ...(outcome.message ? { message: outcome.message } : {}),
+          };
         return {
           sourceCode: source.sourceCode,
           sourceName: source.displayName,
-          state: "waiting",
-          reason: pendingFailure.errorCode,
-          retryAt: pendingFailure.retryAt,
+          state: "succeeded",
+          ...(outcome.found !== undefined ? { found: outcome.found } : {}),
+          ...(outcome.inserted !== undefined
+            ? { inserted: outcome.inserted }
+            : {}),
+          ...(outcome.updated !== undefined
+            ? { updated: outcome.updated }
+            : {}),
         };
-      if (!sourceQuery || sourceQuery.isPending || sourceQuery.isFetching)
-        return {
-          sourceCode: source.sourceCode,
-          sourceName: source.displayName,
-          state: "refreshing",
-        };
-      if (sourceQuery.isError) {
-        const failure = sourceRefreshFailureView(sourceQuery.error);
-        return {
-          sourceCode: source.sourceCode,
-          sourceName: source.displayName,
-          state: "failed",
-          errorCode: failure.errorCode,
-          message: failure.message,
-          ...manualRetryView(
-            source.sourceCode,
-            sourceQuery.errorUpdatedAt,
-            failure.retryAt,
-          ),
-        };
-      }
-      const outcome = sourceQuery.data?.sources.find(
-        (item) => item.sourceCode === source.sourceCode,
-      );
-      if (!outcome || outcome.status === "failed")
-        return {
-          sourceCode: source.sourceCode,
-          sourceName: source.displayName,
-          state: "failed",
-          errorCode: outcome?.errorCode ?? "source_refresh_failed",
-          message: outcome?.message ?? "출처 응답을 확인하지 못했습니다.",
-          ...manualRetryView(
-            source.sourceCode,
-            sourceQuery.dataUpdatedAt,
-            outcome?.retryAfterMs !== undefined
-              ? sourceQuery.dataUpdatedAt + outcome.retryAfterMs
-              : undefined,
-          ),
-        };
-      if (outcome.status === "skipped")
-        return {
-          sourceCode: source.sourceCode,
-          sourceName: source.displayName,
-          state: "skipped",
-          ...(outcome.reason ? { reason: outcome.reason } : {}),
-          ...(outcome.message ? { message: outcome.message } : {}),
-        };
-      return {
-        sourceCode: source.sourceCode,
-        sourceName: source.displayName,
-        state: "succeeded",
-        ...(outcome.found !== undefined ? { found: outcome.found } : {}),
-        ...(outcome.inserted !== undefined
-          ? { inserted: outcome.inserted }
-          : {}),
-        ...(outcome.updated !== undefined ? { updated: outcome.updated } : {}),
-      };
-      },
-    )
+      })
     : [];
 
   function retryKey(sourceCode: SourceCode): string {
@@ -426,17 +458,23 @@ export function SearchResultsPage() {
         matchesObservedDivision(player, selectedDivision),
       )
     : (result.data ?? []);
-  const awardCandidates = divisionCandidates.filter((player) =>
-    selectedDivision
-      ? (divisionObservationForPlayer(player, selectedDivision)?.awardCount ??
-          0) > 0
-      : player.resultCount > 0,
+  const awardCandidates = sortPlayerSearchResults(
+    divisionCandidates.filter((player) =>
+      selectedDivision
+        ? (divisionObservationForPlayer(player, selectedDivision)?.awardCount ??
+            0) > 0
+        : player.resultCount > 0,
+    ),
+    "awards",
   );
-  const entryCandidates = divisionCandidates.filter((player) =>
-    selectedDivision
-      ? (divisionObservationForPlayer(player, selectedDivision)
-          ?.participationCount ?? 0) > 0
-      : player.resultCount === 0,
+  const entryCandidates = sortPlayerSearchResults(
+    divisionCandidates.filter((player) =>
+      selectedDivision
+        ? (divisionObservationForPlayer(player, selectedDivision)
+            ?.participationCount ?? 0) > 0
+        : player.resultCount === 0,
+    ),
+    "entries",
   );
   const activeResultTab =
     resultTab === "awards"
@@ -771,13 +809,28 @@ export function SearchResultsPage() {
                     </div>
                     <div>
                       <dt>
-                        <Trophy size={15} /> 입상 성적 · 날짜
+                        {activeResultTab === "awards" ? (
+                          <>
+                            <Trophy size={15} /> 입상 성적 · 날짜 · 대회
+                          </>
+                        ) : (
+                          <>
+                            <CalendarDays size={15} /> 최근 출전 대회 · 날짜
+                          </>
+                        )}
                       </dt>
                       <dd className="award-result-summary">
-                        <AwardResultSummary
-                          results={player.awardResults}
-                          resultCount={player.resultCount}
-                        />
+                        {activeResultTab === "awards" ? (
+                          <AwardResultSummary
+                            results={player.awardResults}
+                            resultCount={player.resultCount}
+                          />
+                        ) : (
+                          <ParticipationResultSummary
+                            tournament={player.latestParticipationTournament}
+                            date={player.latestParticipationDate}
+                          />
+                        )}
                       </dd>
                     </div>
                     <div>

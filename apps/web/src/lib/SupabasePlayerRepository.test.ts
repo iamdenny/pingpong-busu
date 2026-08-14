@@ -13,7 +13,17 @@ describe("SupabasePlayerRepository player search", () => {
       recent_observed_division: "6부",
       recent_observed_division_system: "open",
       result_count: 15,
-      award_results: [],
+      award_results: [
+        {
+          rank: "우승",
+          date: "2026-08-12",
+          tournament: "2026 합성 오픈",
+          last_checked_at: "2026-08-13T00:00:00.000Z",
+        },
+      ],
+      latest_participation_date: "2026-08-11",
+      latest_participation_tournament: "2026 합성 생활체육대회",
+      latest_participation_checked_at: "2026-08-12T00:00:00.000Z",
       division_observations: [],
       source_count: 7,
       last_checked_at: "2026-08-13T00:00:00.000Z",
@@ -42,6 +52,17 @@ describe("SupabasePlayerRepository player search", () => {
         id: "candidate-1",
         name: "임대현",
         homonymNickname: "데니",
+        latestParticipationDate: "2026-08-11",
+        latestParticipationTournament: "2026 합성 생활체육대회",
+        latestParticipationCheckedAt: "2026-08-12T00:00:00.000Z",
+        awardResults: [
+          {
+            rank: "우승",
+            date: "2026-08-12",
+            tournament: "2026 합성 오픈",
+            lastCheckedAt: "2026-08-13T00:00:00.000Z",
+          },
+        ],
       }),
     ]);
   });

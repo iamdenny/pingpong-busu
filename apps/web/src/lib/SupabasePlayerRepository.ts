@@ -81,8 +81,18 @@ const summarySchema = z.object({
   recent_observed_division_system: divisionSystemSchema.nullish(),
   result_count: z.number(),
   award_results: z
-    .array(z.object({ rank: z.string(), date: z.string().nullable() }))
+    .array(
+      z.object({
+        rank: z.string(),
+        date: z.string().nullable(),
+        tournament: z.string().nullish(),
+        last_checked_at: z.string().nullish(),
+      }),
+    )
     .nullish(),
+  latest_participation_date: z.string().nullish(),
+  latest_participation_tournament: z.string().nullish(),
+  latest_participation_checked_at: z.string().nullish(),
   division_observations: z.array(divisionObservationSchema).max(100).nullish(),
   source_count: z.number(),
   last_checked_at: z.string(),
@@ -152,6 +162,10 @@ function toSummary(row: z.infer<typeof summarySchema>): PlayerSummary {
   const awardResults = row.award_results?.map((award) => ({
     rank: award.rank,
     ...(award.date ? { date: award.date } : {}),
+    ...(award.tournament ? { tournament: award.tournament } : {}),
+    ...(award.last_checked_at
+      ? { lastCheckedAt: award.last_checked_at }
+      : {}),
   }));
   const divisionObservations = row.division_observations?.map(
     (observation) => ({
@@ -175,6 +189,20 @@ function toSummary(row: z.infer<typeof summarySchema>): PlayerSummary {
       : {}),
     resultCount: row.result_count,
     ...(awardResults?.length ? { awardResults } : {}),
+    ...(row.latest_participation_date
+      ? { latestParticipationDate: row.latest_participation_date }
+      : {}),
+    ...(row.latest_participation_tournament
+      ? {
+          latestParticipationTournament: row.latest_participation_tournament,
+        }
+      : {}),
+    ...(row.latest_participation_checked_at
+      ? {
+          latestParticipationCheckedAt:
+            row.latest_participation_checked_at,
+        }
+      : {}),
     ...(divisionObservations ? { divisionObservations } : {}),
     sourceCount: row.source_count,
     lastCheckedAt: row.last_checked_at,

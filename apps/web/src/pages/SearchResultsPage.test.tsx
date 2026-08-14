@@ -88,6 +88,12 @@ describe("SearchResultsPage", () => {
     const awardSummary = screen.getByText("우승").closest("dd");
     expect(awardSummary).not.toBeNull();
     expect(within(awardSummary!).getByText("3위")).toBeInTheDocument();
+    expect(
+      within(awardSummary!).getByText("2026 가상 전국오픈"),
+    ).toBeInTheDocument();
+    expect(
+      within(awardSummary!).getByText("서울 가상 생활체육대회"),
+    ).toBeInTheDocument();
     const awardDates = awardSummary!.querySelectorAll("time");
     expect(awardDates).toHaveLength(2);
     expect(awardDates[0]).toHaveAttribute("datetime", "2026-07-20");
@@ -196,7 +202,8 @@ describe("SearchResultsPage", () => {
       name: "출전 선수 검색 결과 목록",
     });
     expect(list).toHaveAttribute("data-transition-direction", "forward");
-    expect(within(list).getByText("0건")).toBeInTheDocument();
+    expect(within(list).getByText("부산 가상 구대회")).toBeInTheDocument();
+    expect(within(list).getByText("2025. 9. 14.")).toBeInTheDocument();
 
     fireEvent.click(within(tabs).getByRole("tab", { name: "입상 1건" }));
     expect(tabs).toHaveAttribute("data-active-tab", "awards");

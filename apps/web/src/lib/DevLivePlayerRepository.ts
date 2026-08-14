@@ -34,8 +34,18 @@ const summarySchema = z.object({
   recentObservedDivisionSystem: divisionSystemSchema.optional(),
   resultCount: z.number(),
   awardResults: z
-    .array(z.object({ rank: z.string(), date: z.string().optional() }))
+    .array(
+      z.object({
+        rank: z.string(),
+        date: z.string().optional(),
+        tournament: z.string().optional(),
+        lastCheckedAt: z.string().optional(),
+      }),
+    )
     .optional(),
+  latestParticipationDate: z.string().optional(),
+  latestParticipationTournament: z.string().optional(),
+  latestParticipationCheckedAt: z.string().optional(),
   divisionObservations: z
     .array(
       z.object({
@@ -128,6 +138,10 @@ export class DevLivePlayerRepository implements PlayerRepository {
         const awardResults = row.awardResults?.map((award) => ({
           rank: award.rank,
           ...(award.date ? { date: award.date } : {}),
+          ...(award.tournament ? { tournament: award.tournament } : {}),
+          ...(award.lastCheckedAt
+            ? { lastCheckedAt: award.lastCheckedAt }
+            : {}),
         }));
         return {
           id: row.id,
@@ -143,6 +157,21 @@ export class DevLivePlayerRepository implements PlayerRepository {
             : {}),
           resultCount: row.resultCount,
           ...(awardResults ? { awardResults } : {}),
+          ...(row.latestParticipationDate
+            ? { latestParticipationDate: row.latestParticipationDate }
+            : {}),
+          ...(row.latestParticipationTournament
+            ? {
+                latestParticipationTournament:
+                  row.latestParticipationTournament,
+              }
+            : {}),
+          ...(row.latestParticipationCheckedAt
+            ? {
+                latestParticipationCheckedAt:
+                  row.latestParticipationCheckedAt,
+              }
+            : {}),
           ...(row.divisionObservations
             ? { divisionObservations: row.divisionObservations }
             : {}),

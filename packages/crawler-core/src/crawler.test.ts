@@ -41,6 +41,14 @@ describe('crawler state', () => {
 
     const detail = recordsToPlayerDetails(records, 'mock', '가상 출처')[0];
     expect(detail?.resultCount).toBe(1);
+    expect(detail?.awardResults).toEqual([
+      {
+        rank: '본선 4강',
+        date: '2026-08-01',
+        tournament: '4강 대회',
+        lastCheckedAt: '2026-08-12T00:00:00.000Z',
+      },
+    ]);
     expect(detail?.sources[0]).toMatchObject({ resultCount: 1, latestRank: '본선 4강' });
     expect(detail?.records).toHaveLength(2);
   });
