@@ -59,7 +59,7 @@ pnpm test:e2e
 
 ## Supabase 설정
 
-익명 문의·제보는 `submit-feedback` Edge Function이 현재 URL과 실제 요청의 `User-Agent`를 서버에서 확인해 GitHub Issue로 등록합니다. production environment의 `GITHUB_ISSUES_TOKEN`에는 대상 저장소 Issues 읽기·쓰기만 허용한 fine-grained token을, `GITHUB_ISSUES_REPOSITORY`에는 `iamdenny/pingpong-busu`, `FEEDBACK_ALLOWED_ORIGINS`에는 `https://busu.iamdenny.com`을 설정합니다. 토큰은 브라우저에 전달하지 않습니다.
+익명 문의·제보는 `submit-feedback` Edge Function이 현재 URL과 실제 요청의 `User-Agent`를 서버에서 확인해 GitHub Issue로 등록합니다. GitHub production environment의 `FEEDBACK_GITHUB_TOKEN`에는 대상 저장소 Issues 읽기·쓰기만 허용한 fine-grained token을, `GITHUB_ISSUES_REPOSITORY`에는 `iamdenny/pingpong-busu`, `FEEDBACK_ALLOWED_ORIGINS`에는 `https://busu.iamdenny.com`을 설정합니다. 배포 workflow가 이 값을 Supabase Edge 런타임의 `GITHUB_ISSUES_TOKEN`으로 전달하며, 토큰은 브라우저에 노출하지 않습니다.
 
 ```bash
 cp .env.example .env.local
