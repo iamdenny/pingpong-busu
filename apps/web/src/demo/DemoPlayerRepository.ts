@@ -48,7 +48,7 @@ export class DemoPlayerRepository implements PlayerRepository {
         baseUrl: "https://astree.co.kr/",
         adapterMode: "http",
         enabled: true,
-        parserVersion: "astree-4",
+        parserVersion: "astree-5",
       },
       {
         sourceCode: "newttplay",

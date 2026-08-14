@@ -52,7 +52,10 @@ export function publicSourceError(error: unknown): PublicSourceError {
   if (
     message.includes("구조") ||
     message.includes("식별자") ||
-    message.includes("열 개수")
+    message.includes("열 개수") ||
+    message.includes("결과 표 본문") ||
+    message.includes("허용되지 않은 외부 링크") ||
+    message.includes("HTML 응답 크기")
   ) {
     return {
       code: "source_schema_changed",

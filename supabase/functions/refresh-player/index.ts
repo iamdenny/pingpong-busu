@@ -65,7 +65,7 @@ const sourceFlags: Record<LiveSourceCode, string> = {
 
 const parserVersions: Record<LiveSourceCode, string> = {
   airping: "airping-2",
-  astree: "astree-4",
+  astree: "astree-5",
   newttplay: "newttplay-1",
   ttadivision: "ttadivision-1",
   okpingpong: "okpingpong-3",
@@ -253,6 +253,7 @@ async function fetchMemberSearchRecords(
   name: string,
   fetchedAt: string,
 ): Promise<Array<Record<string, unknown>>> {
+  const maxHtmlBytes = 2 * 1024 * 1024;
   const source =
     sourceCode === "astree"
       ? {
@@ -278,10 +279,47 @@ async function fetchMemberSearchRecords(
         accept: "text/html",
         "user-agent": Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU",
       },
-      redirect: "follow",
+      redirect: sourceCode === "newttplay" ? "manual" : "follow",
     });
+    if (
+      sourceCode === "newttplay" &&
+      response.status >= 300 &&
+      response.status < 400
+    ) {
+      throw new SafeSourceError(
+        "source_blocked",
+        "뉴티티플레이가 허용되지 않은 redirect를 반환했습니다.",
+      );
+    }
     assertPublicHtmlResponse(response, source.displayName);
-    const html = await response.text();
+    const contentLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(contentLength) && contentLength > maxHtmlBytes) {
+      await response.body?.cancel();
+      throw new SafeSourceError(
+        "source_schema_changed",
+        `${source.displayName} HTML 응답 크기가 제한을 초과했습니다.`,
+      );
+    }
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let totalBytes = 0;
+    let html = "";
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > maxHtmlBytes) {
+          await reader.cancel();
+          throw new SafeSourceError(
+            "source_schema_changed",
+            `${source.displayName} HTML 응답 크기가 제한을 초과했습니다.`,
+          );
+        }
+        html += decoder.decode(value, { stream: true });
+      }
+      html += decoder.decode();
+    }
     const parsed = source.parse(html, name, fetchedAt) as Array<
       Record<string, unknown>
     >;

@@ -74,4 +74,18 @@ describe("NewTTPlay parser", () => {
       parseNewttplaySearchHtml(html, "김탁구", "2026-08-14T00:00:00.000Z"),
     ).toThrow(SourceSchemaChangedError);
   });
+
+  it("ignores malformed event data on a non-exact-name row", () => {
+    const html = fixture("search-result.html").replace(
+      /(<td>동명이인<\/td>[\s\S]*?<td>)[\s\S]*?(<\/td>\s*<\/tr>)/u,
+      "$1$2",
+    );
+    expect(
+      parseNewttplaySearchHtml(
+        html,
+        "김탁구",
+        "2026-08-14T00:00:00.000Z",
+      ),
+    ).toHaveLength(4);
+  });
 });

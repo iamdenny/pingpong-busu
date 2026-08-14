@@ -9,6 +9,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const budgetMigration = readFileSync(
+  resolve(
+    import.meta.dirname,
+    "../supabase/migrations/202608140003_newttplay_global_request_budget.sql",
+  ),
+  "utf8",
+);
 
 describe("NewTTPlay source migration", () => {
   it("registers the source as a disabled HTTP adapter", () => {
@@ -20,5 +27,10 @@ describe("NewTTPlay source migration", () => {
   it("does not enable an existing catalog row on conflict", () => {
     const updateClause = migration.slice(migration.indexOf("on conflict"));
     expect(updateClause).not.toMatch(/enabled\s*=/u);
+  });
+
+  it("adds NewTTPlay to the source-wide request budget", () => {
+    expect(budgetMigration).toContain("array['iping', 'newttplay']");
+    expect(budgetMigration).toContain("v_source_budget_limit integer := 6");
   });
 });

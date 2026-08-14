@@ -14,6 +14,36 @@ import {
 import { parseNewttplaySearchHtml } from "./parser";
 
 const SEARCH_URL = "https://www.newttplay.co.kr/bbs/board.php";
+const MAX_HTML_BYTES = 2 * 1024 * 1024;
+
+async function readBoundedHtml(response: Response): Promise<string> {
+  const contentLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_HTML_BYTES) {
+    await response.body?.cancel();
+    throw new SourceSchemaChangedError(
+      "뉴티티플레이 HTML 응답 크기가 제한을 초과했습니다.",
+    );
+  }
+  if (!response.body) return "";
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let totalBytes = 0;
+  let html = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_HTML_BYTES) {
+      await reader.cancel();
+      throw new SourceSchemaChangedError(
+        "뉴티티플레이 HTML 응답 크기가 제한을 초과했습니다.",
+      );
+    }
+    html += decoder.decode(value, { stream: true });
+  }
+  return html + decoder.decode();
+}
 
 export class NewttplaySourceAdapter implements SourceAdapter {
   readonly sourceCode = "newttplay";
@@ -59,12 +89,17 @@ export class NewttplaySourceAdapter implements SourceAdapter {
             accept: "text/html",
             "user-agent": context.userAgent ?? "BUSU",
           },
-          redirect: "follow",
+          redirect: "manual",
         });
       } catch (error) {
         if (signal.aborted) throw new SourceTimeoutError();
         throw new SourceParseError(
           error instanceof Error ? error.message : "뉴티티플레이 요청 실패",
+        );
+      }
+      if (response.status >= 300 && response.status < 400) {
+        throw new SourceBlockedError(
+          "뉴티티플레이가 허용되지 않은 redirect를 반환했습니다.",
         );
       }
       if (response.status === 403) throw new SourceBlockedError();
@@ -76,7 +111,7 @@ export class NewttplaySourceAdapter implements SourceAdapter {
       if (!contentType.toLocaleLowerCase().includes("text/html")) {
         throw new SourceSchemaChangedError("HTML이 아닌 응답을 받았습니다.");
       }
-      const html = await response.text();
+      const html = await readBoundedHtml(response);
       pageContentHashes.push(stableHash(html));
       const parsed = parseNewttplaySearchHtml(html, input.name, fetchedAt);
       records.push(...parsed);

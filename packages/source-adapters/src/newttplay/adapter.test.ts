@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  SourceBlockedError,
   SourceDisabledError,
   SourceRateLimitedError,
   SourceSchemaChangedError,
@@ -69,9 +70,43 @@ describe("NewTTPlay adapter", () => {
     expect(firstUrl.searchParams.get("stx")).toBe("김탁구");
     expect(firstUrl.searchParams.get("page")).toBe("1");
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
-      redirect: "follow",
+      redirect: "manual",
       headers: { accept: "text/html", "user-agent": "BUSU/test" },
     });
+    const secondUrl = fetchMock.mock.calls[1]?.[0];
+    expect(secondUrl).toBeInstanceOf(URL);
+    if (!(secondUrl instanceof URL)) throw new Error("expected URL request");
+    expect(secondUrl.searchParams.get("page")).toBe("2");
+  });
+
+  it("blocks redirects and oversized HTML responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response("", {
+          status: 302,
+          headers: { location: "https://example.invalid/redirect" },
+        }),
+      ),
+    );
+    await expect(
+      new NewttplaySourceAdapter(true).search(input, context),
+    ).rejects.toBeInstanceOf(SourceBlockedError);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response("<html></html>", {
+          headers: {
+            "content-type": "text/html",
+            "content-length": String(2 * 1024 * 1024 + 1),
+          },
+        }),
+      ),
+    );
+    await expect(
+      new NewttplaySourceAdapter(true).search(input, context),
+    ).rejects.toBeInstanceOf(SourceSchemaChangedError);
   });
 
   it("maps rate limits and rejects non-HTML responses", async () => {

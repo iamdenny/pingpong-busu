@@ -31,6 +31,16 @@ describe("publicSourceError", () => {
     expect(publicSourceError(error).code).toBe(code);
   });
 
+  it.each([
+    "뉴티티플레이 결과 표 본문을 찾지 못했습니다.",
+    "뉴티티플레이 결과에 허용되지 않은 외부 링크가 있습니다.",
+    "뉴티티플레이 HTML 응답 크기가 제한을 초과했습니다.",
+  ])("maps member-search schema failures: %s", (message) => {
+    expect(publicSourceError(new Error(message)).code).toBe(
+      "source_schema_changed",
+    );
+  });
+
   it("parses Retry-After seconds and dates within the retry cap", () => {
     const now = Date.parse("2026-08-13T00:00:00.000Z");
     expect(retryAfterMilliseconds("3", now)).toBe(3_000);

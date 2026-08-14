@@ -135,14 +135,21 @@ export function parseMemberSearchHtml(
   const rows = [...tbody.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/giu)];
   if (rows.length === 0) return [];
 
-  const parsedRows: MemberSearchParsedRow[] = rows.map((row) => {
+  const normalizedExpectedName = normalizePlayerName(expectedName);
+  const parsedRows: MemberSearchParsedRow[] = rows.flatMap((row) => {
     const cells = extractTableCells(row[1] ?? "");
-    if (cells.length < 6) {
+    if (cells.length < 2) {
       throw new SourceSchemaChangedError(
         `${options.sourceName} 결과 열 개수가 변경되었습니다.`,
       );
     }
     const playerName = stripHtml(cells[1] ?? "");
+    if (normalizePlayerName(playerName) !== normalizedExpectedName) return [];
+    if (cells.length < 6) {
+      throw new SourceSchemaChangedError(
+        `${options.sourceName} 결과 열 개수가 변경되었습니다.`,
+      );
+    }
     const clubText = stripHtml(cells[2] ?? "");
     const tournamentName = stripHtml(cells[3] ?? "").replace(
       /\s*\(완\)\s*$/u,
@@ -151,19 +158,18 @@ export function parseMemberSearchHtml(
     const rawDate = stripHtml(cells[4] ?? "");
     const tournamentDate = /\d{4}-\d{2}-\d{2}/u.exec(rawDate)?.[0];
     const events = parseEvents(cells[5] ?? "", playerName, options);
-    return memberSearchParsedRowSchema.parse({
-      playerName,
-      clubText,
-      tournamentName,
-      ...(tournamentDate ? { tournamentDate } : {}),
-      events,
-    });
+    return [
+      memberSearchParsedRowSchema.parse({
+        playerName,
+        clubText,
+        tournamentName,
+        ...(tournamentDate ? { tournamentDate } : {}),
+        events,
+      }),
+    ];
   });
 
-  const normalizedExpectedName = normalizePlayerName(expectedName);
   return parsedRows.flatMap((row) => {
-    if (normalizePlayerName(row.playerName) !== normalizedExpectedName)
-      return [];
     const sourceIdentityKey = stableHash({
       sourceCode: options.sourceCode,
       normalizedName: normalizedExpectedName,
