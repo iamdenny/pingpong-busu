@@ -8,6 +8,11 @@ import {
   DemoFeedbackRepository,
   type FeedbackRepository,
 } from "./feedback-repository";
+import {
+  createSupabaseRuntimeIncidentRepository,
+  DisabledRuntimeIncidentRepository,
+  type RuntimeIncidentRepository,
+} from "./runtime-incident-repository";
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const publishableKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
@@ -32,3 +37,8 @@ export const feedbackRepository: FeedbackRepository =
   url && publishableKey && !isDemoMode && !isDevLiveMode
     ? createSupabaseFeedbackRepository(url, publishableKey)
     : new DemoFeedbackRepository();
+
+export const runtimeIncidentRepository: RuntimeIncidentRepository =
+  url && publishableKey && !isDemoMode && !isDevLiveMode
+    ? createSupabaseRuntimeIncidentRepository(url, publishableKey)
+    : new DisabledRuntimeIncidentRepository();

@@ -123,6 +123,15 @@ describe("refresh-player live source contract", () => {
     expect(refreshPlayer).not.toContain("p_raw_error:");
     expect(refreshPlayer).toContain("error: outcomeError");
     expect(refreshPlayer).toContain("출처 보호 상태를 기록하지 못했습니다.");
+    expect(refreshPlayer).toMatch(
+      /try \{[\s\S]+?record_source_refresh_failure[\s\S]+?\} catch \{/u,
+    );
+    expect(refreshPlayer).toContain("reportOperationalIncident");
+    expect(refreshPlayer).toContain('safe.code === "source_schema_changed"');
+    expect(refreshPlayer).toContain('safe.code === "source_auth_failed"');
+    expect(refreshPlayer).toContain("scheduleBackground(");
+    expect(refreshPlayer).toContain("edgeRuntime.waitUntil");
+    expect(refreshPlayer).not.toMatch(/await reportOperationalIncident\(/u);
   });
 });
 

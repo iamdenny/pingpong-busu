@@ -93,6 +93,7 @@ jobs:
           CRAWLER_SOURCE_IPING_ENABLED="false"
           CRAWLER_USER_AGENT="BUSU/${{ steps.version.outputs.version }}-development"
           CRAWLER_SOURCE_MIN_INTERVAL_MS="5000"
+          RUNTIME_INCIDENT_ALLOWED_ORIGINS="http://localhost:5173"
       - name: Deploy development Edge Functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

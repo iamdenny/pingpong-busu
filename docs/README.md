@@ -8,7 +8,7 @@
 2. [아키텍처](architecture.md) — 웹·domain·adapter·Supabase 경계
 3. [데이터 모델](data-model.md)과 [부수 체계 전환 기준](division-transition-rules.md) — identity, result, 시간축, 지역별 역사 규칙
 4. [수집 정책](crawling-policy.md)과 [출처 메모](source-notes.md) — 실출처 활성화 조건
-5. [운영](operations.md) — GitHub Pages와 Supabase 배포
+5. [운영](operations.md) — GitHub Pages, Supabase 배포와 개인정보 없는 운영 오류 자동 Issue
 
 ## 개발 문서
 

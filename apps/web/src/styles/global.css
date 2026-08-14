@@ -2606,3 +2606,22 @@ p {
 ::view-transition-new(root) {
   animation: 180ms ease-out both busu-view-in;
 }
+
+.app-error {
+  display: grid;
+  place-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  text-align: center;
+}
+.app-error h1 {
+  margin-block: 0.5rem;
+}
+.app-error p:not(.eyebrow) {
+  max-width: 32rem;
+  color: var(--muted);
+}
+.app-error button {
+  justify-self: center;
+  margin-block-start: 1rem;
+}

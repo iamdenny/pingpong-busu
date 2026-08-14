@@ -26,6 +26,11 @@ flowchart LR
   W --> F["submit-feedback Edge Function"]
   F --> O["private feedback outbox"]
   F --> G["GitHub Issues API"]
+  W --> I["report-runtime-incident Edge Function"]
+  I --> Q["private incident aggregate/outbox"]
+  I --> G
+  E --> Q
+  E --> G
   E --> A["출처별 HTTP adapter"]
   A --> X["공개·인증형 탁구 사이트"]
   E --> P["upsert RPC / PostgreSQL"]
@@ -80,6 +85,10 @@ Supabase Edge의 에어핑퐁 요청은 5초 제한의 단일 서버 시도만 �
 - PAT, DB password, service role key는 프런트 build 환경에 전달하지 않는다.
 - `submit-feedback`은 요청 Origin을 서버 허용 목록과 대조하고 현재 URL이 같은 Origin인지 확인한다. GitHub token은 Edge Secret에만 두고 실제 HTTP `User-Agent`를 포함한 Issue 제목·본문을 서버가 생성한다.
 - feedback outbox는 submission UUID와 payload hash로 멱등성을 보장한다. 게시 완료 즉시 내용·URL·User-Agent·언어·viewport를 지우며, 결과가 모호하면 marker 조회 전에는 같은 Issue를 다시 만들지 않는다.
+- 브라우저 자동 보고는 `render_error`, `uncaught_error`, `unhandled_rejection`만 받는다. 앱 버전과 query/hash가 없는 route만 전달하고 메시지·stack·사용자 입력·브라우저 식별자는 받지 않는다. Edge는 publishable key와 `RUNTIME_INCIDENT_ALLOWED_ORIGINS`를 모두 확인한다.
+- 출처 자동 보고는 `source_schema_changed`, `source_auth_failed`만 대상으로 하며 refresh의 안전한 출처 코드와 parser version만 사용한다. timeout, rate limit, offline, 취소와 일반 요청 실패는 자동 Issue 대상이 아니다.
+- `operational_incidents`와 관련 event·publication budget은 RLS가 켜진 service-role 전용 저장소다. 동일 allow-list metadata의 SHA-256 fingerprint를 원자적으로 집계하고 3회부터 전달 lease를 한 호출자에게만 준다. GitHub 응답이 모호하면 본문의 정확한 fingerprint marker를 검색해 기존 Issue를 조정하며 자동으로 닫지는 않는다.
+- 브라우저 보고, 출처 장애 상태 기록, 집계 또는 GitHub 게시 실패는 모두 best-effort다. React fallback과 원래 출처별 안전 오류 응답을 다른 telemetry 오류로 바꾸지 않는다.
 
 ## 정규화와 revision
 

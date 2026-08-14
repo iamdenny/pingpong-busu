@@ -38,6 +38,7 @@ jobs:
       IPING_PASSWORD: ${{ secrets.IPING_PASSWORD }}
       GITHUB_ISSUES_REPOSITORY: ${{ vars.GITHUB_ISSUES_REPOSITORY || 'iamdenny/pingpong-busu' }}
       FEEDBACK_ALLOWED_ORIGINS: ${{ vars.FEEDBACK_ALLOWED_ORIGINS || 'https://busu.iamdenny.com' }}
+      RUNTIME_INCIDENT_ALLOWED_ORIGINS: ${{ vars.RUNTIME_INCIDENT_ALLOWED_ORIGINS || 'https://busu.iamdenny.com' }}
       CRAWLER_SOURCE_MIN_INTERVAL_MS: ${{ vars.CRAWLER_SOURCE_MIN_INTERVAL_MS || '2000' }}
     steps:
       - uses: actions/checkout@v4
@@ -91,6 +92,7 @@ jobs:
           CRAWLER_SOURCE_MIN_INTERVAL_MS="$CRAWLER_SOURCE_MIN_INTERVAL_MS"
           GITHUB_ISSUES_REPOSITORY="$GITHUB_ISSUES_REPOSITORY"
           FEEDBACK_ALLOWED_ORIGINS="$FEEDBACK_ALLOWED_ORIGINS"
+          RUNTIME_INCIDENT_ALLOWED_ORIGINS="$RUNTIME_INCIDENT_ALLOWED_ORIGINS"
       - name: Configure GitHub Issues token
         env:
           FEEDBACK_GITHUB_TOKEN: ${{ secrets.FEEDBACK_GITHUB_TOKEN }}

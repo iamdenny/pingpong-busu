@@ -71,6 +71,7 @@ docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sq
 | Supabase view/RPC     | 새 migration + 공개 view 응답 확인                                                                                       |
 | Edge Function         | auth test + local/remote 호출 결과                                                                                       |
 | 익명 문의·제보        | dialog 접근성·브라우저 문맥 payload + origin/auth/개인정보 거부 + rate limit·멱등 전달 migration contract                |
+| 운영 오류 자동 보고   | category/필드/origin/auth 거부 + event 멱등 집계 + 3회 threshold + lease·marker 조정 + 비차단 fallback                   |
 | 출처 활성화           | 정책 문서 + synthetic fixture + opt-in live test                                                                         |
 | 출처 요청 복원력      | 일시적 HTTP/timeout만 재시도 + 호출자 취소 유지 + 출처별 timeout 확인                                                    |
 | 아이핑 인증           | guest/authenticated/challenge/unknown fixture + hidden session POST 전달 + 쿠키 비저장 + 로그인 POST 단일 시도           |

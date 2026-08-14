@@ -12,3 +12,4 @@ test-results/
 graphify-out/
 supabase/.temp/
 supabase/.branches/
+.aio/fsd/

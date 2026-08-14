@@ -21,6 +21,7 @@ import {
 import { hasValidPublishableApiKey } from "../_shared/auth.ts";
 import { corsHeaders, json } from "../_shared/http.ts";
 import { isRecord, normalizeName } from "../_shared/normalize.ts";
+import { reportOperationalIncident } from "../_shared/operational-incidents.ts";
 import {
   SafeSourceError,
   publicSourceError,
@@ -43,6 +44,16 @@ const sourceCodes = [
 ] as const;
 type SourceCode = (typeof sourceCodes)[number];
 type LiveSourceCode = Exclude<SourceCode, "mock" | "band">;
+type EdgeRuntimeGlobal = typeof globalThis & {
+  EdgeRuntime?: { waitUntil(task: Promise<unknown>): void };
+};
+
+function scheduleBackground(task: Promise<unknown>): void {
+  const safeTask = task.catch(() => undefined);
+  const edgeRuntime = (globalThis as EdgeRuntimeGlobal).EdgeRuntime;
+  if (edgeRuntime) edgeRuntime.waitUntil(safeTask);
+  else void safeTask;
+}
 interface RefreshInput {
   name: string;
   club?: string;
@@ -989,10 +1000,14 @@ Deno.serve(async (request) => {
                 retryAfterMs: airpingRetryAfterMs,
               }
             : mapped;
-        await client.rpc("record_source_refresh_failure", {
-          p_source_code: sourceCode,
-          p_error_code: safe.code,
-        });
+        try {
+          await client.rpc("record_source_refresh_failure", {
+            p_source_code: sourceCode,
+            p_error_code: safe.code,
+          });
+        } catch {
+          // Diagnostics must never replace the original safe source response.
+        }
         const { error: outcomeError } = await client.rpc(
           "record_source_request_outcome",
           {
@@ -1010,6 +1025,35 @@ Deno.serve(async (request) => {
             message: "출처 보호 상태를 기록하지 못했습니다.",
           });
           continue;
+        }
+        if (
+          safe.code === "source_schema_changed" ||
+          safe.code === "source_auth_failed"
+        ) {
+          const parserVersion = parserVersions[liveSourceCode];
+          scheduleBackground(
+            reportOperationalIncident(
+              {
+                eventId: crypto.randomUUID(),
+                category: safe.code,
+                appVersion: "unknown",
+                sourceCode,
+                parserVersion,
+              },
+              {
+                rpc: async (name, parameters) => {
+                  const { data, error } = await client.rpc(name, parameters);
+                  return {
+                    data,
+                    ...(error ? { error: { message: error.message } } : {}),
+                  };
+                },
+                fetch,
+                githubRepository: Deno.env.get("GITHUB_ISSUES_REPOSITORY"),
+                githubToken: Deno.env.get("GITHUB_ISSUES_TOKEN"),
+              },
+            ),
+          );
         }
         results.push({
           sourceCode,
