@@ -7,7 +7,8 @@ import {
   within,
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { playerRepository } from "../lib/runtime";
 import {
   SourceRefreshRateLimitError,
   SourceRefreshTimeoutError,
@@ -32,6 +33,8 @@ function renderSearch(query: string) {
 }
 
 describe("SearchResultsPage", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it("resets the manual retry budget after a source succeeds", () => {
     const key = sourceRetryKey("임\n대현", "airping");
     const exhausted = { [key]: { attempts: 3, lastAttemptAt: 10_000 } };
@@ -232,6 +235,80 @@ describe("SearchResultsPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/같은 이름의 선수가 여러 명/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("separates current division summaries and filters by a verified nickname", async () => {
+    const [assigned, unassigned] = await playerRepository.searchPlayers({
+      query: "김탁구",
+    });
+    if (!assigned || !unassigned)
+      throw new Error("동명이인 데모 데이터가 필요합니다.");
+
+    vi.spyOn(playerRepository, "searchPlayers").mockResolvedValue([
+      {
+        ...assigned,
+        identityStatus: "verified",
+        homonymNickname: "데니",
+        divisionObservations: [
+          {
+            system: "integrated",
+            division: "6부",
+            awardCount: 1,
+            participationCount: 0,
+          },
+        ],
+      },
+      {
+        ...unassigned,
+        identityStatus: "unreviewed",
+        divisionObservations: [
+          {
+            system: "integrated",
+            division: "6부",
+            awardCount: 0,
+            participationCount: 1,
+          },
+        ],
+      },
+    ]);
+
+    renderSearch("김탁구");
+
+    const summary = await screen.findByRole("region", {
+      name: "현재 추정 부수",
+    });
+    expect(
+      within(summary).getByRole("heading", { name: "데니" }),
+    ).toBeInTheDocument();
+    expect(
+      within(summary).getByRole("heading", { name: "미분류 기록" }),
+    ).toBeInTheDocument();
+    const assignedDivision = within(summary).getByRole("button", {
+      name: "데니, 통합부수 6부 입상 1건 참가 0건 결과 보기",
+    });
+    expect(
+      within(summary).getByRole("button", {
+        name: "미분류 기록, 통합부수 6부 입상 0건 참가 1건 결과 보기",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(assignedDivision);
+
+    expect(assignedDivision).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("데니 · 통합부수 6부")).toBeInTheDocument();
+    const filteredList = screen.getByRole("tabpanel", {
+      name: "데니 통합부수 6부 입상 선수 검색 결과 목록",
+    });
+    expect(
+      within(filteredList).getByRole("link", {
+        name: "김탁구 데니 서울 스핀탁구클럽 상세 기록 보기",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(filteredList).queryByRole("link", {
+        name: "김탁구 루프 드라이브 최강자 부산 블루라켓 상세 기록 보기",
+      }),
     ).not.toBeInTheDocument();
   });
 });
