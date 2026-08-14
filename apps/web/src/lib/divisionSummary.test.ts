@@ -240,13 +240,13 @@ describe("summarizeObservedDivisions", () => {
       })),
     ).toEqual([
       {
-        key: "nickname:데니",
+        key: 'nickname:["임대현","데니"]',
         label: "데니",
         isAssigned: true,
         playerIds: ["denny-open", "denny-integrated"],
       },
       {
-        key: "nickname:치키타 장인",
+        key: 'nickname:["임대현","치키타 장인"]',
         label: "치키타 장인",
         isAssigned: true,
         playerIds: ["chiquita"],
@@ -290,6 +290,24 @@ describe("summarizeObservedDivisions", () => {
     expect(sections[0]?.players.map(({ id }) => id)).toEqual(["one", "two"]);
   });
 
+  it("keeps the fallback summary across names when no nickname is verified", () => {
+    const sections = summarizeObservedDivisionsByIdentity([
+      player("lim", "6부", "open"),
+      player("kim", "5부", "integrated", undefined, {
+        name: "김대현",
+        normalizedName: "김대현",
+      }),
+    ]);
+
+    expect(sections).toHaveLength(1);
+    expect(sections[0]).toMatchObject({
+      key: "all",
+      label: "전체 기록",
+      isAssigned: false,
+    });
+    expect(sections[0]?.players.map(({ id }) => id)).toEqual(["lim", "kim"]);
+  });
+
   it("keeps a single verified player in the existing ungrouped summary", () => {
     const sections = summarizeObservedDivisionsByIdentity([
       player("only", "6부", "integrated", undefined, {
@@ -305,5 +323,43 @@ describe("summarizeObservedDivisions", () => {
       isAssigned: false,
     });
     expect(sections[0]?.players.map(({ id }) => id)).toEqual(["only"]);
+  });
+
+  it("never combines the same nickname across different player names", () => {
+    const sections = summarizeObservedDivisionsByIdentity([
+      player("lim-denny", "6부", "integrated", undefined, {
+        identityStatus: "verified",
+        homonymNickname: "데니",
+      }),
+      player("kim-denny", "4부", "open", undefined, {
+        name: "김대현",
+        normalizedName: "김대현",
+        identityStatus: "verified",
+        homonymNickname: "데니",
+      }),
+      player("lim-unassigned", "5부", "regional"),
+      player("kim-unassigned", "T4", "division", undefined, {
+        name: "김대현",
+        normalizedName: "김대현",
+      }),
+    ]);
+
+    expect(
+      sections.map(({ label, players }) => ({
+        label,
+        playerIds: players.map(({ id }) => id),
+      })),
+    ).toEqual([
+      { label: "김대현 · 데니", playerIds: ["kim-denny"] },
+      { label: "임대현 · 데니", playerIds: ["lim-denny"] },
+      {
+        label: "임대현 · 미분류 기록",
+        playerIds: ["lim-unassigned"],
+      },
+      {
+        label: "김대현 · 미분류 기록",
+        playerIds: ["kim-unassigned"],
+      },
+    ]);
   });
 });

@@ -33,6 +33,14 @@ export interface IdentityDivisionSummarySection {
 export const allIdentityDivisionSummaryKey = "all";
 export const unassignedIdentityDivisionSummaryKey = "unassigned";
 
+function normalizedIdentityName(player: PlayerSummary): string {
+  return player.normalizedName.normalize("NFKC");
+}
+
+function assignedIdentityKey(name: string, nickname: string): string {
+  return `nickname:${JSON.stringify([name, nickname])}`;
+}
+
 const systemOrder: DivisionSystem[] = [
   "open",
   "integrated",
@@ -128,25 +136,38 @@ export function summarizeObservedDivisionsByIdentity(
 
   if (players.length < 2) return [allRecordsSection()];
 
+  const identityNames = new Map<string, string>();
+  for (const player of players) {
+    const normalizedName = normalizedIdentityName(player);
+    if (!identityNames.has(normalizedName)) {
+      identityNames.set(normalizedName, player.name);
+    }
+  }
+  const hasMultipleIdentityNames = identityNames.size > 1;
+
   const assigned = new Map<
     string,
     Pick<IdentityDivisionSummarySection, "key" | "label" | "isAssigned"> & {
       players: PlayerSummary[];
     }
   >();
-  const unassigned: PlayerSummary[] = [];
+  const unassigned = new Map<string, PlayerSummary[]>();
 
   for (const player of players) {
+    const identityName = normalizedIdentityName(player);
     const nickname =
       player.identityStatus === "verified"
         ? homonymNicknameLabel(player.homonymNickname)?.trim()
         : undefined;
     if (!nickname) {
-      unassigned.push(player);
+      const current = unassigned.get(identityName) ?? [];
+      current.push(player);
+      unassigned.set(identityName, current);
       continue;
     }
 
-    const key = `nickname:${nickname.normalize("NFKC")}`;
+    const normalizedNickname = nickname.normalize("NFKC");
+    const key = assignedIdentityKey(identityName, normalizedNickname);
     const current = assigned.get(key);
     if (current) {
       current.players.push(player);
@@ -154,7 +175,9 @@ export function summarizeObservedDivisionsByIdentity(
     }
     assigned.set(key, {
       key,
-      label: nickname,
+      label: hasMultipleIdentityNames
+        ? `${identityNames.get(identityName) ?? player.name} · ${nickname}`
+        : nickname,
       isAssigned: true,
       players: [player],
     });
@@ -175,13 +198,17 @@ export function summarizeObservedDivisionsByIdentity(
       };
     });
 
-  if (unassigned.length > 0) {
-    const summaries = summarizeObservedDivisions(unassigned);
+  for (const [identityName, unassignedPlayers] of unassigned) {
+    const summaries = summarizeObservedDivisions(unassignedPlayers);
     sections.push({
-      key: unassignedIdentityDivisionSummaryKey,
-      label: "미분류 기록",
+      key: hasMultipleIdentityNames
+        ? `${unassignedIdentityDivisionSummaryKey}:${JSON.stringify(identityName)}`
+        : unassignedIdentityDivisionSummaryKey,
+      label: hasMultipleIdentityNames
+        ? `${identityNames.get(identityName) ?? identityName} · 미분류 기록`
+        : "미분류 기록",
       isAssigned: false,
-      players: unassigned,
+      players: unassignedPlayers,
       summaries,
       groups: groupDivisionSummaries(summaries),
     });

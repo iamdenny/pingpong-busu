@@ -447,9 +447,9 @@ export function SearchResultsPage() {
   const divisionSummarySections = summarizeObservedDivisionsByIdentity(
     result.data ?? [],
   );
-  const showsIdentityDivisionSections = divisionSummarySections.some(
-    (section) => section.isAssigned,
-  );
+  const showsIdentityDivisionSections =
+    divisionSummarySections.length > 1 ||
+    divisionSummarySections.some((section) => section.isAssigned);
   const selectedDivisionSection =
     divisionSelection?.query === query
       ? divisionSummarySections.find(
