@@ -114,6 +114,8 @@ describe("SearchResultsPage", () => {
     expect(
       within(awardSummary!).getByText("서울 가상 생활체육대회"),
     ).toBeInTheDocument();
+    expect(within(awardSummary!).getByText("남자 단식")).toBeInTheDocument();
+    expect(within(awardSummary!).getByText("개인 단식")).toBeInTheDocument();
     const awardDates = awardSummary!.querySelectorAll("time");
     expect(awardDates).toHaveLength(2);
     expect(awardDates[0]).toHaveAttribute("datetime", "2026-07-20");
@@ -141,6 +143,9 @@ describe("SearchResultsPage", () => {
     ).toHaveTextContent("최근 확인");
 
     const summary = screen.getByRole("region", { name: "현재 추정 부수" });
+    expect(
+      within(summary).getByText("최근 개인전 기록 기준"),
+    ).toBeInTheDocument();
     expect(
       within(summary).getByRole("rowheader", { name: "오픈부수" }),
     ).toBeInTheDocument();
@@ -223,6 +228,7 @@ describe("SearchResultsPage", () => {
     });
     expect(list).toHaveAttribute("data-transition-direction", "forward");
     expect(within(list).getByText("부산 가상 구대회")).toBeInTheDocument();
+    expect(within(list).getByText("단식")).toBeInTheDocument();
     expect(within(list).getByText("2025. 9. 14.")).toBeInTheDocument();
 
     fireEvent.click(within(tabs).getByRole("tab", { name: "입상 1건" }));

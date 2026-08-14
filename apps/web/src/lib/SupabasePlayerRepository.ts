@@ -2,9 +2,10 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
   divisionSystemSchema,
+  findRecentObservedDivisionRecord,
   isAwardRank,
   isHomonymNickname,
-  isPreIntegratedDivisionRecord,
+  isCurrentSummaryRecord,
   normalizePlayerName,
   sortPlayerRecordsByLatest,
   sourceCodeSchema,
@@ -87,12 +88,14 @@ const summarySchema = z.object({
         rank: z.string(),
         date: z.string().nullable(),
         tournament: z.string().nullish(),
+        event: z.string().nullish(),
         last_checked_at: z.string().nullish(),
       }),
     )
     .nullish(),
   latest_participation_date: z.string().nullish(),
   latest_participation_tournament: z.string().nullish(),
+  latest_participation_event: z.string().nullish(),
   latest_participation_checked_at: z.string().nullish(),
   division_observations: z.array(divisionObservationSchema).max(100).nullish(),
   source_count: z.number(),
@@ -166,6 +169,7 @@ function toSummary(row: z.infer<typeof summarySchema>): PlayerSummary {
     rank: award.rank,
     ...(award.date ? { date: award.date } : {}),
     ...(award.tournament ? { tournament: award.tournament } : {}),
+    ...(award.event ? { event: award.event } : {}),
     ...(award.last_checked_at ? { lastCheckedAt: award.last_checked_at } : {}),
   }));
   const divisionObservations = row.division_observations?.map(
@@ -197,6 +201,9 @@ function toSummary(row: z.infer<typeof summarySchema>): PlayerSummary {
       ? {
           latestParticipationTournament: row.latest_participation_tournament,
         }
+      : {}),
+    ...(row.latest_participation_event
+      ? { latestParticipationEvent: row.latest_participation_event }
       : {}),
     ...(row.latest_participation_checked_at
       ? {
@@ -241,6 +248,7 @@ function toPlayerRecord(row: ResultRow): PlayerRecord {
     tournament: row.tournament_name_text,
     scale: row.tournament_scale,
     event: row.event_name,
+    eventType: row.event_type ?? "unknown",
     ...(row.club_text ? { club: row.club_text } : {}),
     ...(row.division_value ? { division: row.division_value } : {}),
     ...(divisionSystem ? { divisionSystem } : {}),
@@ -335,26 +343,16 @@ export class SupabasePlayerRepository implements PlayerRepository {
         );
         const latest = sortedGroup[0];
         if (!latest) throw new Error("source group cannot be empty");
-        const latestCurrentDivisionRow = sortedGroup.find((row) => {
-          const record = toPlayerRecord(row);
-          return (
-            record.division !== undefined &&
-            !isPreIntegratedDivisionRecord(record)
-          );
-        });
-        const latestCurrentDivision = latestCurrentDivisionRow
-          ? toPlayerRecord(latestCurrentDivisionRow)
-          : undefined;
-        const latestSummaryRow = sortedGroup.find(
-          (row) => !isPreIntegratedDivisionRecord(toPlayerRecord(row)),
+        const currentGroupRows = sortedGroup.filter((row) =>
+          isCurrentSummaryRecord(toPlayerRecord(row)),
         );
-        const latestAward = sortedGroup.find((row) => {
-          const record = toPlayerRecord(row);
-          return (
-            isAwardRank(row.rank_text ?? undefined) &&
-            !isPreIntegratedDivisionRecord(record)
-          );
-        })?.rank_text;
+        const currentGroupRecords = currentGroupRows.map(toPlayerRecord);
+        const latestCurrentDivision =
+          findRecentObservedDivisionRecord(currentGroupRecords);
+        const latestSummaryRow = currentGroupRows[0];
+        const latestAward = currentGroupRows.find((row) =>
+          isAwardRank(row.rank_text ?? undefined),
+        )?.rank_text;
         const latestRecordDate = latestSummaryRow
           ? resultRowDate(latestSummaryRow)
           : undefined;
@@ -374,13 +372,9 @@ export class SupabasePlayerRepository implements PlayerRepository {
                   latestCurrentDivision.divisionSystem,
               }
             : {}),
-          resultCount: sortedGroup.filter((row) => {
-            const record = toPlayerRecord(row);
-            return (
-              isAwardRank(row.rank_text ?? undefined) &&
-              !isPreIntegratedDivisionRecord(record)
-            );
-          }).length,
+          resultCount: currentGroupRows.filter((row) =>
+            isAwardRank(row.rank_text ?? undefined),
+          ).length,
           ...(latestAward ? { latestRank: latestAward } : {}),
           lastCheckedAt: latest.last_checked_at,
           status: "fresh",

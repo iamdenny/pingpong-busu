@@ -139,6 +139,7 @@ describe("crawler state", () => {
         rank: "본선 4강",
         date: "2026-08-01",
         tournament: "4강 대회",
+        event: "단식",
         lastCheckedAt: "2026-08-12T00:00:00.000Z",
       },
     ]);
@@ -147,6 +148,55 @@ describe("crawler state", () => {
       latestRank: "본선 4강",
     });
     expect(detail?.records).toHaveLength(2);
+  });
+
+  it("keeps non-individual records in history but excludes them from division estimates", () => {
+    const identity = {
+      sourceCode: "mock" as const,
+      externalPlayerId: "1",
+      playerName: "송승희",
+      normalizedPlayerName: normalizePlayerName("송승희"),
+      observedAt: "2026-08-12T00:00:00.000Z",
+    };
+    const records = [
+      withRecordHashes({
+        ...identity,
+        tournamentName: "혼합복식 대회",
+        tournamentDate: "2026-07-01",
+        eventName: "혼합복식 B그룹(합 15~19부)",
+        eventType: "doubles",
+        divisionSystem: "integrated",
+        divisionValue: "5부",
+        rankText: "본선 8강",
+        sourceUrl: "https://example.invalid/mixed-doubles",
+      }),
+      withRecordHashes({
+        ...identity,
+        tournamentName: "여자 개인단식 대회",
+        tournamentDate: "2026-06-01",
+        eventName: "여자 개인단식 6부",
+        eventType: "singles",
+        divisionSystem: "women",
+        divisionValue: "6부",
+        rankText: "본선 8강",
+        sourceUrl: "https://example.invalid/women-singles",
+      }),
+    ];
+
+    const detail = recordsToPlayerDetails(records, "mock", "가상 출처")[0];
+    expect(detail?.records).toHaveLength(2);
+    expect(detail).toMatchObject({
+      recentObservedDivision: "6부",
+      recentObservedDivisionSystem: "women",
+      divisionObservations: [
+        {
+          system: "women",
+          division: "6부",
+          awardCount: 0,
+          participationCount: 1,
+        },
+      ],
+    });
   });
 
   it("keeps historical regional awards in detail records but omits them from recent summaries", () => {

@@ -167,6 +167,12 @@ function AwardResultSummary({
               {result.tournament}
             </span>
           )}
+          {result.event && (
+            <span className="result-event" title={result.event}>
+              <span aria-hidden="true">종목 · </span>
+              {result.event}
+            </span>
+          )}
         </span>
       ))}
       {remaining > 0 && (
@@ -180,15 +186,23 @@ function AwardResultSummary({
 
 function ParticipationResultSummary({
   tournament,
+  event,
   date,
 }: {
   tournament: string | undefined;
+  event: string | undefined;
   date: string | undefined;
 }) {
-  if (!tournament && !date) return <>대회명 확인 필요</>;
+  if (!tournament && !event && !date) return <>대회·종목 확인 필요</>;
   return (
     <span className="participation-result-summary">
       <strong title={tournament}>{tournament ?? "대회명 확인 필요"}</strong>
+      {event && (
+        <span className="result-event" title={event}>
+          <span aria-hidden="true">종목 · </span>
+          {event}
+        </span>
+      )}
       {date && (
         <time dateTime={date}>
           {awardDateFormatter.format(new Date(`${date}T00:00:00`))}
@@ -616,7 +630,7 @@ export function SearchResultsPage() {
         >
           <div className="division-overview__heading">
             <h2 id="division-overview-title">현재 추정 부수</h2>
-            <p>최근 공개 대회 기록 기준</p>
+            <p>최근 개인전 기록 기준</p>
           </div>
           <div className="division-overview__sections">
             {divisionSummarySections.map((section, sectionIndex) => {
@@ -902,11 +916,12 @@ export function SearchResultsPage() {
                       <dt>
                         {activeResultTab === "awards" ? (
                           <>
-                            <Trophy size={15} /> 입상 성적 · 날짜 · 대회
+                            <Trophy size={15} /> 입상 성적 · 날짜 · 대회 · 종목
                           </>
                         ) : (
                           <>
-                            <CalendarDays size={15} /> 최근 출전 대회 · 날짜
+                            <CalendarDays size={15} /> 최근 출전 대회 · 종목 ·
+                            날짜
                           </>
                         )}
                       </dt>
@@ -919,6 +934,7 @@ export function SearchResultsPage() {
                         ) : (
                           <ParticipationResultSummary
                             tournament={player.latestParticipationTournament}
+                            event={player.latestParticipationEvent}
                             date={player.latestParticipationDate}
                           />
                         )}
