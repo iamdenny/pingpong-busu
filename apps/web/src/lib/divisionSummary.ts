@@ -1,6 +1,7 @@
 import {
   displayDivisionValue,
   divisionSystemLabels,
+  homonymNicknameLabel,
   type DivisionObservationSummary,
   type DivisionSystem,
   type PlayerSummary,
@@ -19,6 +20,18 @@ export interface DivisionSummaryGroup {
   systemLabel: string;
   items: DivisionSummaryItem[];
 }
+
+export interface IdentityDivisionSummarySection {
+  key: string;
+  label: string;
+  isAssigned: boolean;
+  players: PlayerSummary[];
+  summaries: DivisionSummaryItem[];
+  groups: DivisionSummaryGroup[];
+}
+
+export const allIdentityDivisionSummaryKey = "all";
+export const unassignedIdentityDivisionSummaryKey = "unassigned";
 
 const systemOrder: DivisionSystem[] = [
   "open",
@@ -96,6 +109,85 @@ export function summarizeObservedDivisions(
         systemOrder.indexOf(left.system) - systemOrder.indexOf(right.system) ||
         compareDivisions(left.division, right.division),
     );
+}
+
+export function summarizeObservedDivisionsByIdentity(
+  players: readonly PlayerSummary[],
+): IdentityDivisionSummarySection[] {
+  const allRecordsSection = (): IdentityDivisionSummarySection => {
+    const summaries = summarizeObservedDivisions(players);
+    return {
+      key: allIdentityDivisionSummaryKey,
+      label: "전체 기록",
+      isAssigned: false,
+      players: [...players],
+      summaries,
+      groups: groupDivisionSummaries(summaries),
+    };
+  };
+
+  if (players.length < 2) return [allRecordsSection()];
+
+  const assigned = new Map<
+    string,
+    Pick<IdentityDivisionSummarySection, "key" | "label" | "isAssigned"> & {
+      players: PlayerSummary[];
+    }
+  >();
+  const unassigned: PlayerSummary[] = [];
+
+  for (const player of players) {
+    const nickname =
+      player.identityStatus === "verified"
+        ? homonymNicknameLabel(player.homonymNickname)?.trim()
+        : undefined;
+    if (!nickname) {
+      unassigned.push(player);
+      continue;
+    }
+
+    const key = `nickname:${nickname.normalize("NFKC")}`;
+    const current = assigned.get(key);
+    if (current) {
+      current.players.push(player);
+      continue;
+    }
+    assigned.set(key, {
+      key,
+      label: nickname,
+      isAssigned: true,
+      players: [player],
+    });
+  }
+
+  if (assigned.size === 0) {
+    return [allRecordsSection()];
+  }
+
+  const sections = [...assigned.values()]
+    .sort((left, right) => divisionCollator.compare(left.label, right.label))
+    .map((section): IdentityDivisionSummarySection => {
+      const summaries = summarizeObservedDivisions(section.players);
+      return {
+        ...section,
+        summaries,
+        groups: groupDivisionSummaries(summaries),
+      };
+    });
+
+  if (unassigned.length > 0) {
+    const summaries = summarizeObservedDivisions(unassigned);
+    sections.push({
+      key: unassignedIdentityDivisionSummaryKey,
+      label: "미분류 기록",
+      isAssigned: false,
+      players: unassigned,
+      summaries,
+      groups: groupDivisionSummaries(summaries),
+    });
+  }
+
+  return sections;
 }
 
 export function groupDivisionSummaries(

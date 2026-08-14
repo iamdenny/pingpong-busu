@@ -4,6 +4,7 @@ import {
   groupDivisionSummaries,
   matchesObservedDivision,
   summarizeObservedDivisions,
+  summarizeObservedDivisionsByIdentity,
 } from "./divisionSummary";
 
 function player(
@@ -11,6 +12,7 @@ function player(
   recentObservedDivision?: string,
   recentObservedDivisionSystem?: DivisionSystem,
   divisionObservations?: PlayerSummary["divisionObservations"],
+  overrides: Partial<PlayerSummary> = {},
 ): PlayerSummary {
   return {
     id,
@@ -23,6 +25,7 @@ function player(
     sourceCount: 1,
     lastCheckedAt: "2026-08-12T00:00:00.000Z",
     identityStatus: "unreviewed",
+    ...overrides,
   };
 }
 
@@ -206,5 +209,101 @@ describe("summarizeObservedDivisions", () => {
         division: "여자6부",
       }),
     ).toBe(true);
+  });
+
+  it("separates verified nickname summaries from unassigned records", () => {
+    const sections = summarizeObservedDivisionsByIdentity([
+      player("denny-open", "6부", "open", undefined, {
+        identityStatus: "verified",
+        homonymNickname: "데니",
+      }),
+      player("denny-integrated", "6부", "integrated", undefined, {
+        identityStatus: "verified",
+        homonymNickname: "데니",
+      }),
+      player("chiquita", "4부", "women", undefined, {
+        identityStatus: "verified",
+        homonymNickname: "치키타 장인",
+      }),
+      player("unassigned", "5부", "open"),
+      player("unreviewed-nickname", "7부", "open", undefined, {
+        homonymNickname: "아직 검토 전",
+      }),
+    ]);
+
+    expect(
+      sections.map(({ key, label, isAssigned, players }) => ({
+        key,
+        label,
+        isAssigned,
+        playerIds: players.map(({ id }) => id),
+      })),
+    ).toEqual([
+      {
+        key: "nickname:데니",
+        label: "데니",
+        isAssigned: true,
+        playerIds: ["denny-open", "denny-integrated"],
+      },
+      {
+        key: "nickname:치키타 장인",
+        label: "치키타 장인",
+        isAssigned: true,
+        playerIds: ["chiquita"],
+      },
+      {
+        key: "unassigned",
+        label: "미분류 기록",
+        isAssigned: false,
+        playerIds: ["unassigned", "unreviewed-nickname"],
+      },
+    ]);
+    expect(
+      sections[0]?.summaries.map(({ system, division }) => ({
+        system,
+        division,
+      })),
+    ).toEqual([
+      { system: "open", division: "6부" },
+      { system: "integrated", division: "6부" },
+    ]);
+    expect(sections[2]?.summaries.map(({ division }) => division)).toEqual([
+      "5부",
+      "7부",
+    ]);
+  });
+
+  it("keeps the existing single summary when no verified nickname exists", () => {
+    const sections = summarizeObservedDivisionsByIdentity([
+      player("one", "6부", "open"),
+      player("two", "5부", "integrated", undefined, {
+        homonymNickname: "표시만 있는 별칭",
+      }),
+    ]);
+
+    expect(sections).toHaveLength(1);
+    expect(sections[0]).toMatchObject({
+      key: "all",
+      label: "전체 기록",
+      isAssigned: false,
+    });
+    expect(sections[0]?.players.map(({ id }) => id)).toEqual(["one", "two"]);
+  });
+
+  it("keeps a single verified player in the existing ungrouped summary", () => {
+    const sections = summarizeObservedDivisionsByIdentity([
+      player("only", "6부", "integrated", undefined, {
+        identityStatus: "verified",
+        homonymNickname: "데니",
+      }),
+    ]);
+
+    expect(sections).toHaveLength(1);
+    expect(sections[0]).toMatchObject({
+      key: "all",
+      label: "전체 기록",
+      isAssigned: false,
+    });
+    expect(sections[0]?.players.map(({ id }) => id)).toEqual(["only"]);
   });
 });

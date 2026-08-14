@@ -31,9 +31,9 @@ import {
 } from "../components/SourceRefreshProgress";
 import {
   divisionObservationForPlayer,
-  groupDivisionSummaries,
   matchesObservedDivision,
-  summarizeObservedDivisions,
+  summarizeObservedDivisionsByIdentity,
+  type IdentityDivisionSummarySection,
   type DivisionSummaryItem,
 } from "../lib/divisionSummary";
 import {
@@ -103,6 +103,13 @@ export function clearManualRetryAttempts(
 
 type ResultTab = "awards" | "entries";
 type ResultTabDirection = "none" | "forward" | "backward";
+
+interface DivisionSelection {
+  query: string;
+  sectionKey: string;
+  system: DivisionSummaryItem["system"];
+  division: string;
+}
 
 const identityText = {
   unreviewed: "참여 확인 전",
@@ -207,11 +214,8 @@ export function SearchResultsPage() {
   const [resultTab, setResultTab] = useState<ResultTab>("awards");
   const [resultTabDirection, setResultTabDirection] =
     useState<ResultTabDirection>("none");
-  const [divisionSelection, setDivisionSelection] = useState<{
-    query: string;
-    system: DivisionSummaryItem["system"];
-    division: string;
-  } | null>(null);
+  const [divisionSelection, setDivisionSelection] =
+    useState<DivisionSelection | null>(null);
   const candidateListRef = useRef<HTMLElement>(null);
   const [manualRetryAttempts, setManualRetryAttempts] = useState<
     Readonly<Record<string, ManualRetryAttempt>>
@@ -440,21 +444,31 @@ export function SearchResultsPage() {
       refreshViews.some(
         (source) => source.state === "waiting" || source.state === "refreshing",
       ));
-  const divisionSummary = summarizeObservedDivisions(result.data ?? []);
-  const divisionSummaryGroups = groupDivisionSummaries(divisionSummary);
-  const selectedDivision =
+  const divisionSummarySections = summarizeObservedDivisionsByIdentity(
+    result.data ?? [],
+  );
+  const showsIdentityDivisionSections = divisionSummarySections.some(
+    (section) => section.isAssigned,
+  );
+  const selectedDivisionSection =
     divisionSelection?.query === query
-      ? divisionSummary.find(
+      ? divisionSummarySections.find(
+          (section) => section.key === divisionSelection.sectionKey,
+        )
+      : undefined;
+  const selectedDivision =
+    selectedDivisionSection && divisionSelection
+      ? selectedDivisionSection.summaries.find(
           (item) =>
             item.system === divisionSelection.system &&
             item.division === divisionSelection.division,
         )
       : undefined;
   const selectedDivisionKey = selectedDivision
-    ? `${query}\u0000${selectedDivision.system}\u0000${selectedDivision.division}`
+    ? `${query}\u0000${selectedDivisionSection?.key}\u0000${selectedDivision.system}\u0000${selectedDivision.division}`
     : null;
   const divisionCandidates = selectedDivision
-    ? (result.data ?? []).filter((player) =>
+    ? (selectedDivisionSection?.players ?? []).filter((player) =>
         matchesObservedDivision(player, selectedDivision),
       )
     : (result.data ?? []);
@@ -487,7 +501,7 @@ export function SearchResultsPage() {
   const shownCandidates =
     activeResultTab === "awards" ? awardCandidates : entryCandidates;
   const candidateListLabel = selectedDivision
-    ? `${selectedDivision.systemLabel} ${selectedDivision.division} ${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`
+    ? `${showsIdentityDivisionSections && selectedDivisionSection ? `${selectedDivisionSection.label} ` : ""}${selectedDivision.systemLabel} ${selectedDivision.division} ${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`
     : `${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`;
   const searchLabel =
     `${playerSearch.name}${playerSearch.region ? ` ${playerSearch.region}` : ""}`.trim();
@@ -504,10 +518,14 @@ export function SearchResultsPage() {
     candidateListRef.current?.focus({ preventScroll: true });
   }, [selectedDivisionKey]);
 
-  function selectDivision(summary: DivisionSummaryItem) {
+  function selectDivision(
+    section: IdentityDivisionSummarySection,
+    summary: DivisionSummaryItem,
+  ) {
     setResultTabDirection("none");
     setDivisionSelection({
       query,
+      sectionKey: section.key,
       system: summary.system,
       division: summary.division,
     });
@@ -556,61 +574,98 @@ export function SearchResultsPage() {
         </div>
         <strong>{result.data?.length ?? 0}건</strong>
       </div>
-      {divisionSummary.length > 0 && (
+      {divisionSummarySections.some(
+        (section) => section.summaries.length > 0,
+      ) && (
         <section
-          className="division-overview"
+          className={`division-overview${showsIdentityDivisionSections ? " division-overview--grouped" : ""}`}
           aria-labelledby="division-overview-title"
         >
           <div className="division-overview__heading">
             <h2 id="division-overview-title">현재 추정 부수</h2>
             <p>최근 공개 대회 기록 기준</p>
           </div>
-          <div className="division-overview__table-wrap">
-            <table>
-              <caption className="visually-hidden">
-                부수 체계별 최근 관측 부수와 입상 및 참가 기록 수
-              </caption>
-              <colgroup>
-                <col className="division-overview__system-column" />
-                <col />
-              </colgroup>
-              <tbody>
-                {divisionSummaryGroups.map((group) => (
-                  <tr key={group.system}>
-                    <th scope="row">{group.systemLabel}</th>
-                    <td>
-                      <ul className="division-overview__items">
-                        {group.items.map((summary) => (
-                          <li key={`${summary.system}-${summary.division}`}>
-                            <button
-                              type="button"
-                              className="division-overview__filter"
-                              aria-controls="candidate-results"
-                              aria-pressed={
-                                selectedDivision?.system === summary.system &&
-                                selectedDivision.division === summary.division
-                              }
-                              aria-label={`${summary.systemLabel} ${summary.division} 입상 ${summary.awardCount}건 참가 ${summary.participationCount}건 결과 보기`}
-                              onClick={() => selectDivision(summary)}
-                            >
-                              <strong>{summary.division}</strong>
-                              <span className="division-overview__counts">
-                                <span>
-                                  입상 <b>{summary.awardCount}건</b>
-                                </span>
-                                <span>
-                                  참가 <b>{summary.participationCount}건</b>
-                                </span>
-                              </span>
-                            </button>
-                          </li>
+          <div className="division-overview__sections">
+            {divisionSummarySections.map((section, sectionIndex) => {
+              const headingId = `division-overview-section-${sectionIndex}`;
+              return (
+                <div className="division-overview__section" key={section.key}>
+                  {showsIdentityDivisionSections && (
+                    <div className="division-overview__identity-heading">
+                      <h3 id={headingId}>{section.label}</h3>
+                      <span>
+                        {section.isAssigned
+                          ? "별칭으로 연결된 기록"
+                          : "아직 별칭이 없는 기록"}
+                      </span>
+                    </div>
+                  )}
+                  <div className="division-overview__table-wrap">
+                    <table
+                      aria-labelledby={
+                        showsIdentityDivisionSections ? headingId : undefined
+                      }
+                    >
+                      <caption className="visually-hidden">
+                        {showsIdentityDivisionSections
+                          ? `${section.label}의 `
+                          : ""}
+                        부수 체계별 최근 관측 부수와 입상 및 참가 기록 수
+                      </caption>
+                      <colgroup>
+                        <col className="division-overview__system-column" />
+                        <col />
+                      </colgroup>
+                      <tbody>
+                        {section.groups.map((group) => (
+                          <tr key={group.system}>
+                            <th scope="row">{group.systemLabel}</th>
+                            <td>
+                              <ul className="division-overview__items">
+                                {group.items.map((summary) => (
+                                  <li
+                                    key={`${summary.system}-${summary.division}`}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="division-overview__filter"
+                                      aria-controls="candidate-results"
+                                      aria-pressed={
+                                        selectedDivisionSection?.key ===
+                                          section.key &&
+                                        selectedDivision?.system ===
+                                          summary.system &&
+                                        selectedDivision.division ===
+                                          summary.division
+                                      }
+                                      aria-label={`${showsIdentityDivisionSections ? `${section.label}, ` : ""}${summary.systemLabel} ${summary.division} 입상 ${summary.awardCount}건 참가 ${summary.participationCount}건 결과 보기`}
+                                      onClick={() =>
+                                        selectDivision(section, summary)
+                                      }
+                                    >
+                                      <strong>{summary.division}</strong>
+                                      <span className="division-overview__counts">
+                                        <span>
+                                          입상 <b>{summary.awardCount}건</b>
+                                        </span>
+                                        <span>
+                                          참가{" "}
+                                          <b>{summary.participationCount}건</b>
+                                        </span>
+                                      </span>
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </td>
+                          </tr>
                         ))}
-                      </ul>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -696,6 +751,9 @@ export function SearchResultsPage() {
               <div className="division-result-filter">
                 <span role="status">
                   <strong>
+                    {showsIdentityDivisionSections && selectedDivisionSection
+                      ? `${selectedDivisionSection.label} · `
+                      : ""}
                     {selectedDivision.systemLabel} {selectedDivision.division}
                   </strong>{" "}
                   {divisionCandidates.length}건만 표시 중
