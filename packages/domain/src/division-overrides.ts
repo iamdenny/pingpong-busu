@@ -3,6 +3,7 @@ import type { DivisionSystem } from './models';
 interface EditionBoundDivisionOverride {
   id: string;
   tournamentNamePattern: RegExp;
+  minimumEdition?: number;
   maximumEdition: number;
   divisionSystem: DivisionSystem;
 }
@@ -14,6 +15,13 @@ export const editionBoundDivisionOverrides: readonly EditionBoundDivisionOverrid
     maximumEdition: 16,
     divisionSystem: 'regional',
   },
+  {
+    id: 'bundang-gu-office-cup-18',
+    tournamentNamePattern: /분당구\s*청장기/u,
+    minimumEdition: 18,
+    maximumEdition: 18,
+    divisionSystem: 'regional',
+  },
 ];
 
 export function findTournamentDivisionOverride(...evidence: Array<string | undefined>): DivisionSystem | undefined {
@@ -23,6 +31,7 @@ export function findTournamentDivisionOverride(...evidence: Array<string | undef
   const edition = Number.parseInt(editionText, 10);
 
   return editionBoundDivisionOverrides.find(
-    ({ tournamentNamePattern, maximumEdition }) => tournamentNamePattern.test(text) && edition <= maximumEdition,
+    ({ tournamentNamePattern, minimumEdition = 1, maximumEdition }) =>
+      tournamentNamePattern.test(text) && edition >= minimumEdition && edition <= maximumEdition,
   )?.divisionSystem;
 }

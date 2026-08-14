@@ -80,8 +80,10 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 12. `202608130012_anonymous_feedback.sql`: 익명 문의·제보 private outbox, abuse budget와 멱등 전달 RPC
 13. `202608140001_player_search_priority.sql`: 참여 편집 우선, 최근 출전순 및 최신 관측 지역·소속 검색 요약
 14. `202608140002_newttplay_source.sql`: 뉴티티플레이 출처 catalog와 기본 비활성화 상태
+15. `202608140003_newttplay_global_request_budget.sql`: 뉴티티플레이 출처 전체 요청 예산
+16. `202608140004_bundang_18_regional_division_override.sql`: 사용자 확인 근거로 제18회 분당구청장기 기록을 지역부수로 정정
 
-배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 열네 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request`와 출처 상태 기록 및 참여 편집·문의 전달 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
+배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 열여섯 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request`와 출처 상태 기록 및 참여 편집·문의 전달 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
 GitHub의 `production` environment에 아래 값을 설정합니다.
 

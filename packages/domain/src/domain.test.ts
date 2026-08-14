@@ -284,6 +284,12 @@ describe("division system inference", () => {
       inferDivisionSystem("제17회 분당구청장기 탁구대회", "직장부", "3부"),
     ).toBe("integrated");
     expect(
+      inferDivisionSystem("제18회 분당구청장기 탁구대회", "직장부", "3부"),
+    ).toBe("regional");
+    expect(
+      inferDivisionSystem("제19회 분당구청장기 탁구대회", "직장부", "3부"),
+    ).toBe("integrated");
+    expect(
       inferDivisionSystem(
         "2018 분당구 내일은 탁구왕 탁구대회",
         "남자4부",
