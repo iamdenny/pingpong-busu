@@ -85,28 +85,34 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 
 GitHub의 `production` environment에 아래 값을 설정합니다.
 
-| 구분      | 이름                                 | 용도                                                                                                       |
-| --------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| Secret    | `SUPABASE_ACCESS_TOKEN`              | Supabase Management API 배포 권한. `sbp_`로 시작하는 PAT                                                   |
-| Variable  | `SUPABASE_PROJECT_ID`                | Supabase project ref                                                                                       |
-| Variable  | `CRAWL_LIVE`                         | 운영 crawler 전체 스위치. 기본 `false`                                                                     |
-| Variable  | `CRAWLER_SOURCE_ASTREE_ENABLED`      | 애즈트리 adapter 스위치. 기본 `false`                                                                      |
-| Variable  | `CRAWLER_SOURCE_NEWTTPLAY_ENABLED`   | 뉴티티플레이 adapter 스위치. 운영 허가 확인 전 기본 `false`                                                |
-| Variable  | `CRAWLER_SOURCE_TTADIVISION_ENABLED` | 대한탁구협회 디비전 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                  |
-| Variable  | `CRAWLER_SOURCE_MYTT_ENABLED`        | 마이티티 공개 참가 정보 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`              |
-| Variable  | `CRAWLER_SOURCE_SUPERSTAR_ENABLED`   | 슈퍼스타탁구 공개 개인별 결과 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`        |
-| Variable  | `CRAWLER_SOURCE_YONGINTT_ENABLED`    | 용인탁구협회 다음 카페 공식 검색 API adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false` |
-| Variable  | `CRAWLER_SOURCE_AIRPING_ENABLED`     | 에어핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                             |
-| Variable  | `CRAWLER_SOURCE_OKPINGPONG_ENABLED`  | 오케이핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                           |
-| Variable  | `CRAWLER_SOURCE_IPING_ENABLED`       | 아이핑 인증형 adapter 스위치. 전용 계정 Secret 설정 전 기본 `false`                                        |
-| Generated | `CRAWLER_USER_AGENT`                 | 배포 시 루트 package 버전으로 만드는 `BUSU/{version}` 출처 요청 식별자                                     |
-| Variable  | `CRAWLER_SOURCE_MIN_INTERVAL_MS`     | 아이핑을 포함한 출처·정규화 검색어별 최소 호출 간격. 5~60초 범위, 기본 5초                                 |
-| Secret    | `KAKAO_REST_API_KEY`                 | 카카오 공식 Daum 카페 검색 API 키. 브라우저와 로그에 노출하지 않음                                         |
-| Secret    | `IPING_USERNAME`                     | 아이핑 조회 전용 최소권한 계정 ID. Supabase Edge 런타임에만 전달                                           |
-| Secret    | `IPING_PASSWORD`                     | 아이핑 조회 전용 계정 비밀번호. Supabase Edge 런타임에만 전달                                              |
-| Secret    | `GITHUB_ISSUES_TOKEN`                | 대상 저장소 Issues 쓰기만 허용한 fine-grained token. Edge 런타임에만 전달                                  |
-| Variable  | `GITHUB_ISSUES_REPOSITORY`           | 문의·제보 Issue 대상 저장소. 기본 `iamdenny/pingpong-busu`                                                 |
-| Variable  | `FEEDBACK_ALLOWED_ORIGINS`           | 쉼표로 구분한 문의·제보 허용 Origin. 기본 `https://busu.iamdenny.com`                                      |
+| 구분      | 이름                                 | 용도                                                                                                                |
+| --------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Secret    | `SUPABASE_ACCESS_TOKEN`              | Supabase Management API 배포 권한. `sbp_`로 시작하는 PAT                                                            |
+| Variable  | `SUPABASE_PROJECT_ID`                | Supabase project ref                                                                                                |
+| Variable  | `CRAWL_LIVE`                         | 운영 crawler 전체 스위치. 기본 `false`                                                                              |
+| Variable  | `CRAWLER_SOURCE_ASTREE_ENABLED`      | 애즈트리 adapter 스위치. 기본 `false`                                                                               |
+| Variable  | `CRAWLER_SOURCE_NEWTTPLAY_ENABLED`   | 뉴티티플레이 adapter 스위치. 운영 허가 확인 전 기본 `false`                                                         |
+| Variable  | `CRAWLER_SOURCE_TTADIVISION_ENABLED` | 대한탁구협회 디비전 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                           |
+| Variable  | `CRAWLER_SOURCE_MYTT_ENABLED`        | 마이티티 공개 참가 정보 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                       |
+| Variable  | `CRAWLER_SOURCE_SUPERSTAR_ENABLED`   | 슈퍼스타탁구 공개 개인별 결과 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                 |
+| Variable  | `CRAWLER_SOURCE_YONGINTT_ENABLED`    | 용인탁구협회 다음 카페 공식 검색 API adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`          |
+| Variable  | `CRAWLER_SOURCE_AIRPING_ENABLED`     | 에어핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                      |
+| Variable  | `CRAWLER_SOURCE_OKPINGPONG_ENABLED`  | 오케이핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                    |
+| Variable  | `CRAWLER_SOURCE_IPING_ENABLED`       | 아이핑 인증형 adapter 스위치. 전용 계정 Secret 설정 전 기본 `false`                                                 |
+| Generated | `CRAWLER_USER_AGENT`                 | 배포 시 루트 package 버전으로 만드는 `BUSU/{version}` 출처 요청 식별자                                              |
+| Variable  | `CRAWLER_SOURCE_MIN_INTERVAL_MS`     | 아이핑을 포함한 출처·정규화 검색어별 최소 호출 간격. 5~60초 범위, 기본 5초                                          |
+| Secret    | `KAKAO_REST_API_KEY`                 | 카카오 공식 Daum 카페 검색 API 키. 브라우저와 로그에 노출하지 않음                                                  |
+| Secret    | `IPING_USERNAME`                     | 아이핑 조회 전용 최소권한 계정 ID. Supabase Edge 런타임에만 전달                                                    |
+| Secret    | `IPING_PASSWORD`                     | 아이핑 조회 전용 계정 비밀번호. Supabase Edge 런타임에만 전달                                                       |
+| Secret    | `GITHUB_ISSUES_TOKEN`                | production 필수값. 대상 저장소로 범위를 제한하고 Issues 읽기·쓰기만 허용한 fine-grained token. Edge 런타임에만 전달 |
+| Variable  | `GITHUB_ISSUES_REPOSITORY`           | 문의·제보 Issue 대상 저장소. 기본 `iamdenny/pingpong-busu`                                                          |
+| Variable  | `FEEDBACK_ALLOWED_ORIGINS`           | 쉼표로 구분한 문의·제보 허용 Origin. 기본 `https://busu.iamdenny.com`                                               |
+
+기존 장애는 GitHub `production` environment의 `GITHUB_ISSUES_TOKEN`이 빈 값으로 해석됐는데도 이전 workflow가 token 설정 단계를 건너뛰고 배포를 성공 처리해, `submit-feedback`이 설정되지 않은 상태로 남은 것이 원인입니다. `GITHUB_ISSUES_TOKEN`은 GitHub `production` environment에 반드시 등록합니다. 대상 저장소 하나로 범위를 제한하고 repository permission은 Issues 읽기·쓰기만 허용합니다. production workflow는 이 Secret이 비어 있으면 `supabase link`, migration, Edge Secret 변경, 함수 배포보다 먼저 실패합니다. Secret은 검증 단계와 GitHub Issues token 설정 단계에만 주입하며 브라우저 코드, 빌드 환경, 로그에는 전달하지 않습니다.
+
+token을 회전하거나 누락을 복구할 때는 GitHub `production` environment의 `GITHUB_ISSUES_TOKEN`을 새 최소권한 값으로 갱신한 뒤 실패한 [Deploy Supabase backend](../.github/workflows/deploy-supabase.yml)를 다시 실행합니다. 검증과 token 설정 단계가 성공하고 Edge Function 배포까지 완료됐는지 확인합니다. 실제 문의 제출 검증은 자격증명 등록과 배포가 확인된 뒤 별도 승인된 합성 요청으로 수행하며, 그 전에는 production 복구를 완료로 판단하지 않습니다.
+
+`submit-feedback`이 `503 server_not_configured`를 반환하면 Edge 런타임의 GitHub token 또는 대상 저장소 설정이 누락된 상태입니다. GitHub `production` environment에 필수 Secret과 `GITHUB_ISSUES_REPOSITORY`가 설정됐는지 확인하고 workflow를 다시 실행합니다. token 원문을 출력하거나 브라우저에서 확인하지 말고 Actions 단계 성공 여부와 비민감 오류 코드만 조사합니다.
 
 문의·제보 기능은 GitHub token 또는 허용 Origin 설정이 없으면 닫힌 상태로 실패합니다. 전체 요청이 10분당 10건 또는 하루 50건을 넘으면 429를 반환합니다. 성공 시 공개 Issue를 확인한 뒤 private outbox의 본문과 브라우저 문맥을 즉시 지웁니다. 공개되는 페이지 링크에서는 쿼리 문자열을 제거하고, hash route에도 붙은 쿼리를 제거합니다. `delivery_unknown`은 같은 submission ID로 재시도하면 GitHub marker를 먼저 조회해 중복 생성을 막습니다. migration이 매일 service role 전용 `redact_expired_feedback_internal()`을 예약해 30일이 지난 미전달 행을 삭제합니다. abuse 시 `submit-feedback` 배포를 중지하거나 token을 폐기하고 비민감 상태·오류 코드만 조사합니다.
 
