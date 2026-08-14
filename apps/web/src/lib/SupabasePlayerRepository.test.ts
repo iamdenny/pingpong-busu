@@ -68,6 +68,45 @@ describe("SupabasePlayerRepository player search", () => {
   });
 });
 
+describe("SupabasePlayerRepository source refresh", () => {
+  it("accepts the full ten-minute iPing circuit delay", async () => {
+    const client = {
+      functions: {
+        invoke: vi.fn().mockResolvedValue({
+          data: {
+            refreshId: 0,
+            sources: [
+              {
+                sourceCode: "iping",
+                status: "failed",
+                errorCode: "source_circuit_open",
+                message: "반복된 인증 오류로 아이핑 조회를 잠시 보호합니다.",
+                retryAfterMs: 600_000,
+              },
+            ],
+          },
+          error: null,
+        }),
+      },
+    };
+    const repository = new SupabasePlayerRepository(
+      client as unknown as SupabaseClient,
+    );
+
+    await expect(
+      repository.requestRefresh({
+        name: "김탁구",
+        sourceCodes: ["iping"],
+        force: true,
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        sources: [expect.objectContaining({ retryAfterMs: 600_000 })],
+      }),
+    );
+  });
+});
+
 describe("SupabasePlayerRepository identity evidence", () => {
   it("falls back to the public results view when the evidence RPC is unavailable", async () => {
     const row = {

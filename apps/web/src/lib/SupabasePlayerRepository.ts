@@ -461,7 +461,12 @@ export class SupabasePlayerRepository implements PlayerRepository {
             reason: z.string().optional(),
             errorCode: z.string().optional(),
             message: z.string().optional(),
-            retryAfterMs: z.number().int().nonnegative().max(60_000).optional(),
+            retryAfterMs: z
+              .number()
+              .int()
+              .nonnegative()
+              .max(10 * 60_000)
+              .optional(),
           }),
         ),
       })

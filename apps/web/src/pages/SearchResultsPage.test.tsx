@@ -15,6 +15,7 @@ import {
 } from "../lib/sourceRefreshRetry";
 import {
   clearManualRetryAttempts,
+  isForcedSourceRefresh,
   SearchResultsPage,
   sourceRefreshFailureView,
   sourceRetryKey,
@@ -34,6 +35,22 @@ function renderSearch(query: string) {
 
 describe("SearchResultsPage", () => {
   afterEach(() => vi.restoreAllMocks());
+
+  it("forces only an explicit manual source retry", () => {
+    expect(isForcedSourceRefresh(undefined, "cycle-a")).toBe(false);
+    expect(
+      isForcedSourceRefresh(
+        { requestId: 1, searchCycleKey: "cycle-a" },
+        "cycle-a",
+      ),
+    ).toBe(true);
+    expect(
+      isForcedSourceRefresh(
+        { requestId: 1, searchCycleKey: "cycle-a" },
+        "cycle-b",
+      ),
+    ).toBe(false);
+  });
 
   it("resets the manual retry budget after a source succeeds", () => {
     const key = sourceRetryKey("임\n대현", "airping");

@@ -23,7 +23,7 @@ Korean table tennis player rank and tournament record search.
 - 참여 편집으로 연결된 동명이인을 먼저 표시하고 입상일·출전 기록일 기준으로 이어지는 검색 결과 정렬, 최신 공개 기록의 지역·소속 요약
 - 대회일 우선·게시일 보조 최신순 선수 상세 타임라인, 출처 대회에 표시된 전체 종목명, 최근 관측 부수, 출처 비교와 독립 갱신 상태
 - 홈에서 운영 source catalog를 작은 요약으로 표시하고, 상세 펼침에서 상태와 원문 URL 제공
-- 검색 시 활성 출처만 갱신하고 시간 초과·접근 차단·구조 변경 등 실제 원인, 호출 제한 남은 시간과 자동 재시도를 표시. 저장된 기록이 없을 때만 조회 중 상세를 기본으로 펼치고, 기록이 있거나 조회가 완료되면 요약만 표시. 실패한 출처는 5초 간격·최대 3회 수동 재시도 가능
+- 검색 시 활성 출처만 갱신하고 최근 6시간 성공 결과를 우선 재사용한다. 시간 초과·접근 차단·구조 변경 등 실제 원인, 호출 제한 남은 시간과 자동 재시도를 표시하며 수동 재시도만 강제 갱신한다. 저장된 기록이 없을 때만 조회 중 상세를 기본으로 펼치고, 기록이 있거나 조회가 완료되면 요약만 표시. 실패한 출처는 5초 간격·최대 3회 수동 재시도 가능
 - 승인된 에어핑퐁·오케이핑퐁 공개 선수 검색을 출처별 opt-in 수집으로 제공하고, 긴급 중지 시 원문 검색 링크로 대체
 - strict TypeScript domain 정규화, 안정 해시, diff/revision 판정
 - mock adapter와 fixture crawler, synthetic fixture로 검증한 애즈트리·대한탁구협회 디비전·마이티티·슈퍼스타탁구·용인탁구협회 다음 카페·아이핑 HTTP adapter
@@ -70,7 +70,7 @@ supabase functions serve
 
 [초기 migration](./supabase/migrations/202608120001_initial_schema.sql)은 테이블, index, public view, RLS를 함께 만듭니다. 브라우저에는 `VITE_SUPABASE_URL`과 publishable key만 둡니다. `SUPABASE_SERVICE_ROLE_KEY` 또는 secret key는 trusted crawler/운영 환경에서만 사용합니다. production 전환은 두 public 값을 설정하고 `VITE_APP_MODE=production`으로 빌드합니다.
 
-Supabase repository는 공개 검색/상세 view와 refresh Edge Function을 사용합니다. [두 번째 migration](./supabase/migrations/202608120002_astree_refresh.sql)이 identity, revision upsert RPC와 상세 view를 추가합니다. Edge 환경에 `CRAWL_LIVE=true`, 활성 출처별 환경 변수를 설정하고 DB의 `sources.enabled`도 true로 둬야 실제 요청이 활성화됩니다. 배포 workflow는 루트 package 버전으로 `CRAWLER_USER_AGENT=BUSU/{version}`을 설정합니다. 마이티티는 단기 JSF 세션을 검색 요청에만 쓰고 저장하지 않으며, 슈퍼스타탁구는 공개 개인별 결과 GET 검색만 사용합니다. 뉴티티플레이는 공개 탁구인검색 결과를 최대 2페이지만 처리하며 운영 허가 확인 전에는 환경 변수와 DB 출처를 모두 비활성화합니다. 용인탁구협회 카페는 카카오 공식 카페 검색 API를 검색당 1회 호출하고 용인 카페 URL만 남깁니다. 아이핑은 서버 전용 계정으로 조회마다 새 PHP 세션을 만들고 CP949 검색 결과만 처리하며 세션 식별자와 자격증명은 저장하지 않습니다. 공개 refresh의 호출 제한은 아이핑을 포함해 `출처 + 정규화 검색어`별로 적용하므로 다른 이름 검색을 출처 전체 60초 동안 막지 않습니다. 대신 아이핑 계정 전체는 분당 실제 출처 요청 6회로 제한해 서로 다른 이름을 이용한 우회를 막습니다. 에어핑퐁 Edge 요청은 5초 안에 응답하지 않으면 한 번의 서버 시도를 종료하고, 화면이 5초 이상 기다린 뒤 최대 2회 다시 요청합니다. 인증 실패·구조 변경 같은 결정적인 실패는 자동 반복하지 않습니다. workspace live CLI adapter는 별도 진단 도구이므로 에어핑퐁 GET에 16초 제한과 일시 오류 1회 재시도를 유지합니다.
+Supabase repository는 공개 검색/상세 view와 refresh Edge Function을 사용합니다. [두 번째 migration](./supabase/migrations/202608120002_astree_refresh.sql)이 identity, revision upsert RPC와 상세 view를 추가합니다. Edge 환경에 `CRAWL_LIVE=true`, 활성 출처별 환경 변수를 설정하고 DB의 `sources.enabled`도 true로 둬야 실제 요청이 활성화됩니다. 배포 workflow는 루트 package 버전으로 `CRAWLER_USER_AGENT=BUSU/{version}`을 설정합니다. 마이티티는 단기 JSF 세션을 검색 요청에만 쓰고 저장하지 않으며, 슈퍼스타탁구는 공개 개인별 결과 GET 검색만 사용합니다. 뉴티티플레이는 공개 탁구인검색 결과를 최대 2페이지만 처리하며 운영 허가 확인 전에는 환경 변수와 DB 출처를 모두 비활성화합니다. 용인탁구협회 카페는 카카오 공식 카페 검색 API를 검색당 1회 호출하고 용인 카페 URL만 남깁니다. 아이핑은 서버 전용 계정으로 조회마다 새 PHP 세션을 만들고 CP949 검색 결과를 출전·전국 입상·지역 입상 순서로 처리하며 세션 식별자와 자격증명은 저장하지 않습니다. 공개 refresh의 호출 제한은 아이핑을 포함해 `출처 + 정규화 검색어`별로 적용하므로 다른 이름 검색을 출처 전체 60초 동안 막지 않습니다. 대신 아이핑 계정 전체는 분당 실제 출처 요청 2회로 제한하고, 인증·구조 오류가 연속 2회 발생하면 10분간 출처 요청을 중단합니다. 에어핑퐁도 출처 전체 분당 6회 예산을 적용합니다. 에어핑퐁 Edge 요청은 10초 안에 응답하지 않으면 한 번의 서버 시도를 종료하고, 화면이 5초 이상 기다린 뒤 최대 2회 다시 요청합니다. 인증 실패·구조 변경 같은 결정적인 실패는 자동 반복하지 않습니다. workspace live CLI adapter는 별도 진단 도구이므로 에어핑퐁 GET에 16초 제한과 일시 오류 1회 재시도를 유지합니다.
 
 선수 기록은 크롤러 확인 시각이 아니라 `대회일 → 게시일 → 확인 시각` 우선순위로 최신순 정렬합니다. 대회일과 게시일이 모두 없는 기록은 날짜가 있는 기록 뒤에 표시합니다.
 
