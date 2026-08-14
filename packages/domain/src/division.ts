@@ -49,7 +49,7 @@ export function inferDivisionSystem(...evidence: Array<string | undefined>): Div
 function isIntegratedLocalEvent(eventName: string | undefined): boolean {
   if (!eventName) return false;
   const normalized = eventName.normalize('NFKC');
-  return /(?:^|[\s([/·,&+-])지역(?:\s*(?:남성|여성|혼성))?(?=\s*(?:(?:\d+(?:\s*[/／]\s*\d+)?|[A-Z])\s*부|[\s)\]/·,&+-]|$))/iu.test(normalized);
+  return /(?:^|[\s([/·,&+-])지역(?:\s*(?:남성|여성|혼성))?(?=\s*(?:(?:\d+(?:\s*[/／~～]\s*\d+)?|[A-Z])\s*부|[\s)\]/·,&+-]|$))/iu.test(normalized);
 }
 
 export function inferEventDivisionSystem(
