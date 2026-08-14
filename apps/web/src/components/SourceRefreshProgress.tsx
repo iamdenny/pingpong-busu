@@ -21,6 +21,7 @@ const errorLabels: Readonly<Record<string, string>> = {
   source_timeout: "시간 초과",
   source_blocked: "접근 차단",
   source_schema_changed: "사이트 구조 변경",
+  source_circuit_open: "보호 대기",
   source_parse_error: "응답 해석 실패",
   source_not_configured: "연동 설정 누락",
   source_auth_failed: "인증 실패",

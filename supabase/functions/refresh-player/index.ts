@@ -77,6 +77,18 @@ const parserVersions: Record<LiveSourceCode, string> = {
 
 const airpingRetryAfterMs = 5_000;
 
+type SourceDiagnosticPhase =
+  | "fetch"
+  | "login_page"
+  | "login_submit"
+  | "login_verify"
+  | "entry_search"
+  | "nationwide_awards_search"
+  | "district_awards_search"
+  | "parse"
+  | "persist"
+  | "complete";
+
 function parseInput(value: unknown): RefreshInput {
   if (
     !isRecord(value) ||
@@ -91,6 +103,7 @@ function parseInput(value: unknown): RefreshInput {
   if (
     requested !== undefined &&
     (!Array.isArray(requested) ||
+      requested.length > sourceCodes.length ||
       requested.some(
         (code) =>
           typeof code !== "string" || !sourceCodes.includes(code as SourceCode),
@@ -103,7 +116,9 @@ function parseInput(value: unknown): RefreshInput {
     ...(typeof value.region === "string"
       ? { region: value.region.trim() }
       : {}),
-    ...(requested ? { sourceCodes: requested as SourceCode[] } : {}),
+    ...(requested
+      ? { sourceCodes: [...new Set(requested as SourceCode[])] }
+      : {}),
     force: value.force === true,
   };
 }
@@ -236,7 +251,7 @@ async function fetchSimpleHtmlRecords(
       redirect: "follow",
     },
     sourceCode === "airping"
-      ? { timeoutMs: 5_000, maxAttempts: 1, retryDelayMs: 250 }
+      ? { timeoutMs: 10_000, maxAttempts: 1, retryDelayMs: 250 }
       : { timeoutMs: 10_000, maxAttempts: 2, retryDelayMs: 250 },
   );
   assertPublicHtmlResponse(response, sourceCode);
@@ -456,6 +471,7 @@ function assertIpingHtmlResponse(response: Response, label: string): void {
 async function fetchIpingRecords(
   name: string,
   fetchedAt: string,
+  onPhase: (phase: SourceDiagnosticPhase) => void,
 ): Promise<Array<Record<string, unknown>>> {
   const username = Deno.env.get("IPING_USERNAME");
   const password = Deno.env.get("IPING_PASSWORD");
@@ -471,6 +487,7 @@ async function fetchIpingRecords(
     "user-agent": userAgent,
   };
   const loginUrl = `${ipingBaseUrl}?pg=login`;
+  onPhase("login_page");
   const loginPage = await fetchWithRetry(
     loginUrl,
     { headers: baseHeaders, redirect: "manual" },
@@ -488,6 +505,7 @@ async function fetchIpingRecords(
   const sessionId =
     extractIpingSessionIdFromCookie(initialCookie) ??
     extractIpingSessionId(loginPageHtml);
+  onPhase("login_submit");
   const loginResponse = await fetch(loginUrl, {
     method: "POST",
     signal: AbortSignal.timeout(12_000),
@@ -521,6 +539,7 @@ async function fetchIpingRecords(
     throw new Error(`아이핑 로그인 HTTP ${loginResponse.status}`);
   const sessionCookie = ipingCookie(loginResponse) ?? initialCookie;
   let verificationResponse = loginResponse;
+  onPhase("login_verify");
   if (loginResponse.status >= 300 && loginResponse.status < 400) {
     const destination = new URL(
       loginResponse.headers.get("location") ?? "/",
@@ -554,7 +573,11 @@ async function fetchIpingRecords(
       "아이핑 로그인 성공 화면 구조를 확인하지 못했습니다.",
     );
 
-  const search = async (suffix: string): Promise<string> => {
+  const search = async (
+    suffix: string,
+    phase: SourceDiagnosticPhase,
+  ): Promise<string> => {
+    onPhase(phase);
     const query = encodeIpingForm({ pg: "Search", SchVal: name });
     const response = await fetchWithRetry(
       `${ipingBaseUrl}?${query}${suffix}`,
@@ -583,8 +606,13 @@ async function fetchIpingRecords(
       );
     return html;
   };
-  const [entriesHtml, nationwideAwardsHtml, districtAwardsHtml] =
-    await Promise.all([search("&B=Y"), search("&Ctype=A"), search("&Ctype=B")]);
+  const entriesHtml = await search("&B=Y", "entry_search");
+  const nationwideAwardsHtml = await search(
+    "&Ctype=A",
+    "nationwide_awards_search",
+  );
+  const districtAwardsHtml = await search("&Ctype=B", "district_awards_search");
+  onPhase("parse");
   return [
     ...(parseIpingSearchHtml(entriesHtml, name, fetchedAt, "entry") as Array<
       Record<string, unknown>
@@ -772,7 +800,7 @@ Deno.serve(async (request) => {
         continue;
       }
       if (!input.force) {
-        const { data: fresh } = await client
+        const { data: fresh, error: freshError } = await client
           .from("source_refreshes")
           .select(
             "id,completed_at,records_inserted,records_updated,records_unchanged",
@@ -787,6 +815,15 @@ Deno.serve(async (request) => {
           .order("requested_at", { ascending: false })
           .limit(1)
           .maybeSingle();
+        if (freshError) {
+          results.push({
+            sourceCode,
+            status: "failed",
+            errorCode: "source_refresh_failed",
+            message: "기존 조회 기록을 확인하지 못했습니다.",
+          });
+          continue;
+        }
         if (fresh) {
           refreshId = fresh.id;
           results.push({
@@ -806,8 +843,8 @@ Deno.serve(async (request) => {
       const minimumIntervalMs = Number.isFinite(configuredMinimumIntervalMs)
         ? Math.min(60_000, Math.max(5000, configuredMinimumIntervalMs))
         : 5000;
-      const { data: retryAfterMs, error: claimError } = await client.rpc(
-        "claim_source_request",
+      const { data: claim, error: claimError } = await client.rpc(
+        "claim_source_request_with_policy",
         {
           p_source_code: sourceCode,
           p_query_key: normalizedName,
@@ -823,13 +860,24 @@ Deno.serve(async (request) => {
         });
         continue;
       }
-      const retryDelay = Number(retryAfterMs);
-      if (!Number.isFinite(retryDelay)) {
+      const retryDelay = isRecord(claim) ? Number(claim.retryAfterMs) : NaN;
+      const claimReason = isRecord(claim) ? claim.reason : undefined;
+      if (!Number.isFinite(retryDelay) || typeof claimReason !== "string") {
         results.push({
           sourceCode,
           status: "failed",
           errorCode: "source_refresh_failed",
           message: "출처 호출 제한 상태를 확인하지 못했습니다.",
+        });
+        continue;
+      }
+      if (claimReason === "source_circuit_open") {
+        results.push({
+          sourceCode,
+          status: "failed",
+          errorCode: "source_circuit_open",
+          message: "반복된 인증 오류로 아이핑 조회를 잠시 보호합니다.",
+          retryAfterMs: Math.min(600_000, Math.max(1, Math.ceil(retryDelay))),
         });
         continue;
       }
@@ -842,6 +890,8 @@ Deno.serve(async (request) => {
         });
         continue;
       }
+      const requestStartedAt = Date.now();
+      let diagnosticPhase: SourceDiagnosticPhase = "fetch";
       try {
         const fetchedAt = new Date().toISOString();
         const records: Array<Record<string, unknown>> = [];
@@ -868,7 +918,11 @@ Deno.serve(async (request) => {
             ...(await fetchYonginCafeRecords(input.name, fetchedAt)),
           );
         } else if (sourceCode === "iping") {
-          records.push(...(await fetchIpingRecords(input.name, fetchedAt)));
+          records.push(
+            ...(await fetchIpingRecords(input.name, fetchedAt, (phase) => {
+              diagnosticPhase = phase;
+            })),
+          );
         } else {
           records.push(
             ...(await fetchSimpleHtmlRecords(
@@ -884,6 +938,7 @@ Deno.serve(async (request) => {
           ).values(),
         ];
         const parserVersion = parserVersions[liveSourceCode];
+        diagnosticPhase = "persist";
         const { data: summary, error } = await client.rpc(
           "upsert_source_records_with_regions",
           {
@@ -900,6 +955,21 @@ Deno.serve(async (request) => {
             "정규화한 출처 기록을 저장하지 못했습니다.",
           );
         refreshId = Number(summary.refreshId);
+        diagnosticPhase = "complete";
+        const { error: outcomeError } = await client.rpc(
+          "record_source_request_outcome",
+          {
+            p_source_code: sourceCode,
+            p_error_code: null,
+            p_phase: diagnosticPhase,
+            p_duration_ms: Date.now() - requestStartedAt,
+          },
+        );
+        if (outcomeError)
+          throw new SafeSourceError(
+            "source_refresh_failed",
+            "출처 보호 상태를 기록하지 못했습니다.",
+          );
         results.push({
           sourceCode,
           status: "succeeded",
@@ -909,6 +979,7 @@ Deno.serve(async (request) => {
           found: Number(summary.found ?? unique.length),
         });
       } catch (error) {
+        const requestDurationMs = Date.now() - requestStartedAt;
         const mapped = publicSourceError(error);
         const safe =
           sourceCode === "airping" && mapped.code === "source_timeout"
@@ -922,6 +993,24 @@ Deno.serve(async (request) => {
           p_source_code: sourceCode,
           p_error_code: safe.code,
         });
+        const { error: outcomeError } = await client.rpc(
+          "record_source_request_outcome",
+          {
+            p_source_code: sourceCode,
+            p_error_code: safe.code,
+            p_phase: diagnosticPhase,
+            p_duration_ms: requestDurationMs,
+          },
+        );
+        if (outcomeError) {
+          results.push({
+            sourceCode,
+            status: "failed",
+            errorCode: "source_refresh_failed",
+            message: "출처 보호 상태를 기록하지 못했습니다.",
+          });
+          continue;
+        }
         results.push({
           sourceCode,
           status: "failed",

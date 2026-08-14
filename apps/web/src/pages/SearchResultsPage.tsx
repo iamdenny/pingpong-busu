@@ -101,6 +101,18 @@ export function clearManualRetryAttempts(
   return next;
 }
 
+export interface ManualRefreshRequest {
+  requestId: number;
+  searchCycleKey: string;
+}
+
+export function isForcedSourceRefresh(
+  manualRefreshRequest: ManualRefreshRequest | undefined,
+  currentSearchCycleKey: string,
+): boolean {
+  return manualRefreshRequest?.searchCycleKey === currentSearchCycleKey;
+}
+
 type ResultTab = "awards" | "entries";
 type ResultTabDirection = "none" | "forward" | "backward";
 
@@ -223,6 +235,9 @@ export function SearchResultsPage() {
   const manualRetryAttemptsRef = useRef<
     Readonly<Record<string, ManualRetryAttempt>>
   >({});
+  const [manualRefreshRequests, setManualRefreshRequests] = useState<
+    Readonly<Record<string, ManualRefreshRequest>>
+  >({});
   const query = params.get("q")?.trim() ?? "";
   const searchCycleKey = `${location.key}\u0000${query}`;
   const playerSearch = parsePlayerSearchQuery(query);
@@ -254,25 +269,37 @@ export function SearchResultsPage() {
         ["airping", "okpingpong", "iping"].includes(source.sourceCode),
     ) ?? [];
   const refreshQueries = useQueries({
-    queries: activeSources.map((source) => ({
-      queryKey: ["source-refresh", query, source.sourceCode, location.key],
-      queryFn: async () => {
-        const response = await playerRepository.requestRefresh({
-          name: playerSearch.name,
-          ...(playerSearch.region ? { region: playerSearch.region } : {}),
-          sourceCodes: [source.sourceCode],
-          force: true,
-        });
-        requireRefreshWithoutRetryableFailure(response, source.sourceCode);
-        void queryClient.invalidateQueries({ queryKey: ["players", query] });
-        return response;
-      },
-      enabled: canStartSourceRefresh,
-      staleTime: 0,
-      gcTime: 0,
-      retry: shouldRetrySourceRefresh,
-      retryDelay: sourceRefreshRetryDelay,
-    })),
+    queries: activeSources.map((source) => {
+      const manualRefreshRequest =
+        manualRefreshRequests[sourceRetryKey(query, source.sourceCode)];
+      return {
+        queryKey: [
+          "source-refresh",
+          query,
+          source.sourceCode,
+          location.key,
+          manualRefreshRequest?.requestId ?? 0,
+        ],
+        queryFn: async () => {
+          const response = await playerRepository.requestRefresh({
+            name: playerSearch.name,
+            ...(playerSearch.region ? { region: playerSearch.region } : {}),
+            sourceCodes: [source.sourceCode],
+            force: isForcedSourceRefresh(manualRefreshRequest, searchCycleKey),
+          });
+          requireRefreshWithoutRetryableFailure(response, source.sourceCode);
+          void queryClient.invalidateQueries({ queryKey: ["players", query] });
+          return response;
+        },
+        enabled: canStartSourceRefresh,
+        staleTime: 0,
+        gcTime: 0,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        retry: shouldRetrySourceRefresh,
+        retryDelay: sourceRefreshRetryDelay,
+      };
+    }),
   });
   const refreshViews: SourceRefreshView[] = canStartSourceRefresh
     ? activeSources.map((source, index) => {
@@ -430,7 +457,13 @@ export function SearchResultsPage() {
     };
     manualRetryAttemptsRef.current = nextAttempts;
     setManualRetryAttempts(nextAttempts);
-    void sourceQuery.refetch();
+    setManualRefreshRequests((current) => ({
+      ...current,
+      [key]: {
+        requestId: (current[key]?.requestId ?? 0) + 1,
+        searchCycleKey,
+      },
+    }));
   }
 
   const identityCandidates =

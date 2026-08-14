@@ -407,6 +407,7 @@ describe("SourceRefreshProgress", () => {
     ["source_timeout", "시간 초과"],
     ["source_blocked", "접근 차단"],
     ["source_schema_changed", "사이트 구조 변경"],
+    ["source_circuit_open", "보호 대기"],
     ["source_auth_failed", "인증 실패"],
   ])("shows %s as its actual reason", (errorCode, label) => {
     expect(

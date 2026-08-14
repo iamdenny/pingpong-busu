@@ -9,6 +9,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const reliabilityMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    "supabase/migrations/202608140008_source_reliability.sql",
+  ),
+  "utf8",
+);
 const refreshPlayer = readFileSync(
   resolve(process.cwd(), "supabase/functions/refresh-player/index.ts"),
   "utf8",
@@ -67,7 +74,7 @@ describe("refresh-player live source contract", () => {
   it("performs one bounded Airping request and returns deterministic timeout cooldown", () => {
     expect(refreshPlayer).toContain("const airpingRetryAfterMs = 5_000");
     expect(refreshPlayer).toMatch(
-      /sourceCode === "airping"[\s\S]+?timeoutMs: 5_000, maxAttempts: 1/,
+      /sourceCode === "airping"[\s\S]+?timeoutMs: 10_000, maxAttempts: 1/,
     );
     expect(refreshPlayer).not.toContain(
       "{ timeoutMs: 16_000, maxAttempts: 2, retryDelayMs: 250 }",
@@ -75,11 +82,96 @@ describe("refresh-player live source contract", () => {
     expect(refreshPlayer).toContain("retryAfterMs: airpingRetryAfterMs");
   });
 
+  it("serializes authenticated iPing searches and records safe phases", () => {
+    expect(refreshPlayer).not.toContain(
+      'Promise.all([search("&B=Y"), search("&Ctype=A"), search("&Ctype=B")])',
+    );
+    expect(refreshPlayer).toContain('search("&B=Y", "entry_search")');
+    expect(refreshPlayer).toMatch(
+      /search\(\s*"&Ctype=A",\s*"nationwide_awards_search",?\s*\)/u,
+    );
+    expect(refreshPlayer).toMatch(
+      /search\(\s*"&Ctype=B",\s*"district_awards_search",?\s*\)/u,
+    );
+    expect(refreshPlayer).toContain("record_source_request_outcome");
+    expect(refreshPlayer).not.toContain("p_raw_response");
+    expect(refreshPlayer).not.toMatch(
+      /record_source_request_outcome[\s\S]{0,300}p_query_name/u,
+    );
+  });
+
+  it("uses one atomic policy claim for source budgets and the iPing circuit", () => {
+    expect(refreshPlayer).toContain("claim_source_request_with_policy");
+    expect(refreshPlayer).not.toContain(
+      'client.rpc("source_circuit_retry_after"',
+    );
+    expect(refreshPlayer).toContain('errorCode: "source_circuit_open"');
+    expect(refreshPlayer).toContain('claimReason === "source_circuit_open"');
+  });
+
+  it("fails closed when the automatic cache lookup cannot be verified", () => {
+    expect(refreshPlayer).toContain("error: freshError");
+    expect(refreshPlayer).toMatch(
+      /if \(freshError\)[\s\S]+?기존 조회 기록을 확인하지 못했습니다[\s\S]+?continue;/u,
+    );
+  });
+
   it("records sanitized failures and leaves successful recovery to the upsert transaction", () => {
     expect(refreshPlayer).toContain("record_source_refresh_failure");
     expect(refreshPlayer).not.toContain("record_source_refresh_success");
     expect(refreshPlayer).not.toContain("p_error_message:");
     expect(refreshPlayer).not.toContain("p_raw_error:");
+    expect(refreshPlayer).toContain("error: outcomeError");
+    expect(refreshPlayer).toContain("출처 보호 상태를 기록하지 못했습니다.");
+  });
+});
+
+describe("source reliability database contract", () => {
+  it("keeps privacy-safe diagnostics private and bounded", () => {
+    expect(reliabilityMigration).toContain("source_request_diagnostics");
+    expect(reliabilityMigration).toContain("record_source_request_outcome");
+    expect(reliabilityMigration).toContain("p_phase");
+    expect(reliabilityMigration).toContain("p_duration_ms");
+    expect(reliabilityMigration).not.toContain("p_query_name");
+    expect(reliabilityMigration).not.toContain("p_raw_response");
+    expect(reliabilityMigration).toMatch(
+      /revoke all on table public\.source_request_diagnostics from public, anon, authenticated/su,
+    );
+    expect(reliabilityMigration).toMatch(
+      /error_code text check \(error_code is null or error_code = any/su,
+    );
+    expect(reliabilityMigration).toContain(
+      "delete_expired_source_request_diagnostics",
+    );
+    expect(reliabilityMigration).toContain(
+      "delete-expired-source-request-diagnostics",
+    );
+  });
+
+  it("atomically applies source budgets and the iPing circuit", () => {
+    expect(reliabilityMigration).toContain(
+      "deterministic_failure_count + 1 >= 2",
+    );
+    expect(reliabilityMigration).toContain("interval '10 minutes'");
+    expect(reliabilityMigration).toContain("claim_source_request_with_policy");
+    expect(reliabilityMigration).toContain(
+      "array['iping', 'newttplay', 'airping']",
+    );
+    expect(reliabilityMigration).toContain(
+      "case when p_source_code = 'iping' then 2 else 6 end",
+    );
+    expect(reliabilityMigration).toContain("deterministic_failure_count = 0");
+    expect(reliabilityMigration).toContain("circuit_open_until = null");
+  });
+
+  it("grants diagnostic and circuit RPCs only to the service role", () => {
+    expect(reliabilityMigration).toMatch(
+      /revoke all on function public\.record_source_request_outcome/su,
+    );
+    expect(reliabilityMigration).toMatch(
+      /revoke all on function public\.claim_source_request_with_policy/su,
+    );
+    expect(reliabilityMigration.match(/to service_role/g)).toHaveLength(3);
   });
 });
 
@@ -88,10 +180,14 @@ describe("manual live crawl input boundary", () => {
     expect(manualCrawlWorkflow).not.toContain("environment: production");
     expect(manualCrawlWorkflow).not.toContain("IPING_PASSWORD");
     expect(manualCrawlWorkflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
-    expect(manualCrawlWorkflow).toContain('run: pnpm crawl:live --query "$CRAWL_QUERY"');
+    expect(manualCrawlWorkflow).toContain(
+      'run: pnpm crawl:live --query "$CRAWL_QUERY"',
+    );
     expect(manualCrawlWorkflow).toContain("CRAWL_QUERY: ${{ inputs.query }}");
     expect(manualCrawlWorkflow).toContain("CRAWL_SOURCE: ${{ inputs.source }}");
-    expect(manualCrawlWorkflow).toContain("CRAWL_MAX_PAGES: ${{ inputs.maxPages }}");
+    expect(manualCrawlWorkflow).toContain(
+      "CRAWL_MAX_PAGES: ${{ inputs.maxPages }}",
+    );
     expect(
       manualCrawlWorkflow.match(/CRAWLER_REDACT_QUERY: "true"/g),
     ).toHaveLength(2);
