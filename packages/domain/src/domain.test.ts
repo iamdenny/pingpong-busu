@@ -253,6 +253,16 @@ describe("division system inference", () => {
     );
     expect(
       inferEventDivisionSystem(
+        "남자단식 지역0~4부",
+        "제2회 두드림스포츠와 함께하는 우리가치 전국오픈 및 용인시관내 탁구대회",
+        "3부",
+      ),
+    ).toBe("integrated");
+    expect(
+      inferEventDivisionSystem("지역0～4부", "전국오픈 탁구대회", "3부"),
+    ).toBe("integrated");
+    expect(
+      inferEventDivisionSystem(
         "남자 단식",
         "수원 지역 전국오픈 탁구대회",
         "3부",
