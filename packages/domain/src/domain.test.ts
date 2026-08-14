@@ -145,6 +145,15 @@ describe("division presentation", () => {
           division: "4부",
           rank: "우승",
         },
+        {
+          date: "2018-11-24",
+          dateBasis: "tournament",
+          tournamentRegion: "경기도 성남시 분당구",
+          tournament: "2018 분당구 “내일은 탁구왕” 탁구대회",
+          divisionSystem: "regional",
+          division: "4부",
+          rank: "공동3위",
+        },
       ]),
     ).toEqual([
       {
@@ -253,6 +262,9 @@ describe("Korean region inference", () => {
     expect(inferKoreanRegion("2026 부천시 전국오픈 탁구대회")).toBe(
       "경기도 부천시",
     );
+    expect(
+      inferKoreanRegion("2018 분당구 “내일은 탁구왕” 탁구대회"),
+    ).toBe("경기도 성남시 분당구");
     expect(inferKoreanRegion("제3회 가람군 체육회장배 탁구대회")).toBe(
       "가람군",
     );
@@ -378,6 +390,39 @@ describe("division system inference", () => {
   });
 
   it("uses regional transition dates only when tournament region and date are known", () => {
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "남자4부",
+        tournamentName: "2018 분당구 “내일은 탁구왕” 탁구대회",
+        tournamentDate: "2018-11-24",
+        tournamentRegion: "경기도 성남시 분당구",
+        additionalEvidence: ["지역/협회", "4부"],
+      }),
+    ).toBe("regional");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "남자4부",
+        tournamentName: "2018 분당구 전국오픈 탁구대회",
+        tournamentDate: "2018-11-24",
+        tournamentRegion: "경기도 성남시 분당구",
+      }),
+    ).toBe("open");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "통합부수 남자4부",
+        tournamentName: "2018 분당구 탁구대회",
+        tournamentDate: "2018-11-24",
+        tournamentRegion: "경기도 성남시 분당구",
+      }),
+    ).toBe("integrated");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "디비전 T5",
+        tournamentName: "2018 분당구 탁구대회",
+        tournamentDate: "2018-11-24",
+        tournamentRegion: "경기도 성남시 분당구",
+      }),
+    ).toBe("division");
     expect(
       inferRecordDivisionSystem({
         eventName: "남자 6부",

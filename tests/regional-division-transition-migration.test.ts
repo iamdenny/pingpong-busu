@@ -29,6 +29,19 @@ describe("regional division transition migration", () => {
       "v_evidence ~ '([0-9]+|[A-Z])[[:space:]]*부(수)?'",
     );
     expect(migration).toContain("제([1-9]|1[0-8])회분당구청장기");
+    expect(migration).toContain(
+      "when value ~ '분당구' then '경기도 성남시 분당구'",
+    );
+    expect(migration).toContain(
+      "if v_region = '경기도 성남시 분당구'",
+    );
+    expect(
+      migration.indexOf("if v_region = '경기도 성남시 분당구'"),
+    ).toBeGreaterThan(migration.indexOf("p_observed_system = 'division'"));
+    expect(migration).toContain("and v_evidence !~ '오픈'");
+    expect(migration).toContain(
+      "and v_evidence !~ '통합[[:space:]]*(부수|[0-9]+[[:space:]]*부)'",
+    );
     expect(migration).toContain("지역(남성|여성|혼성)?([[:space:]]*([0-9]+");
     expect(migration).toContain("[[:space:])\\]/·,&+-]|$)");
     expect(migration).toContain(

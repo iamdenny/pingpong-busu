@@ -37,6 +37,7 @@ as $$
     when value ~ '(여주시|여주)' then '경기도 여주시'
     when value ~ '(김포시|김포)' then '경기도 김포시'
     when value ~ '부천시' then '경기도 부천시'
+    when value ~ '분당구' then '경기도 성남시 분당구'
     when value ~ '성남시' then '경기도 성남시'
     when value ~ '안양시' then '경기도 안양시'
     when value ~ '서대문구' then '서울특별시 서대문구'
@@ -99,6 +100,12 @@ begin
     return 'division';
   end if;
   if v_evidence ~ '지역[[:space:]]*부수' then return 'regional'; end if;
+  if v_region = '경기도 성남시 분당구'
+     and p_tournament_date < public.division_integrated_from(v_region)
+     and v_evidence !~ '오픈'
+     and v_evidence !~ '통합[[:space:]]*(부수|[0-9]+[[:space:]]*부)' then
+    return 'regional';
+  end if;
 
   -- Parser output can depend on source-only evidence such as category or scale.
   -- Preserve trusted observations instead of rebuilding them from a lossy view.
