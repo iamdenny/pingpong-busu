@@ -61,6 +61,8 @@ pnpm test:e2e
 
 익명 문의·제보는 `submit-feedback` Edge Function이 현재 URL과 실제 요청의 `User-Agent`를 서버에서 확인해 GitHub Issue로 등록합니다. GitHub production environment의 `FEEDBACK_GITHUB_TOKEN`에는 대상 저장소 Issues 읽기·쓰기만 허용한 fine-grained token을, `GITHUB_ISSUES_REPOSITORY`에는 `iamdenny/pingpong-busu`, `FEEDBACK_ALLOWED_ORIGINS`에는 `https://busu.iamdenny.com`을 설정합니다. 배포 workflow가 이 값을 Supabase Edge 런타임의 `GITHUB_ISSUES_TOKEN`으로 전달하며, 토큰은 브라우저에 노출하지 않습니다.
 
+운영 오류는 사용자 문의와 분리해 개인정보 없이 집계합니다. 브라우저의 렌더 오류·미처리 오류·미처리 Promise 거부와 출처의 구조 변경·인증 실패만 허용하며, 고정 route template·출처 코드·앱/파서 버전으로 만든 fingerprint가 3회 누적될 때 GitHub Issue를 한 번 게시합니다. 공개 브라우저 fingerprint에서는 임의 버전 회전을 제외합니다. 검색어, 선수 이름, 원문 URL, stack, HTML/body, 쿠키와 자격증명은 전송하거나 저장하지 않습니다. `report-runtime-incident`는 `RUNTIME_INCIDENT_ALLOWED_ORIGINS`의 Origin과 publishable key를 확인하고, private 집계/RPC와 GitHub token은 service-role Edge 경계 안에만 둡니다. 새 event와 게시 예산은 브라우저·출처 범위를 분리해 제한하고 30일 보존 정리는 매일 실행합니다. 오류 보고 실패는 화면 fallback이나 출처 refresh 응답을 막지 않습니다.
+
 ```bash
 cp .env.example .env.local
 supabase start

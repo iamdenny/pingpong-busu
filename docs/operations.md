@@ -66,7 +66,7 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 1. 프로젝트 연결과 migration dry-run
 2. `supabase db push`로 미적용 migration 적용
 3. crawler 안전 플래그를 Edge Function secrets에 동기화
-4. `refresh-player`, `refresh-status`, `submit-identity-claim`, `revert-identity-edit`, `submit-feedback` Edge Function 배포
+4. `refresh-player`, `refresh-status`, `submit-identity-claim`, `revert-identity-edit`, `submit-feedback`, `report-runtime-incident` Edge Function 배포
 
 이번 변경의 migration은 파일명 순서대로 적용해야 합니다.
 
@@ -90,8 +90,9 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 18. `202608140006_regional_division_parser_versions.sql`: 지역·대회일 전환 규칙을 사용하는 출처 parser version 갱신
 19. `202608140007_regional_division_backfill.sql`: 소스 관측값은 보존하고 지역별 전환일·대회 예외을 계산하는 공개 view 적용
 20. `202608140008_source_reliability.sql`: 비공개 출처 진단과 아이핑 연속 인증·구조 오류 회로 차단
+21. `202608140009_operational_incidents.sql`: service-role 전용 운영 오류 집계·게시 lease·보존 RPC 적용
 
-배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 스무 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports`, `source_request_diagnostics` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request_with_policy`, `record_source_request_outcome`, `delete_expired_source_request_diagnostics`와 출처 상태 기록 및 참여 편집·문의 전달 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
+배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 스물한 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports`, `source_request_diagnostics`, `operational_incident*` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request_with_policy`, `record_source_request_outcome`, `delete_expired_source_request_diagnostics`와 출처 상태 기록 및 참여 편집·문의·운영 오류 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
 `202608140007`은 파서가 저장한 관측 체계를 우선 보존하고, 대회명·종목명에서 직접 확인한 지역과 실제 대회일로 전환 규칙을 공개 view에서 보완합니다. 선수 단위 출처 지역, 출처 provenance가 없는 공유 대회 지역, 아이핑 클럽명에서 유추한 과거 지역은 개별 기록 판정에 사용하지 않습니다. `results.division_system`과 `content_hash`를 수정하지 않아 다음 수집에서 가짜 revision이 생기지 않습니다. 전환일 이전 기록과 제18회까지의 분당구청장기 기록은 상세 이력에 보존하되 현재 추정 부수·최근 대회 요약에서 제외합니다.
 
@@ -125,6 +126,16 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 token을 회전하거나 누락을 복구할 때는 GitHub `production` environment의 `FEEDBACK_GITHUB_TOKEN`을 새 최소권한 값으로 갱신한 뒤 실패한 [Deploy Supabase backend](../.github/workflows/deploy-supabase.yml)를 다시 실행합니다. 검증과 token 설정 단계가 성공하고 Edge Function 배포까지 완료됐는지 확인합니다. 실제 문의 제출 검증은 자격증명 등록과 배포가 확인된 뒤 별도 승인된 합성 요청으로 수행하며, 그 전에는 production 복구를 완료로 판단하지 않습니다.
 
 `submit-feedback`이 `503 server_not_configured`를 반환하면 Edge 런타임의 GitHub token 또는 대상 저장소 설정이 누락된 상태입니다. GitHub `production` environment에 `FEEDBACK_GITHUB_TOKEN`과 `GITHUB_ISSUES_REPOSITORY`가 설정됐는지 확인하고 workflow를 다시 실행합니다. token 원문을 출력하거나 브라우저에서 확인하지 말고 Actions 단계 성공 여부와 비민감 오류 코드만 조사합니다.
+
+## 운영 오류 자동 Issue
+
+`report-runtime-incident`는 production에서 `RUNTIME_INCIDENT_ALLOWED_ORIGINS=https://busu.iamdenny.com`을 사용합니다. 여러 Origin이 필요하면 쉼표로 나열하되 각각 query/path 없는 정확한 Origin이어야 합니다. 값이 없으면 `FEEDBACK_ALLOWED_ORIGINS`를 fallback으로 사용하지만, 배포 환경에는 기능별 값을 명시해 변경 범위를 분리합니다. 함수는 publishable key와 Origin을 모두 검증하고 GitHub token, service role key와 private table 접근은 Edge 런타임에만 둡니다. production/development workflow가 migration 뒤 이 함수를 배포하며 development Origin은 해당 개발 프런트 Origin만 허용합니다.
+
+자동 집계 대상은 브라우저의 렌더 오류·미처리 오류·미처리 Promise 거부와 출처의 구조 변경·인증 실패뿐입니다. timeout, rate limit, offline, 취소, 일반 네트워크 실패는 자동 Issue로 만들지 않습니다. payload와 DB에는 category, 앱 버전, query/hash를 제거한 route, 선택적인 출처 코드·parser version, 무작위 event ID와 그 조합의 SHA-256 fingerprint만 둡니다. 오류 메시지, stack, 검색어, 선수명, 전체 URL, HTML/body, 쿠키, 자격증명과 브라우저/기기 식별자는 수집하지 않습니다.
+
+같은 fingerprint가 3회 쌓여야 게시 lease를 얻으며 브라우저·출처 범위별로 시간당 최대 5건만 새로 전달합니다. 수집도 두 범위를 분리해 DB에서 각각 10분당 300개의 새 event로 원자적으로 제한하고 초과 요청은 429를 반환합니다. 브라우저 fingerprint는 category와 고정 route template만 사용하므로 공개 key·Origin을 재사용해 앱 버전을 바꿔도 새 fingerprint나 출처용 quota를 소진할 수 없습니다. GitHub 본문의 `busu-operational-incident:{fingerprint}` marker가 중복 조정 기준입니다. Issue 생성 뒤 응답을 확정하지 못한 `delivery_unknown`은 다음 동일 이벤트에서 marker를 정확히 검색해 기존 Issue를 연결하고, 찾지 못하면 새 Issue를 만들지 않습니다. 자동 종료는 하지 않습니다. 게시 실패는 집계를 `failed` 또는 `delivery_unknown`으로 남기지만 브라우저 fallback과 출처 refresh 응답은 그대로 유지합니다. 출처 incident 게시 전체는 `EdgeRuntime.waitUntil` background lifetime으로 넘겨 원래 refresh 응답이 GitHub 요청을 기다리지 않습니다.
+
+보존 정리는 service role 전용 `purge_operational_incidents_internal(<기준 시각>)`을 `pg_cron`이 매일 실행합니다. 함수는 최근 30일 이내 집계를 삭제하지 않고 전달 중 lease도 건드리지 않으며, 2일이 지난 수집·게시 예산을 함께 삭제합니다. 운영자는 scheduler 실행 여부와 삭제 건수만 확인하고 fingerprint나 token 원문을 로그에 출력하지 않습니다. 장애 시 우선 `report-runtime-incident` 배포를 중단하거나 GitHub token을 폐기할 수 있으며 사용자 검색·저장 결과는 계속 동작합니다.
 
 문의·제보 기능은 GitHub token 또는 허용 Origin 설정이 없으면 닫힌 상태로 실패합니다. 전체 요청이 10분당 10건 또는 하루 50건을 넘으면 429를 반환합니다. 성공 시 공개 Issue를 확인한 뒤 private outbox의 본문과 브라우저 문맥을 즉시 지웁니다. 공개되는 페이지 링크에서는 쿼리 문자열을 제거하고, hash route에도 붙은 쿼리를 제거합니다. `delivery_unknown`은 같은 submission ID로 재시도하면 GitHub marker를 먼저 조회해 중복 생성을 막습니다. migration이 매일 service role 전용 `redact_expired_feedback_internal()`을 예약해 30일이 지난 미전달 행을 삭제합니다. abuse 시 `submit-feedback` 배포를 중지하거나 token을 폐기하고 비민감 상태·오류 코드만 조사합니다.
 
