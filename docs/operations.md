@@ -8,6 +8,10 @@ title: "운영"
 
 # 운영
 
+## 방문 통계
+
+운영 웹은 `busu.iamdenny.com`에 등록한 Cloudflare Web Analytics beacon을 `apps/web/index.html`에서 비차단 모듈 스크립트로 불러옵니다. 페이지 조회·방문과 웹 성능을 집계하는 용도이며 개별 방문자를 식별하거나 BUSU의 선수 검색어·문의 내용·참여 편집 값을 별도 이벤트로 전송하지 않습니다. 통계가 보이지 않으면 배포 HTML의 `data-cf-beacon` 토큰, 브라우저의 beacon 요청 차단 여부와 Cloudflare Dashboard의 호스트 이름을 확인합니다.
+
 ## 출처 장애
 
 파서 오류가 증가하면 `sources.enabled=false`와 source 환경 변수 false를 적용하고 기존 저장 결과를 유지합니다. sanitized synthetic fixture로 구조 변경을 재현하고 parser version/test를 함께 올립니다. 내부 stack/secret은 공개 status에 반환하지 않습니다.
