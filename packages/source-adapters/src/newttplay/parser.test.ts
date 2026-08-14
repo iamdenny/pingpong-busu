@@ -81,11 +81,7 @@ describe("NewTTPlay parser", () => {
       "$1$2",
     );
     expect(
-      parseNewttplaySearchHtml(
-        html,
-        "김탁구",
-        "2026-08-14T00:00:00.000Z",
-      ),
+      parseNewttplaySearchHtml(html, "김탁구", "2026-08-14T00:00:00.000Z"),
     ).toHaveLength(4);
   });
 });

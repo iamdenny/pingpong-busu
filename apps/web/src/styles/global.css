@@ -2192,6 +2192,19 @@ p {
   color: var(--muted);
   font-size: 0.82rem;
 }
+.record-date {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.18rem;
+}
+.record-transition-note {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: balance;
+}
 .comparison-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -2504,12 +2517,20 @@ p {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1rem;
+    container-type: inline-size;
     content-visibility: auto;
     contain-intrinsic-size: auto none auto 220px;
   }
   .record-cards time {
     color: var(--muted);
     font-size: 0.82rem;
+  }
+  @container (min-width: 420px) {
+    .record-cards .record-date {
+      flex-direction: row;
+      align-items: baseline;
+      gap: 0.4rem;
+    }
   }
   .record-cards h3 {
     margin: 0.25rem 0;

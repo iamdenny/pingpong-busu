@@ -72,7 +72,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
         baseUrl: "https://astree.co.kr/",
         adapterMode: "http",
         enabled: true,
-        parserVersion: "astree-5",
+        parserVersion: "astree-6",
       },
       {
         sourceCode: "ttadivision",
@@ -88,7 +88,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
         baseUrl: "https://airping.co.kr/",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "airping-2",
+        parserVersion: "airping-3",
       },
       {
         sourceCode: "okpingpong",
@@ -96,7 +96,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
         baseUrl: "http://okpingpong.co.kr/",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "okpingpong-2",
+        parserVersion: "okpingpong-4",
       },
       {
         sourceCode: "mytt",
@@ -104,7 +104,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
         baseUrl: "https://mytt.kr/",
         adapterMode: "http",
         enabled: true,
-        parserVersion: "mytt-2",
+        parserVersion: "mytt-3",
       },
       {
         sourceCode: "superstar",
@@ -112,7 +112,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
         baseUrl: "https://www.superstar.kr/open/Do.jsp?urlSeq=302",
         adapterMode: "http",
         enabled: true,
-        parserVersion: "superstar-1",
+        parserVersion: "superstar-2",
       },
       {
         sourceCode: "iping",
@@ -120,7 +120,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
         baseUrl: "https://www.iping.club/?pg=Search",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "iping-1",
+        parserVersion: "iping-3",
       },
     ];
   }
@@ -168,8 +168,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
             : {}),
           ...(row.latestParticipationCheckedAt
             ? {
-                latestParticipationCheckedAt:
-                  row.latestParticipationCheckedAt,
+                latestParticipationCheckedAt: row.latestParticipationCheckedAt,
               }
             : {}),
           ...(row.divisionObservations

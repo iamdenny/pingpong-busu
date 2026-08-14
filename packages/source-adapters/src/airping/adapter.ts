@@ -17,7 +17,7 @@ import { fetchWithRetry } from "../resilient-fetch";
 export class AirpingSourceAdapter implements SourceAdapter {
   readonly sourceCode = "airping";
   readonly mode = "http";
-  readonly parserVersion = "airping-2";
+  readonly parserVersion = "airping-3";
   constructor(readonly enabled = false) {}
   supportsLiveRefresh(): boolean {
     return this.enabled;

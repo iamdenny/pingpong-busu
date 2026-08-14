@@ -1,5 +1,5 @@
 import {
-  inferEventDivisionSystem,
+  inferRecordDivisionSystem,
   normalizePlayerName,
   stableHash,
   withRecordHashes,
@@ -135,6 +135,7 @@ function toRecord(
     playerName: expectedName.trim(),
     normalizedPlayerName: normalizedName,
     region: "경기도 용인시",
+    ...(tournamentDate ? { tournamentRegion: "경기도 용인시" } : {}),
     tournamentName: title,
     ...(tournamentDate ? { tournamentDate } : {}),
     sourcePublishedDate,
@@ -142,11 +143,13 @@ function toRecord(
     eventType: "unknown",
     ...(divisionValue
       ? {
-          divisionSystem: inferEventDivisionSystem(
+          divisionSystem: inferRecordDivisionSystem({
             eventName,
-            nearbyEvidence,
-            divisionValue,
-          ),
+            tournamentName: title,
+            tournamentDate,
+            tournamentRegion: "경기도 용인시",
+            additionalEvidence: [nearbyEvidence, divisionValue],
+          }),
           divisionValue,
         }
       : {}),

@@ -58,6 +58,7 @@ export const normalizedRecordSchema = z.object({
   normalizedPlayerName: z.string().min(1),
   clubText: z.string().min(1).optional(),
   region: z.string().min(1).optional(),
+  tournamentRegion: z.string().min(1).optional(),
   tournamentName: z.string().min(1),
   tournamentDate: z.string().date().optional(),
   sourcePublishedDate: z.string().date().optional(),
@@ -100,6 +101,7 @@ export interface PlayerRecord {
   id: string;
   date?: string;
   dateBasis?: "tournament" | "published";
+  tournamentRegion?: string;
   tournament: string;
   scale: "national" | "province" | "district" | "club" | "unknown";
   event: string;

@@ -85,6 +85,7 @@ describe("SupabasePlayerRepository identity evidence", () => {
       source_name: "애즈트리",
       tournament_scale: "district",
       tournament_date: "2026-08-13",
+      tournament_region: "경기도 용인시",
       source_published_date: null,
       sort_date: "2026-08-13",
       last_checked_at: "2026-08-13T00:00:00.000Z",
@@ -121,6 +122,7 @@ describe("SupabasePlayerRepository identity evidence", () => {
           expect.objectContaining({
             id: "record-1",
             tournament: "재조회 성공 대회",
+            tournamentRegion: "경기도 용인시",
             event: "개인단식 6부",
           }),
         ],
@@ -198,5 +200,99 @@ describe("SupabasePlayerRepository identity evidence", () => {
         editorId: "00000000-0000-4000-8000-000000000002",
       }),
     ).rejects.toThrow("선택한 기록이 최근 편집으로 변경되었습니다");
+  });
+});
+
+describe("SupabasePlayerRepository player detail", () => {
+  it("keeps a historical regional award but omits it from source recent-summary fields", async () => {
+    const summaryRow = {
+      id: "candidate-historical",
+      canonical_name: "김탁구",
+      normalized_name: "김탁구",
+      primary_region: "서울특별시",
+      primary_club: null,
+      recent_observed_division: null,
+      recent_observed_division_system: null,
+      result_count: 0,
+      award_results: [],
+      latest_participation_date: null,
+      latest_participation_tournament: null,
+      latest_participation_checked_at: null,
+      division_observations: [],
+      source_count: 1,
+      last_checked_at: "2026-08-13T00:00:00.000Z",
+      identity_status: "unreviewed",
+      homonym_nickname: null,
+    };
+    const historicalRow = {
+      id: "record-historical",
+      tournament_name_text: "2021 서울시 생활체육 탁구대회",
+      event_name: "남자 개인단식 6부",
+      event_type: "singles",
+      division_system: "integrated",
+      effective_division_system: "regional",
+      division_value: "6부",
+      rank_text: "우승",
+      club_text: "합성탁구클럽",
+      source_url: "https://example.com/historical",
+      source_code: "astree",
+      source_name: "애즈트리",
+      tournament_scale: "district",
+      tournament_date: "2021-06-01",
+      tournament_region: "서울특별시",
+      source_published_date: null,
+      sort_date: "2021-06-01",
+      last_checked_at: "2026-08-13T00:00:00.000Z",
+      first_seen_at: "2026-08-13T00:00:00.000Z",
+    };
+    const summaryQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn(),
+    };
+    summaryQuery.select.mockReturnValue(summaryQuery);
+    summaryQuery.eq.mockReturnValue(summaryQuery);
+    summaryQuery.maybeSingle.mockResolvedValue({
+      data: summaryRow,
+      error: null,
+    });
+    const recordsQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      order: vi.fn(),
+      limit: vi.fn(),
+    };
+    recordsQuery.select.mockReturnValue(recordsQuery);
+    recordsQuery.eq.mockReturnValue(recordsQuery);
+    recordsQuery.order.mockReturnValue(recordsQuery);
+    recordsQuery.limit.mockResolvedValue({
+      data: [historicalRow],
+      error: null,
+    });
+    const client = {
+      from: vi
+        .fn()
+        .mockReturnValueOnce(summaryQuery)
+        .mockReturnValueOnce(recordsQuery),
+    };
+    const repository = new SupabasePlayerRepository(
+      client as unknown as SupabaseClient,
+    );
+
+    const detail = await repository.getPlayer("candidate-historical");
+
+    expect(detail?.records).toEqual([
+      expect.objectContaining({
+        division: "6부",
+        divisionSystem: "regional",
+        tournamentRegion: "서울특별시",
+      }),
+    ]);
+    expect(detail?.sources).toEqual([
+      expect.objectContaining({ resultCount: 0 }),
+    ]);
+    expect(detail?.sources[0]).not.toHaveProperty("recentObservedDivision");
+    expect(detail?.sources[0]).not.toHaveProperty("latestRank");
+    expect(detail?.sources[0]).not.toHaveProperty("latestRecordDate");
   });
 });

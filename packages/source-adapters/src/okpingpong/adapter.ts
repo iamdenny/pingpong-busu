@@ -17,7 +17,7 @@ import { fetchWithRetry } from "../resilient-fetch";
 export class OkPingpongSourceAdapter implements SourceAdapter {
   readonly sourceCode = "okpingpong";
   readonly mode = "http";
-  readonly parserVersion = "okpingpong-3";
+  readonly parserVersion = "okpingpong-4";
   constructor(readonly enabled = false) {}
   supportsLiveRefresh(): boolean {
     return this.enabled;

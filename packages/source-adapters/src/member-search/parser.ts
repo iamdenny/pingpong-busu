@@ -1,6 +1,6 @@
 import {
-  inferEventDivisionSystem,
   inferKoreanRegion,
+  inferRecordDivisionSystem,
   normalizePlayerName,
   normalizeSearchText,
   stableHash,
@@ -177,11 +177,13 @@ export function parseMemberSearchHtml(
     });
     return row.events.map((event) => {
       const region = inferKoreanRegion(row.tournamentName, event.eventName);
-      const divisionSystem = inferEventDivisionSystem(
-        event.eventName,
-        row.tournamentName,
-        event.divisionValue,
-      );
+      const divisionSystem = inferRecordDivisionSystem({
+        eventName: event.eventName,
+        tournamentName: row.tournamentName,
+        tournamentDate: row.tournamentDate,
+        tournamentRegion: region,
+        additionalEvidence: [event.divisionValue],
+      });
       return withRecordHashes({
         sourceCode: options.sourceCode,
         sourceIdentityKey,
@@ -191,6 +193,7 @@ export function parseMemberSearchHtml(
         tournamentName: row.tournamentName,
         ...(row.tournamentDate ? { tournamentDate: row.tournamentDate } : {}),
         ...(region ? { region } : {}),
+        ...(region ? { tournamentRegion: region } : {}),
         eventName: event.eventName,
         eventType: event.eventType,
         divisionSystem,

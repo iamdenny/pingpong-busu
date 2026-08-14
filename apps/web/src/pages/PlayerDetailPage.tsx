@@ -5,10 +5,12 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import {
   displayDivisionValue,
   divisionSystemLabels,
+  formatPreIntegratedDivisionNotice,
   formatDivisionObservation,
   homonymNicknameLabel,
   isAwardRank,
   sortPlayerRecordsByLatest,
+  type PlayerRecord,
 } from "@busu/domain";
 import { PageMetadata } from "../components/PageMetadata";
 import { RefreshStatus } from "../components/RefreshStatus";
@@ -17,6 +19,31 @@ import { playerRepository } from "../lib/runtime";
 import { useCalmEntry } from "../lib/motion";
 
 type Tab = "history" | "awards" | "sources" | "rules";
+
+function RecordDate({ record }: { record: PlayerRecord }) {
+  if (!record.date)
+    return <span className="record-date-unknown">날짜 미상</span>;
+  const transitionNotice =
+    record.dateBasis === "tournament"
+      ? formatPreIntegratedDivisionNotice(
+          record.date,
+          record.tournamentRegion,
+          record.divisionSystem,
+          record.tournament,
+        )
+      : undefined;
+  return (
+    <span className="record-date">
+      <time dateTime={record.date}>
+        {record.date}
+        {record.dateBasis === "published" && <small>게시일</small>}
+      </time>
+      {transitionNotice && (
+        <small className="record-transition-note">({transitionNotice})</small>
+      )}
+    </span>
+  );
+}
 
 function searchQueryFromState(value: unknown): string | undefined {
   if (typeof value !== "object" || value === null || !("searchQuery" in value))
@@ -67,6 +94,9 @@ export function PlayerDetailPage() {
     : player.records;
   const records = sortPlayerRecordsByLatest(visibleRecords);
   const historyTitle = isAwardsTab ? "입상 이력 (4강 이상)" : "전체 이력";
+  const totalAwardCount = player.records.filter((record) =>
+    isAwardRank(record.rank),
+  ).length;
   const integratedSource = player.sources.find(
     (source) =>
       source.recentObservedDivisionSystem === "integrated" ||
@@ -85,7 +115,7 @@ export function PlayerDetailPage() {
     : "";
   const nickname = homonymNicknameLabel(player.homonymNickname);
   const pageTitle = `${player.name}${nickname ? ` · ${nickname}` : ""} 선수 탁구 부수·입상 기록 · BUSU`;
-  const pageDescription = `${player.name} 선수${nickname ? ` (${nickname}, 동명이인 기록 구분용 별칭)` : ""}${identitySummary ? ` (${identitySummary})` : ""}의 ${observedDivisionSummary}대회 출전 ${player.records.length}건과 4강 이상 입상 ${player.resultCount}건의 원문 출처를 확인하세요.`;
+  const pageDescription = `${player.name} 선수${nickname ? ` (${nickname}, 동명이인 기록 구분용 별칭)` : ""}${identitySummary ? ` (${identitySummary})` : ""}의 ${observedDivisionSummary}대회 출전 ${player.records.length}건과 4강 이상 입상 ${totalAwardCount}건의 원문 출처를 확인하세요.`;
   return (
     <div className="page detail-page" ref={detailRef}>
       <PageMetadata
@@ -157,7 +187,7 @@ export function PlayerDetailPage() {
         </article>
         <article>
           <span>과거 입상 기록</span>
-          <strong>{player.resultCount}건</strong>
+          <strong>{totalAwardCount}건</strong>
           <small>
             4강 이상 ·{" "}
             {player.dataKind === "live" ? "수집된 공개 기록" : "가상 출처 포함"}
@@ -221,16 +251,7 @@ export function PlayerDetailPage() {
                     {records.map((record) => (
                       <tr key={record.id}>
                         <td>
-                          {record.date ? (
-                            <time dateTime={record.date}>
-                              {record.date}
-                              {record.dateBasis === "published" && (
-                                <small>게시일</small>
-                              )}
-                            </time>
-                          ) : (
-                            "날짜 미상"
-                          )}
+                          <RecordDate record={record} />
                         </td>
                         <td>
                           <strong>{record.tournament}</strong>
@@ -267,14 +288,7 @@ export function PlayerDetailPage() {
               <div className="record-cards">
                 {records.map((record) => (
                   <article key={record.id}>
-                    {record.date ? (
-                      <time dateTime={record.date}>
-                        {record.date}
-                        {record.dateBasis === "published" && " · 게시일"}
-                      </time>
-                    ) : (
-                      <span className="record-date-unknown">날짜 미상</span>
-                    )}
+                    <RecordDate record={record} />
                     <h3>{record.tournament}</h3>
                     <p>{record.club ?? "소속 미상"}</p>
                     <dl>

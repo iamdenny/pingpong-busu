@@ -45,6 +45,11 @@ describe("PlayerDetailPage metadata", () => {
     expect(screen.getAllByText("남자 단식")).not.toHaveLength(0);
     expect(screen.getAllByText("개인 단식")).not.toHaveLength(0);
     expect(screen.getAllByText("혼합 복식")).not.toHaveLength(0);
+    expect(
+      screen.getAllByText(
+        "(대한탁구협회 통합부수 시행 이전 · 시행일 2022.07.01)",
+      ),
+    ).not.toHaveLength(0);
     const tabs = screen.getAllByRole("tab");
     expect(tabs[0]).toHaveTextContent("입상 이력 (4강 이상)");
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
