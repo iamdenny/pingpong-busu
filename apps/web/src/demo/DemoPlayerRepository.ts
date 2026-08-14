@@ -51,6 +51,15 @@ export class DemoPlayerRepository implements PlayerRepository {
         parserVersion: "astree-4",
       },
       {
+        sourceCode: "newttplay",
+        displayName: "뉴티티플레이",
+        baseUrl:
+          "https://www.newttplay.co.kr/bbs/board.php?bo_table=member_search",
+        adapterMode: "http",
+        enabled: false,
+        parserVersion: "newttplay-1",
+      },
+      {
         sourceCode: "ttadivision",
         displayName: "대한탁구협회 디비전",
         baseUrl: "https://ttadivision.sports.or.kr/",

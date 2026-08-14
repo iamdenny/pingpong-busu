@@ -41,7 +41,7 @@ describe("Supabase development deployment contract", () => {
     const sourceFlags = developmentWorkflow.match(
       /CRAWLER_SOURCE_[A-Z_]+_ENABLED="false"/g,
     );
-    expect(sourceFlags).toHaveLength(8);
+    expect(sourceFlags).toHaveLength(9);
     expect(developmentWorkflow).not.toContain("KAKAO_REST_API_KEY");
     expect(developmentWorkflow).not.toContain("IPING_USERNAME");
     expect(developmentWorkflow).not.toContain("IPING_PASSWORD");

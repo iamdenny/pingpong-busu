@@ -43,9 +43,10 @@ describe("HomePage", () => {
     const summary = await screen.findByText("검색 출처");
     const details = summary.closest("details");
     expect(details).not.toHaveAttribute("open");
-    expect(screen.getByText("4곳 검색 중 · 전체 8곳")).toBeInTheDocument();
+    expect(screen.getByText("4곳 검색 중 · 전체 9곳")).toBeInTheDocument();
     fireEvent.click(screen.getByText("상세"));
     expect(details).toHaveAttribute("open");
+    expect(screen.getByText("뉴티티플레이")).toBeInTheDocument();
     expect(screen.getByText("애즈트리").closest("li")).toHaveTextContent(
       "검색 중",
     );

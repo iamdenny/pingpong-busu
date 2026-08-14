@@ -2,6 +2,8 @@ export * from "./mock/adapter";
 export * from "./skeleton";
 export * from "./astree/adapter";
 export * from "./astree/parser";
+export * from "./newttplay/adapter";
+export * from "./newttplay/parser";
 export * from "./ttadivision/adapter";
 export * from "./ttadivision/parser";
 export * from "./airping/adapter";
@@ -22,6 +24,7 @@ export * from "./resilient-fetch";
 
 import { DisabledSourceAdapter } from "./skeleton";
 import { AstreeSourceAdapter } from "./astree/adapter";
+import { NewttplaySourceAdapter } from "./newttplay/adapter";
 import { TtaDivisionSourceAdapter } from "./ttadivision/adapter";
 import { AirpingSourceAdapter } from "./airping/adapter";
 import { OkPingpongSourceAdapter } from "./okpingpong/adapter";
@@ -34,6 +37,9 @@ export const airpingAdapter = new AirpingSourceAdapter(
 );
 export const astreeAdapter = new AstreeSourceAdapter(
   process.env.CRAWLER_SOURCE_ASTREE_ENABLED === "true",
+);
+export const newttplayAdapter = new NewttplaySourceAdapter(
+  process.env.CRAWLER_SOURCE_NEWTTPLAY_ENABLED === "true",
 );
 export const ttaDivisionAdapter = new TtaDivisionSourceAdapter(
   process.env.CRAWLER_SOURCE_TTADIVISION_ENABLED === "true",
