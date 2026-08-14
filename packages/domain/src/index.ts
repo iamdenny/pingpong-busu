@@ -1,5 +1,6 @@
 export * from "./models";
 export * from "./homonymNicknames";
+export * from "./playerSearchOrder";
 export * from "./normalization";
 export * from "./hashing";
 export * from "./diff";

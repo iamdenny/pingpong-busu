@@ -49,7 +49,14 @@ export function recordsToPlayerDetails(
     const awardResults = awards.flatMap((record) => {
       if (!record.rankText) return [];
       const date = normalizedRecordDate(record);
-      return [{ rank: record.rankText, ...(date ? { date } : {}) }];
+      return [
+        {
+          rank: record.rankText,
+          ...(date ? { date } : {}),
+          tournament: record.tournamentName,
+          lastCheckedAt: record.observedAt,
+        },
+      ];
     });
     const playerRecords: PlayerRecord[] = sorted.map((record) => {
       const date = normalizedRecordDate(record);

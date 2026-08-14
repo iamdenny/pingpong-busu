@@ -46,7 +46,9 @@ test("demo search vertical slice", async ({ page }) => {
       name: "김탁구 파워 드라이브 전문가 서울 스핀탁구클럽 상세 기록 보기",
     })
     .click();
-  await expect(page.getByRole("heading", { name: "대회 이력" })).toBeAttached();
+  await expect(
+    page.getByRole("heading", { name: "입상 이력 (4강 이상)" }),
+  ).toBeAttached();
   await expect(page.getByText("2026 가상 전국오픈")).toHaveCount(2);
   await page.getByRole("tab", { name: "출처 비교" }).click();
   await expect(
@@ -87,7 +89,7 @@ test("navigation fallback and rapid result state changes converge", async ({
   await page.getByRole("button", { name: "검색" }).click();
 
   const divisionFilter = page.getByRole("button", {
-    name: /오픈부수 6부 .* 결과 보기/,
+    name: /통합부수 6부 .* 결과 보기/,
   });
   await divisionFilter.click();
   const results = page.getByRole("tabpanel", { name: /선수 검색 결과 목록/ });

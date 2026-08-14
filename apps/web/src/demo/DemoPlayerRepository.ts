@@ -3,6 +3,7 @@ import {
   normalizeSearchText,
   sortPlayerRecordsByLatest,
   summarizeDivisionObservations,
+  type PlayerDetail,
   type SourceStatus,
 } from "@busu/domain";
 import type {
@@ -19,6 +20,24 @@ import type {
   RevertIdentityEditResponse,
 } from "../lib/repository";
 import { demoPlayers } from "./data";
+
+function latestParticipationSummary(player: PlayerDetail): {
+  latestParticipationDate?: string;
+  latestParticipationTournament?: string;
+  latestParticipationCheckedAt?: string;
+} {
+  const latestParticipation = sortPlayerRecordsByLatest(
+    player.records.filter((record) => !isAwardRank(record.rank)),
+  )[0];
+  if (!latestParticipation) return {};
+  return {
+    ...(latestParticipation.date
+      ? { latestParticipationDate: latestParticipation.date }
+      : {}),
+    latestParticipationTournament: latestParticipation.tournament,
+    latestParticipationCheckedAt: latestParticipation.lastCheckedAt,
+  };
+}
 
 export class DemoPlayerRepository implements PlayerRepository {
   async listSourceStatuses(): Promise<SourceStatus[]> {
@@ -129,10 +148,13 @@ export class DemoPlayerRepository implements PlayerRepository {
                   {
                     rank: record.rank,
                     ...(record.date ? { date: record.date } : {}),
+                    tournament: record.tournament,
+                    lastCheckedAt: record.lastCheckedAt,
                   },
                 ]
               : [],
           ),
+        ...latestParticipationSummary(player),
         divisionObservations: summarizeDivisionObservations(player.records),
         sourceCount: player.sourceCount,
         lastCheckedAt: player.lastCheckedAt,
