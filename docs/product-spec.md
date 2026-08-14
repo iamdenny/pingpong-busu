@@ -183,17 +183,18 @@ title: "BUSU 제품 스펙"
 
 ## 7. 출처 상태
 
-| 코드          | 공개 이름           | adapter          | 운영 상태         | 비고                                                           |
-| ------------- | ------------------- | ---------------- | ----------------- | -------------------------------------------------------------- |
-| `astree`      | 애즈트리            | HTTP             | 활성 opt-in       | 최대 2페이지                                                   |
-| `ttadivision` | 대한탁구협회 디비전 | HTTP             | 활성 opt-in       | T1~T7, 휴대폰/RT점수 폐기                                      |
-| `mytt`        | 마이티티            | HTTP/JSF         | 활성 opt-in       | 단기 session과 ViewState 비저장                                |
-| `superstar`   | 슈퍼스타탁구        | HTTP GET         | 활성 opt-in       | 개인별 결과만 저장, 레이팅 제외                                |
-| `airping`     | 에어핑퐁            | HTTP             | production opt-in | Edge 5초 단일 시도, 화면에서 5초 이상 간격으로 최대 2회 재시도 |
-| `okpingpong`  | 오케이핑퐁          | HTTP             | production opt-in | 공개 검색, 10초 timeout·일시 오류 1회 재시도, 정상 0건 행 구분 |
-| `iping`       | 아이핑              | 서버 인증형 HTTP | production opt-in | GET 12초 timeout·일시 오류 1회 재시도, 인증 POST 반복 금지     |
-| `band`        | 밴드                | 없음             | 사용자 목록 제외  | scraping 금지                                                  |
-| `mock`        | 가상 출처           | fixture          | 개발 전용         | 실제 데이터와 badge로 구분                                     |
+| 코드          | 공개 이름           | adapter          | 운영 상태          | 비고                                                           |
+| ------------- | ------------------- | ---------------- | ------------------ | -------------------------------------------------------------- |
+| `astree`      | 애즈트리            | HTTP             | 활성 opt-in        | 최대 2페이지                                                   |
+| `newttplay`   | 뉴티티플레이        | HTTP             | 비활성 / 허가 대기 | 공개 탁구인검색 최대 2페이지, 결과 표만 저장                   |
+| `ttadivision` | 대한탁구협회 디비전 | HTTP             | 활성 opt-in        | T1~T7, 휴대폰/RT점수 폐기                                      |
+| `mytt`        | 마이티티            | HTTP/JSF         | 활성 opt-in        | 단기 session과 ViewState 비저장                                |
+| `superstar`   | 슈퍼스타탁구        | HTTP GET         | 활성 opt-in        | 개인별 결과만 저장, 레이팅 제외                                |
+| `airping`     | 에어핑퐁            | HTTP             | production opt-in  | Edge 5초 단일 시도, 화면에서 5초 이상 간격으로 최대 2회 재시도 |
+| `okpingpong`  | 오케이핑퐁          | HTTP             | production opt-in  | 공개 검색, 10초 timeout·일시 오류 1회 재시도, 정상 0건 행 구분 |
+| `iping`       | 아이핑              | 서버 인증형 HTTP | production opt-in  | GET 12초 timeout·일시 오류 1회 재시도, 인증 POST 반복 금지     |
+| `band`        | 밴드                | 없음             | 사용자 목록 제외   | scraping 금지                                                  |
+| `mock`        | 가상 출처           | fixture          | 개발 전용          | 실제 데이터와 badge로 구분                                     |
 
 출처별 세부 URL·parser version·정책 근거는 [출처 메모](source-notes.md)가 기준이다.
 

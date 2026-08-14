@@ -2,7 +2,7 @@ name: Manual crawl
 on:
   workflow_dispatch:
     inputs:
-      source: { description: Source code, required: true, default: mock, type: choice, options: [mock, airping, astree, ttadivision, okpingpong, mytt, superstar] }
+      source: { description: Source code, required: true, default: mock, type: choice, options: [mock, airping, astree, newttplay, ttadivision, okpingpong, mytt, superstar] }
       query: { description: Player name, required: true, default: 김탁구, type: string }
       live: { description: Enable approved live access, required: true, default: false, type: boolean }
       maxPages: { description: Maximum pages, required: true, default: '1', type: string }
@@ -33,6 +33,7 @@ jobs:
           CRAWLER_REDACT_QUERY: "true"
           CRAWL_LIVE: "true"
           CRAWLER_SOURCE_ASTREE_ENABLED: ${{ inputs.source == 'astree' && 'true' || 'false' }}
+          CRAWLER_SOURCE_NEWTTPLAY_ENABLED: ${{ inputs.source == 'newttplay' && 'true' || 'false' }}
           CRAWLER_SOURCE_TTADIVISION_ENABLED: ${{ inputs.source == 'ttadivision' && 'true' || 'false' }}
           CRAWLER_SOURCE_AIRPING_ENABLED: ${{ inputs.source == 'airping' && 'true' || 'false' }}
           CRAWLER_SOURCE_OKPINGPONG_ENABLED: ${{ inputs.source == 'okpingpong' && 'true' || 'false' }}

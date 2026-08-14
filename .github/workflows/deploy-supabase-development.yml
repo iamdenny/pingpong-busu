@@ -83,6 +83,7 @@ jobs:
           --project-ref "$SUPABASE_PROJECT_ID"
           CRAWL_LIVE="false"
           CRAWLER_SOURCE_ASTREE_ENABLED="false"
+          CRAWLER_SOURCE_NEWTTPLAY_ENABLED="false"
           CRAWLER_SOURCE_TTADIVISION_ENABLED="false"
           CRAWLER_SOURCE_AIRPING_ENABLED="false"
           CRAWLER_SOURCE_OKPINGPONG_ENABLED="false"

@@ -1,4 +1,5 @@
 export { parseAstreeSearchHtml } from "./parser";
+export { parseNewttplaySearchHtml } from "../newttplay/parser";
 export { parseTtaDivisionSearchResponse } from "../ttadivision/parser";
 export { parseAirpingSearchHtml } from "../airping/parser";
 export { parseOkPingpongSearchHtml } from "../okpingpong/parser";

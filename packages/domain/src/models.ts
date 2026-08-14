@@ -4,6 +4,7 @@ export const sourceCodes = [
   "mock",
   "airping",
   "astree",
+  "newttplay",
   "ttadivision",
   "okpingpong",
   "mytt",

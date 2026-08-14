@@ -57,6 +57,7 @@ version 1 반복 실행은 unchanged, version 2는 content 변경과 revision �
 
 ```bash
 pnpm crawl:live --query 김탁구 --source astree
+pnpm crawl:live --query 김탁구 --source newttplay
 pnpm crawl:live --query 김탁구 --source ttadivision
 pnpm crawl:live --query 김탁구 --source mytt
 pnpm crawl:live --query 김탁구 --source superstar
@@ -66,7 +67,7 @@ pnpm crawl:live --query 김탁구 --source okpingpong
 pnpm crawl:live --query 임대현 --source iping
 ```
 
-`CRAWL_LIVE=true`와 해당 출처별 환경 변수가 없으면 실행하지 않는다. `yongintt`는 trusted 환경의 `KAKAO_REST_API_KEY`, `iping`은 `IPING_USERNAME`과 `IPING_PASSWORD`도 필요하다. 아이핑 계정과 세션은 브라우저 번들·DB·로그에 저장하지 않는다.
+`CRAWL_LIVE=true`와 해당 출처별 환경 변수가 없으면 실행하지 않는다. `newttplay`은 운영 허가 확인 전에는 `CRAWLER_SOURCE_NEWTTPLAY_ENABLED=false`를 유지한다. `yongintt`는 trusted 환경의 `KAKAO_REST_API_KEY`, `iping`은 `IPING_USERNAME`과 `IPING_PASSWORD`도 필요하다. 아이핑 계정과 세션은 브라우저 번들·DB·로그에 저장하지 않는다.
 
 ## Supabase
 

@@ -12,6 +12,7 @@ import {
   parseIpingSearchHtml,
   parseMyttSearchForm,
   parseMyttSearchHtml,
+  parseNewttplaySearchHtml,
   parseOkPingpongSearchHtml,
   parseSuperstarSearchHtml,
   parseTtaDivisionSearchResponse,
@@ -31,6 +32,7 @@ const sourceCodes = [
   "mock",
   "airping",
   "astree",
+  "newttplay",
   "ttadivision",
   "okpingpong",
   "mytt",
@@ -52,6 +54,7 @@ interface RefreshInput {
 const sourceFlags: Record<LiveSourceCode, string> = {
   airping: "CRAWLER_SOURCE_AIRPING_ENABLED",
   astree: "CRAWLER_SOURCE_ASTREE_ENABLED",
+  newttplay: "CRAWLER_SOURCE_NEWTTPLAY_ENABLED",
   ttadivision: "CRAWLER_SOURCE_TTADIVISION_ENABLED",
   okpingpong: "CRAWLER_SOURCE_OKPINGPONG_ENABLED",
   mytt: "CRAWLER_SOURCE_MYTT_ENABLED",
@@ -62,7 +65,8 @@ const sourceFlags: Record<LiveSourceCode, string> = {
 
 const parserVersions: Record<LiveSourceCode, string> = {
   airping: "airping-2",
-  astree: "astree-4",
+  astree: "astree-5",
+  newttplay: "newttplay-1",
   ttadivision: "ttadivision-1",
   okpingpong: "okpingpong-3",
   mytt: "mytt-2",
@@ -242,6 +246,87 @@ async function fetchSimpleHtmlRecords(
       ? parseAirpingSearchHtml(html, name, fetchedAt)
       : parseOkPingpongSearchHtml(html, name, fetchedAt)
   ) as Array<Record<string, unknown>>;
+}
+
+async function fetchMemberSearchRecords(
+  sourceCode: "astree" | "newttplay",
+  name: string,
+  fetchedAt: string,
+): Promise<Array<Record<string, unknown>>> {
+  const maxHtmlBytes = 2 * 1024 * 1024;
+  const source =
+    sourceCode === "astree"
+      ? {
+          baseUrl: "https://astree.co.kr/bbs/board.php",
+          displayName: "애즈트리",
+          parse: parseAstreeSearchHtml,
+        }
+      : {
+          baseUrl: "https://www.newttplay.co.kr/bbs/board.php",
+          displayName: "뉴티티플레이",
+          parse: parseNewttplaySearchHtml,
+        };
+  const records: Array<Record<string, unknown>> = [];
+  for (let page = 1; page <= 2; page += 1) {
+    const url = new URL(source.baseUrl);
+    url.searchParams.set("bo_table", "member_search");
+    url.searchParams.set("sfl", "wr_subject");
+    url.searchParams.set("stx", name);
+    url.searchParams.set("page", String(page));
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: {
+        accept: "text/html",
+        "user-agent": Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU",
+      },
+      redirect: sourceCode === "newttplay" ? "manual" : "follow",
+    });
+    if (
+      sourceCode === "newttplay" &&
+      response.status >= 300 &&
+      response.status < 400
+    ) {
+      throw new SafeSourceError(
+        "source_blocked",
+        "뉴티티플레이가 허용되지 않은 redirect를 반환했습니다.",
+      );
+    }
+    assertPublicHtmlResponse(response, source.displayName);
+    const contentLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(contentLength) && contentLength > maxHtmlBytes) {
+      await response.body?.cancel();
+      throw new SafeSourceError(
+        "source_schema_changed",
+        `${source.displayName} HTML 응답 크기가 제한을 초과했습니다.`,
+      );
+    }
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let totalBytes = 0;
+    let html = "";
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > maxHtmlBytes) {
+          await reader.cancel();
+          throw new SafeSourceError(
+            "source_schema_changed",
+            `${source.displayName} HTML 응답 크기가 제한을 초과했습니다.`,
+          );
+        }
+        html += decoder.decode(value, { stream: true });
+      }
+      html += decoder.decode();
+    }
+    const parsed = source.parse(html, name, fetchedAt) as Array<
+      Record<string, unknown>
+    >;
+    records.push(...parsed);
+    if (parsed.length === 0 || !html.includes(`page=${page + 1}`)) break;
+  }
+  return records;
 }
 
 async function fetchSuperstarRecords(
@@ -760,32 +845,14 @@ Deno.serve(async (request) => {
       try {
         const fetchedAt = new Date().toISOString();
         const records: Array<Record<string, unknown>> = [];
-        if (sourceCode === "astree") {
-          for (let page = 1; page <= 2; page += 1) {
-            const url = new URL("https://astree.co.kr/bbs/board.php");
-            url.searchParams.set("bo_table", "member_search");
-            url.searchParams.set("sfl", "wr_subject");
-            url.searchParams.set("stx", input.name);
-            url.searchParams.set("page", String(page));
-            const response = await fetch(url, {
-              signal: AbortSignal.timeout(8000),
-              headers: {
-                accept: "text/html",
-                "user-agent": Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU",
-              },
-              redirect: "follow",
-            });
-            assertSourceResponse(response, "애즈트리");
-            const html = await response.text();
-            const parsed = parseAstreeSearchHtml(
-              html,
+        if (sourceCode === "astree" || sourceCode === "newttplay") {
+          records.push(
+            ...(await fetchMemberSearchRecords(
+              sourceCode,
               input.name,
               fetchedAt,
-            ) as Array<Record<string, unknown>>;
-            records.push(...parsed);
-            if (parsed.length === 0 || !html.includes(`page=${page + 1}`))
-              break;
-          }
+            )),
+          );
         } else if (sourceCode === "ttadivision") {
           records.push(
             ...(await fetchTtaDivisionRecords(input.name, fetchedAt)),
