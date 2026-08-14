@@ -48,7 +48,7 @@ async function readBoundedHtml(response: Response): Promise<string> {
 export class NewttplaySourceAdapter implements SourceAdapter {
   readonly sourceCode = "newttplay";
   readonly mode = "http";
-  readonly parserVersion = "newttplay-1";
+  readonly parserVersion = "newttplay-2";
 
   constructor(readonly enabled = false) {}
 

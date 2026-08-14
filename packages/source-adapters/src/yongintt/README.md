@@ -1,6 +1,6 @@
 # 용인탁구협회 다음 카페 adapter
 
-카카오의 공식 Daum 카페 검색 API로 `{이름} 대회`를 최신순 조회하고 `cafe.daum.net/yongintt/` 게시물만 남기는 `yongintt-3` adapter입니다. 제목·검색 요약·게시일·원문 URL만 처리하며 회원 전용 본문을 열거나 로그인 접근제어를 우회하지 않습니다.
+카카오의 공식 Daum 카페 검색 API로 `{이름} 대회`를 최신순 조회하고 `cafe.daum.net/yongintt/` 게시물만 남기는 `yongintt-4` adapter입니다. 제목·검색 요약·게시일·원문 URL만 처리하며 회원 전용 본문을 열거나 로그인 접근제어를 우회하지 않습니다.
 
 - API: `GET https://dapi.kakao.com/v2/search/cafe`
 - Secret: `KAKAO_REST_API_KEY` (trusted server only)

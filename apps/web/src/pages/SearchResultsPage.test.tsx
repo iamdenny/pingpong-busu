@@ -104,7 +104,7 @@ describe("SearchResultsPage", () => {
       "award-result-summary__item",
     );
     expect(awardDates[1]).toHaveAttribute("datetime", "2026-04-06");
-    expect(within(awardSummary!).getByText("외 1건")).toBeInTheDocument();
+    expect(within(awardSummary!).queryByText("외 1건")).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", {
         name: "김탁구 파워 드라이브 전문가 서울 스핀탁구클럽 상세 기록 보기",

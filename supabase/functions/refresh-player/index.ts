@@ -64,15 +64,15 @@ const sourceFlags: Record<LiveSourceCode, string> = {
 };
 
 const parserVersions: Record<LiveSourceCode, string> = {
-  airping: "airping-2",
-  astree: "astree-5",
-  newttplay: "newttplay-1",
+  airping: "airping-3",
+  astree: "astree-6",
+  newttplay: "newttplay-2",
   ttadivision: "ttadivision-1",
-  okpingpong: "okpingpong-3",
-  mytt: "mytt-2",
-  superstar: "superstar-1",
-  yongintt: "yongintt-3",
-  iping: "iping-2",
+  okpingpong: "okpingpong-4",
+  mytt: "mytt-3",
+  superstar: "superstar-2",
+  yongintt: "yongintt-4",
+  iping: "iping-3",
 };
 
 const airpingRetryAfterMs = 5_000;

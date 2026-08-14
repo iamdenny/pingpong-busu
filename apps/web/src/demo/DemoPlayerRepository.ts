@@ -1,5 +1,6 @@
 import {
   isAwardRank,
+  isPreIntegratedDivisionRecord,
   normalizeSearchText,
   sortPlayerRecordsByLatest,
   summarizeDivisionObservations,
@@ -27,7 +28,10 @@ function latestParticipationSummary(player: PlayerDetail): {
   latestParticipationCheckedAt?: string;
 } {
   const latestParticipation = sortPlayerRecordsByLatest(
-    player.records.filter((record) => !isAwardRank(record.rank)),
+    player.records.filter(
+      (record) =>
+        !isAwardRank(record.rank) && !isPreIntegratedDivisionRecord(record),
+    ),
   )[0];
   if (!latestParticipation) return {};
   return {
@@ -48,7 +52,7 @@ export class DemoPlayerRepository implements PlayerRepository {
         baseUrl: "https://astree.co.kr/",
         adapterMode: "http",
         enabled: true,
-        parserVersion: "astree-5",
+        parserVersion: "astree-6",
       },
       {
         sourceCode: "newttplay",
@@ -57,7 +61,7 @@ export class DemoPlayerRepository implements PlayerRepository {
           "https://www.newttplay.co.kr/bbs/board.php?bo_table=member_search",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "newttplay-1",
+        parserVersion: "newttplay-2",
       },
       {
         sourceCode: "ttadivision",
@@ -73,7 +77,7 @@ export class DemoPlayerRepository implements PlayerRepository {
         baseUrl: "https://airping.co.kr/",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "airping-2",
+        parserVersion: "airping-3",
       },
       {
         sourceCode: "okpingpong",
@@ -81,7 +85,7 @@ export class DemoPlayerRepository implements PlayerRepository {
         baseUrl: "http://okpingpong.co.kr/",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "okpingpong-2",
+        parserVersion: "okpingpong-4",
       },
       {
         sourceCode: "mytt",
@@ -89,7 +93,7 @@ export class DemoPlayerRepository implements PlayerRepository {
         baseUrl: "https://mytt.kr/",
         adapterMode: "http",
         enabled: true,
-        parserVersion: "mytt-2",
+        parserVersion: "mytt-3",
       },
       {
         sourceCode: "superstar",
@@ -97,7 +101,7 @@ export class DemoPlayerRepository implements PlayerRepository {
         baseUrl: "https://www.superstar.kr/open/Do.jsp?urlSeq=302",
         adapterMode: "http",
         enabled: true,
-        parserVersion: "superstar-1",
+        parserVersion: "superstar-2",
       },
       {
         sourceCode: "yongintt",
@@ -105,7 +109,7 @@ export class DemoPlayerRepository implements PlayerRepository {
         baseUrl: "https://cafe.daum.net/yongintt",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "yongintt-3",
+        parserVersion: "yongintt-4",
       },
       {
         sourceCode: "iping",
@@ -113,7 +117,7 @@ export class DemoPlayerRepository implements PlayerRepository {
         baseUrl: "https://www.iping.club/?pg=Search",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "iping-1",
+        parserVersion: "iping-3",
       },
     ];
   }
@@ -134,24 +138,37 @@ export class DemoPlayerRepository implements PlayerRepository {
               (source) => source.sourceCode === input.sourceCode,
             )),
       )
-      .map((player) => ({
-        id: player.id,
-        name: player.name,
-        normalizedName: player.normalizedName,
-        ...(player.region ? { region: player.region } : {}),
-        ...(player.club ? { club: player.club } : {}),
-        ...(player.recentObservedDivision
-          ? { recentObservedDivision: player.recentObservedDivision }
-          : {}),
-        ...(player.recentObservedDivisionSystem
-          ? {
-              recentObservedDivisionSystem: player.recentObservedDivisionSystem,
-            }
-          : {}),
-        resultCount: player.resultCount,
-        awardResults: player.records
-          .filter((record) => isAwardRank(record.rank))
-          .flatMap((record) =>
+      .map((player) => {
+        const currentSummaryRecords = player.records.filter(
+          (record) => !isPreIntegratedDivisionRecord(record),
+        );
+        const currentDivisionRecord = sortPlayerRecordsByLatest(
+          currentSummaryRecords,
+        ).find((record) => record.division);
+        const currentAwardRecords = currentSummaryRecords.filter((record) =>
+          isAwardRank(record.rank),
+        );
+        const historicalAwardCount = player.records.filter(
+          (record) =>
+            isAwardRank(record.rank) && isPreIntegratedDivisionRecord(record),
+        ).length;
+        return {
+          id: player.id,
+          name: player.name,
+          normalizedName: player.normalizedName,
+          ...(player.region ? { region: player.region } : {}),
+          ...(player.club ? { club: player.club } : {}),
+          ...(currentDivisionRecord?.division
+            ? { recentObservedDivision: currentDivisionRecord.division }
+            : {}),
+          ...(currentDivisionRecord?.divisionSystem
+            ? {
+                recentObservedDivisionSystem:
+                  currentDivisionRecord.divisionSystem,
+              }
+            : {}),
+          resultCount: Math.max(0, player.resultCount - historicalAwardCount),
+          awardResults: currentAwardRecords.flatMap((record) =>
             record.rank
               ? [
                   {
@@ -163,15 +180,16 @@ export class DemoPlayerRepository implements PlayerRepository {
                 ]
               : [],
           ),
-        ...latestParticipationSummary(player),
-        divisionObservations: summarizeDivisionObservations(player.records),
-        sourceCount: player.sourceCount,
-        lastCheckedAt: player.lastCheckedAt,
-        identityStatus: player.identityStatus,
-        ...(player.homonymNickname
-          ? { homonymNickname: player.homonymNickname }
-          : {}),
-      }));
+          ...latestParticipationSummary(player),
+          divisionObservations: summarizeDivisionObservations(player.records),
+          sourceCount: player.sourceCount,
+          lastCheckedAt: player.lastCheckedAt,
+          identityStatus: player.identityStatus,
+          ...(player.homonymNickname
+            ? { homonymNickname: player.homonymNickname }
+            : {}),
+        };
+      });
   }
   async getPlayer(id: string) {
     const player = demoPlayers.find((candidate) => candidate.id === id);

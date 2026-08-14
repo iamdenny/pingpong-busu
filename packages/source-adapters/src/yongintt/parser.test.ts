@@ -98,4 +98,32 @@ describe("parseYonginCafeSearchResponse", () => {
       ).records,
     ).toHaveLength(0);
   });
+
+  it("does not use the post publication date as the tournament transition date", () => {
+    const response = {
+      meta: { total_count: 1, pageable_count: 1, is_end: true },
+      documents: [
+        {
+          title: "용인시 탁구대회 입상자 안내",
+          contents: "김라켓 선수 6부 우승",
+          url: "https://cafe.daum.net/yongintt/IBLf/45",
+          cafename: "용인시탁구협회",
+          thumbnail: "",
+          datetime: "2020-08-13T00:00:00.000+09:00",
+        },
+      ],
+    };
+
+    const result = parseYonginCafeSearchResponse(
+      response,
+      "김라켓",
+      "2026-08-13T00:00:00.000Z",
+    );
+
+    expect(result.records[0]).toMatchObject({
+      sourcePublishedDate: "2020-08-13",
+      divisionSystem: "integrated",
+    });
+    expect(result.records[0]?.tournamentDate).toBeUndefined();
+  });
 });

@@ -1,7 +1,7 @@
 # Astree adapter
 
 - Mode: HTTP
-- Parser version: `astree-5`
+- Parser version: `astree-6`
 - Default: disabled
 - Enable: trusted environment에서 `CRAWL_LIVE=true`와 `CRAWLER_SOURCE_ASTREE_ENABLED=true`
 - Endpoint: 공개 탁구인검색 GET form (`bo_table=member_search`, `sfl=wr_subject`, `stx`)

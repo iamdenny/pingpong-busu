@@ -83,33 +83,37 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 15. `202608140003_newttplay_global_request_budget.sql`: 뉴티티플레이 출처 전체 요청 예산
 16. `202608140004_bundang_18_regional_division_override.sql`: 사용자 확인 근거로 제18회 분당구청장기 기록을 지역부수로 정정
 17. `202608140005_integrated_local_event_ranges.sql`: `지역0~4부` 같은 종목 범위를 통합부수로 정정하고 대회별 지역부수 예외를 재적용
+18. `202608140006_regional_division_parser_versions.sql`: 지역·대회일 전환 규칙을 사용하는 출처 parser version 갱신
+19. `202608140007_regional_division_backfill.sql`: 소스 관측값은 보존하고 지역별 전환일·대회 예외을 계산하는 공개 view 적용
 
-배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 열일곱 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request`와 출처 상태 기록 및 참여 편집·문의 전달 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
+배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 열아홉 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request`와 출처 상태 기록 및 참여 편집·문의 전달 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
+
+`202608140007`은 파서가 저장한 관측 체계를 우선 보존하고, 대회명·종목명에서 직접 확인한 지역과 실제 대회일로 전환 규칙을 공개 view에서 보완합니다. 선수 단위 출처 지역, 출처 provenance가 없는 공유 대회 지역, 아이핑 클럽명에서 유추한 과거 지역은 개별 기록 판정에 사용하지 않습니다. `results.division_system`과 `content_hash`를 수정하지 않아 다음 수집에서 가짜 revision이 생기지 않습니다. 전환일 이전 기록과 제18회까지의 분당구청장기 기록은 상세 이력에 보존하되 현재 추정 부수·최근 대회 요약에서 제외합니다.
 
 GitHub의 `production` environment에 아래 값을 설정합니다.
 
-| 구분      | 이름                                 | 용도                                                                                                                |
-| --------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Secret    | `SUPABASE_ACCESS_TOKEN`              | Supabase Management API 배포 권한. `sbp_`로 시작하는 PAT                                                            |
-| Variable  | `SUPABASE_PROJECT_ID`                | Supabase project ref                                                                                                |
-| Variable  | `CRAWL_LIVE`                         | 운영 crawler 전체 스위치. 기본 `false`                                                                              |
-| Variable  | `CRAWLER_SOURCE_ASTREE_ENABLED`      | 애즈트리 adapter 스위치. 기본 `false`                                                                               |
-| Variable  | `CRAWLER_SOURCE_NEWTTPLAY_ENABLED`   | 뉴티티플레이 adapter 스위치. 운영 허가 확인 전 기본 `false`                                                         |
-| Variable  | `CRAWLER_SOURCE_TTADIVISION_ENABLED` | 대한탁구협회 디비전 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                           |
-| Variable  | `CRAWLER_SOURCE_MYTT_ENABLED`        | 마이티티 공개 참가 정보 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                       |
-| Variable  | `CRAWLER_SOURCE_SUPERSTAR_ENABLED`   | 슈퍼스타탁구 공개 개인별 결과 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                 |
-| Variable  | `CRAWLER_SOURCE_YONGINTT_ENABLED`    | 용인탁구협회 다음 카페 공식 검색 API adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`          |
-| Variable  | `CRAWLER_SOURCE_AIRPING_ENABLED`     | 에어핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                      |
-| Variable  | `CRAWLER_SOURCE_OKPINGPONG_ENABLED`  | 오케이핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                    |
-| Variable  | `CRAWLER_SOURCE_IPING_ENABLED`       | 아이핑 인증형 adapter 스위치. 전용 계정 Secret 설정 전 기본 `false`                                                 |
-| Generated | `CRAWLER_USER_AGENT`                 | 배포 시 루트 package 버전으로 만드는 `BUSU/{version}` 출처 요청 식별자                                              |
-| Variable  | `CRAWLER_SOURCE_MIN_INTERVAL_MS`     | 아이핑을 포함한 출처·정규화 검색어별 최소 호출 간격. 5~60초 범위, 기본 5초                                          |
-| Secret    | `KAKAO_REST_API_KEY`                 | 카카오 공식 Daum 카페 검색 API 키. 브라우저와 로그에 노출하지 않음                                                  |
-| Secret    | `IPING_USERNAME`                     | 아이핑 조회 전용 최소권한 계정 ID. Supabase Edge 런타임에만 전달                                                    |
-| Secret    | `IPING_PASSWORD`                     | 아이핑 조회 전용 계정 비밀번호. Supabase Edge 런타임에만 전달                                                       |
+| 구분      | 이름                                 | 용도                                                                                                                                                                   |
+| --------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Secret    | `SUPABASE_ACCESS_TOKEN`              | Supabase Management API 배포 권한. `sbp_`로 시작하는 PAT                                                                                                               |
+| Variable  | `SUPABASE_PROJECT_ID`                | Supabase project ref                                                                                                                                                   |
+| Variable  | `CRAWL_LIVE`                         | 운영 crawler 전체 스위치. 기본 `false`                                                                                                                                 |
+| Variable  | `CRAWLER_SOURCE_ASTREE_ENABLED`      | 애즈트리 adapter 스위치. 기본 `false`                                                                                                                                  |
+| Variable  | `CRAWLER_SOURCE_NEWTTPLAY_ENABLED`   | 뉴티티플레이 adapter 스위치. 운영 허가 확인 전 기본 `false`                                                                                                            |
+| Variable  | `CRAWLER_SOURCE_TTADIVISION_ENABLED` | 대한탁구협회 디비전 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                                                              |
+| Variable  | `CRAWLER_SOURCE_MYTT_ENABLED`        | 마이티티 공개 참가 정보 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                                                          |
+| Variable  | `CRAWLER_SOURCE_SUPERSTAR_ENABLED`   | 슈퍼스타탁구 공개 개인별 결과 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                                                    |
+| Variable  | `CRAWLER_SOURCE_YONGINTT_ENABLED`    | 용인탁구협회 다음 카페 공식 검색 API adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                                             |
+| Variable  | `CRAWLER_SOURCE_AIRPING_ENABLED`     | 에어핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                                                                         |
+| Variable  | `CRAWLER_SOURCE_OKPINGPONG_ENABLED`  | 오케이핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                                                                       |
+| Variable  | `CRAWLER_SOURCE_IPING_ENABLED`       | 아이핑 인증형 adapter 스위치. 전용 계정 Secret 설정 전 기본 `false`                                                                                                    |
+| Generated | `CRAWLER_USER_AGENT`                 | 배포 시 루트 package 버전으로 만드는 `BUSU/{version}` 출처 요청 식별자                                                                                                 |
+| Variable  | `CRAWLER_SOURCE_MIN_INTERVAL_MS`     | 아이핑을 포함한 출처·정규화 검색어별 최소 호출 간격. 5~60초 범위, 기본 5초                                                                                             |
+| Secret    | `KAKAO_REST_API_KEY`                 | 카카오 공식 Daum 카페 검색 API 키. 브라우저와 로그에 노출하지 않음                                                                                                     |
+| Secret    | `IPING_USERNAME`                     | 아이핑 조회 전용 최소권한 계정 ID. Supabase Edge 런타임에만 전달                                                                                                       |
+| Secret    | `IPING_PASSWORD`                     | 아이핑 조회 전용 계정 비밀번호. Supabase Edge 런타임에만 전달                                                                                                          |
 | Secret    | `FEEDBACK_GITHUB_TOKEN`              | GitHub production environment 필수값. 대상 저장소로 범위를 제한하고 Issues 읽기·쓰기만 허용한 fine-grained token. 배포 시 Edge 런타임의 `GITHUB_ISSUES_TOKEN`으로 전달 |
-| Variable  | `GITHUB_ISSUES_REPOSITORY`           | 문의·제보 Issue 대상 저장소. 기본 `iamdenny/pingpong-busu`                                                          |
-| Variable  | `FEEDBACK_ALLOWED_ORIGINS`           | 쉼표로 구분한 문의·제보 허용 Origin. 기본 `https://busu.iamdenny.com`                                               |
+| Variable  | `GITHUB_ISSUES_REPOSITORY`           | 문의·제보 Issue 대상 저장소. 기본 `iamdenny/pingpong-busu`                                                                                                             |
+| Variable  | `FEEDBACK_ALLOWED_ORIGINS`           | 쉼표로 구분한 문의·제보 허용 Origin. 기본 `https://busu.iamdenny.com`                                                                                                  |
 
 기존 장애는 GitHub `production` environment의 feedback token이 비어 있었는데도 이전 workflow가 token 설정 단계를 건너뛰고 배포를 성공 처리해, `submit-feedback`이 설정되지 않은 상태로 남은 것이 원인입니다. GitHub Actions는 `GITHUB_` 접두사의 사용자 Secret 이름을 허용하지 않으므로 environment에는 `FEEDBACK_GITHUB_TOKEN`으로 등록합니다. 대상 저장소 하나로 범위를 제한하고 repository permission은 Issues 읽기·쓰기만 허용합니다. production workflow는 이 Secret이 비어 있으면 `supabase link`, migration, Edge Secret 변경, 함수 배포보다 먼저 실패하고, 값이 있으면 Supabase Edge 런타임의 `GITHUB_ISSUES_TOKEN`으로 전달합니다. Secret은 검증 단계와 GitHub Issues token 설정 단계에만 주입하며 브라우저 코드, 빌드 환경, 로그에는 전달하지 않습니다.
 

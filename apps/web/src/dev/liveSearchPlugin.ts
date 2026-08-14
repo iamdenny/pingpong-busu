@@ -3,6 +3,7 @@ import type { Plugin } from "vite";
 import { z } from "zod";
 import {
   isAwardRank,
+  isPreIntegratedDivisionRecord,
   normalizePlayerName,
   sortPlayerRecordsByLatest,
   type PlayerDetail,
@@ -49,7 +50,10 @@ function latestParticipationSummary(player: PlayerDetail): {
   latestParticipationCheckedAt?: string;
 } {
   const latestParticipation = sortPlayerRecordsByLatest(
-    player.records.filter((record) => !isAwardRank(record.rank)),
+    player.records.filter(
+      (record) =>
+        !isAwardRank(record.rank) && !isPreIntegratedDivisionRecord(record),
+    ),
   )[0];
   if (!latestParticipation) return {};
   return {

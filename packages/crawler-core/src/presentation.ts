@@ -1,6 +1,7 @@
 import {
   compareNormalizedRecordsByLatest,
   isAwardRank,
+  isPreIntegratedDivisionRecord,
   normalizedRecordDate,
   normalizeSearchText,
   stableHash,
@@ -45,19 +46,6 @@ export function recordsToPlayerDetails(
         .map((record) => record.observedAt)
         .sort()
         .at(-1) ?? latest.observedAt;
-    const awards = sorted.filter((record) => isAwardRank(record.rankText));
-    const awardResults = awards.flatMap((record) => {
-      if (!record.rankText) return [];
-      const date = normalizedRecordDate(record);
-      return [
-        {
-          rank: record.rankText,
-          ...(date ? { date } : {}),
-          tournament: record.tournamentName,
-          lastCheckedAt: record.observedAt,
-        },
-      ];
-    });
     const playerRecords: PlayerRecord[] = sorted.map((record) => {
       const date = normalizedRecordDate(record);
       return {
@@ -68,6 +56,9 @@ export function recordsToPlayerDetails(
           : record.sourcePublishedDate
             ? { dateBasis: "published" as const }
             : {}),
+        ...(record.tournamentRegion
+          ? { tournamentRegion: record.tournamentRegion }
+          : {}),
         tournament: record.tournamentName,
         scale: inferScale(record.tournamentName),
         event: record.eventName,
@@ -83,20 +74,44 @@ export function recordsToPlayerDetails(
         lastCheckedAt: record.observedAt,
       };
     });
-    const latestDate = normalizedRecordDate(latest);
+    const currentSummaryRecords = playerRecords.filter(
+      (record) => !isPreIntegratedDivisionRecord(record),
+    );
+    const currentAwardRecords = currentSummaryRecords.filter((record) =>
+      isAwardRank(record.rank),
+    );
+    const awardResults = currentAwardRecords.flatMap((record) =>
+      record.rank
+        ? [
+            {
+              rank: record.rank,
+              ...(record.date ? { date: record.date } : {}),
+              tournament: record.tournament,
+              lastCheckedAt: record.lastCheckedAt,
+            },
+          ]
+        : [],
+    );
+    const latestCurrentDivisionRecord = playerRecords.find(
+      (record) => record.division && !isPreIntegratedDivisionRecord(record),
+    );
+    const latestSummaryRecord = currentSummaryRecords[0];
     return {
       id: `${sourceCode}-${identityKey}`,
       name: latest.playerName,
       normalizedName: latest.normalizedPlayerName,
       ...(latest.clubText ? { club: latest.clubText } : {}),
       ...(latest.region ? { region: latest.region } : {}),
-      ...(latest.divisionValue
-        ? { recentObservedDivision: latest.divisionValue }
+      ...(latestCurrentDivisionRecord?.division
+        ? { recentObservedDivision: latestCurrentDivisionRecord.division }
         : {}),
-      ...(latest.divisionSystem
-        ? { recentObservedDivisionSystem: latest.divisionSystem }
+      ...(latestCurrentDivisionRecord?.divisionSystem
+        ? {
+            recentObservedDivisionSystem:
+              latestCurrentDivisionRecord.divisionSystem,
+          }
         : {}),
-      resultCount: awards.length,
+      resultCount: currentAwardRecords.length,
       awardResults,
       divisionObservations: summarizeDivisionObservations(playerRecords),
       sourceCount: 1,
@@ -108,16 +123,23 @@ export function recordsToPlayerDetails(
         {
           sourceCode,
           sourceName,
-          ...(latestDate ? { latestRecordDate: latestDate } : {}),
+          ...(latestSummaryRecord?.date
+            ? { latestRecordDate: latestSummaryRecord.date }
+            : {}),
           ...(latest.clubText ? { latestClub: latest.clubText } : {}),
-          ...(latest.divisionValue
-            ? { recentObservedDivision: latest.divisionValue }
+          ...(latestCurrentDivisionRecord?.division
+            ? { recentObservedDivision: latestCurrentDivisionRecord.division }
             : {}),
-          ...(latest.divisionSystem
-            ? { recentObservedDivisionSystem: latest.divisionSystem }
+          ...(latestCurrentDivisionRecord?.divisionSystem
+            ? {
+                recentObservedDivisionSystem:
+                  latestCurrentDivisionRecord.divisionSystem,
+              }
             : {}),
-          resultCount: awards.length,
-          ...(awards[0]?.rankText ? { latestRank: awards[0].rankText } : {}),
+          resultCount: currentAwardRecords.length,
+          ...(currentAwardRecords[0]?.rank
+            ? { latestRank: currentAwardRecords[0].rank }
+            : {}),
           lastCheckedAt,
           status: "fresh",
         },

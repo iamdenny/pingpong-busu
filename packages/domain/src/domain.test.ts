@@ -13,6 +13,9 @@ import {
   inferKoreanRegion,
   inferDivisionSystem,
   inferEventDivisionSystem,
+  inferRecordDivisionSystem,
+  formatPreIntegratedDivisionNotice,
+  isPreIntegratedDivisionRecord,
   formatDivisionObservation,
   parseDivisionSystem,
   parsePlayerSearchQuery,
@@ -112,6 +115,72 @@ describe("division presentation", () => {
         participationCount: 0,
       },
     ]);
+  });
+
+  it("keeps pre-transition records visible but out of current division observations", () => {
+    expect(
+      summarizeDivisionObservations([
+        {
+          date: "2022-06-30",
+          dateBasis: "tournament",
+          tournamentRegion: "경기도 용인시",
+          divisionSystem: "regional",
+          division: "6부",
+          rank: "우승",
+        },
+        {
+          date: "2023-06-30",
+          dateBasis: "tournament",
+          tournamentRegion: "경기도 용인시",
+          divisionSystem: "integrated",
+          division: "6부",
+          rank: "8강",
+        },
+        {
+          date: "2025-05-01",
+          dateBasis: "tournament",
+          tournamentRegion: "경기도 성남시",
+          tournament: "2025년 제18회 분당구청장기 탁구대회",
+          divisionSystem: "regional",
+          division: "4부",
+          rank: "우승",
+        },
+      ]),
+    ).toEqual([
+      {
+        system: "integrated",
+        division: "6부",
+        awardCount: 0,
+        participationCount: 1,
+      },
+    ]);
+    expect(
+      formatPreIntegratedDivisionNotice(
+        "2022-06-30",
+        "경기도 용인시",
+        "regional",
+      ),
+    ).toBe("대한탁구협회 통합부수 시행 이전 · 시행일 2022.07.01");
+    expect(
+      formatPreIntegratedDivisionNotice("2016-12-31", "광주광역시", "regional"),
+    ).toBe("광주·전남 통합부수 시행 이전 · 시행일 2017.01.01");
+    expect(
+      isPreIntegratedDivisionRecord({
+        date: "2025-05-01",
+        dateBasis: "tournament",
+        tournamentRegion: "경기도 성남시",
+        tournament: "2025년 제18회 분당구청장기 탁구대회",
+        divisionSystem: "regional",
+      }),
+    ).toBe(true);
+    expect(
+      formatPreIntegratedDivisionNotice(
+        "2025-05-01",
+        "경기도 성남시",
+        "regional",
+        "2025년 제18회 분당구청장기 탁구대회",
+      ),
+    ).toBe("분당구청장기 지역부수 운영 기록 · 제18회까지");
   });
 });
 
@@ -292,7 +361,7 @@ describe("division system inference", () => {
     ).toBe("regional");
     expect(
       inferDivisionSystem("제17회 분당구청장기 탁구대회", "직장부", "3부"),
-    ).toBe("integrated");
+    ).toBe("regional");
     expect(
       inferDivisionSystem("제18회 분당구청장기 탁구대회", "직장부", "3부"),
     ).toBe("regional");
@@ -306,6 +375,102 @@ describe("division system inference", () => {
         "오픈",
       ),
     ).toBe("open");
+  });
+
+  it("uses regional transition dates only when tournament region and date are known", () => {
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "남자 6부",
+        tournamentName: "수원시장기 탁구대회",
+        tournamentDate: "2022-06-30",
+        tournamentRegion: "경기도 수원시",
+      }),
+    ).toBe("regional");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "남자 6부",
+        tournamentName: "수원시장기 탁구대회",
+        tournamentDate: "2022-07-01",
+        tournamentRegion: "경기도 수원시",
+      }),
+    ).toBe("integrated");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "여자 6부",
+        tournamentName: "수원시장기 탁구대회",
+        tournamentDate: "2021-10-01",
+        tournamentRegion: "경기도 수원시",
+      }),
+    ).toBe("regional");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "여자 6부",
+        tournamentName: "수원시장기 탁구대회",
+        tournamentDate: "2023-10-01",
+        tournamentRegion: "경기도 수원시",
+      }),
+    ).toBe("women");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "남자 6부",
+        tournamentName: "지역 미상 탁구대회",
+        tournamentDate: "2021-10-01",
+      }),
+    ).toBe("integrated");
+  });
+
+  it("keeps explicit systems ahead of regional transition heuristics", () => {
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "오픈 6부",
+        tournamentName: "수원 전국오픈 탁구대회",
+        tournamentDate: "2021-10-01",
+        tournamentRegion: "경기도 수원시",
+      }),
+    ).toBe("open");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "통합부수 여자6부",
+        tournamentName: "수원시장기 탁구대회",
+        tournamentDate: "2021-10-01",
+        tournamentRegion: "경기도 수원시",
+      }),
+    ).toBe("women");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "지역부수 4부",
+        tournamentName: "수원시장기 탁구대회",
+        tournamentDate: "2024-10-01",
+        tournamentRegion: "경기도 수원시",
+      }),
+    ).toBe("regional");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "지역남성 5부",
+        tournamentName: "수원 전국오픈 탁구대회",
+        tournamentDate: "2021-10-01",
+        tournamentRegion: "경기도 수원시",
+      }),
+    ).toBe("regional");
+  });
+
+  it("uses the earlier Gwangju and Jeonnam transition baseline", () => {
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "남자 5부",
+        tournamentName: "광주광역시 생활체육 탁구대회",
+        tournamentDate: "2016-12-31",
+        tournamentRegion: "광주광역시",
+      }),
+    ).toBe("regional");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "남자 5부",
+        tournamentName: "전라남도 생활체육 탁구대회",
+        tournamentDate: "2017-01-01",
+        tournamentRegion: "전라남도",
+      }),
+    ).toBe("integrated");
   });
 });
 

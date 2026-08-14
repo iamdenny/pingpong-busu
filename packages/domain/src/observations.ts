@@ -3,6 +3,7 @@ import type {
   DivisionSystem,
   PlayerRecord,
 } from "./models";
+import { isPreIntegratedDivisionRecord } from "./division-overrides";
 
 export function isAwardRank(rankText?: string): boolean {
   if (rankText === undefined) return false;
@@ -16,10 +17,18 @@ export function isAwardRank(rankText?: string): boolean {
 }
 
 export function summarizeDivisionObservations(
-  records: readonly Pick<
-    PlayerRecord,
-    "division" | "divisionSystem" | "rank"
-  >[],
+  records: ReadonlyArray<
+    Pick<
+      PlayerRecord,
+      | "date"
+      | "dateBasis"
+      | "tournamentRegion"
+      | "division"
+      | "divisionSystem"
+      | "rank"
+    > &
+      Partial<Pick<PlayerRecord, "tournament">>
+  >,
 ): DivisionObservationSummary[] {
   const counts = new Map<
     string,
@@ -31,6 +40,7 @@ export function summarizeDivisionObservations(
     }
   >();
   for (const record of records) {
+    if (isPreIntegratedDivisionRecord(record)) continue;
     const division = record.division?.trim();
     if (!division) continue;
     const system = record.divisionSystem ?? "unknown";
