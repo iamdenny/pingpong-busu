@@ -1,7 +1,8 @@
 import {
   compareNormalizedRecordsByLatest,
+  findRecentObservedDivisionRecord,
   isAwardRank,
-  isPreIntegratedDivisionRecord,
+  isCurrentSummaryRecord,
   normalizedRecordDate,
   normalizeSearchText,
   stableHash,
@@ -62,6 +63,7 @@ export function recordsToPlayerDetails(
         tournament: record.tournamentName,
         scale: inferScale(record.tournamentName),
         event: record.eventName,
+        eventType: record.eventType,
         ...(record.clubText ? { club: record.clubText } : {}),
         ...(record.divisionValue ? { division: record.divisionValue } : {}),
         ...(record.divisionSystem
@@ -74,8 +76,8 @@ export function recordsToPlayerDetails(
         lastCheckedAt: record.observedAt,
       };
     });
-    const currentSummaryRecords = playerRecords.filter(
-      (record) => !isPreIntegratedDivisionRecord(record),
+    const currentSummaryRecords = playerRecords.filter((record) =>
+      isCurrentSummaryRecord(record),
     );
     const currentAwardRecords = currentSummaryRecords.filter((record) =>
       isAwardRank(record.rank),
@@ -87,14 +89,14 @@ export function recordsToPlayerDetails(
               rank: record.rank,
               ...(record.date ? { date: record.date } : {}),
               tournament: record.tournament,
+              event: record.event,
               lastCheckedAt: record.lastCheckedAt,
             },
           ]
         : [],
     );
-    const latestCurrentDivisionRecord = playerRecords.find(
-      (record) => record.division && !isPreIntegratedDivisionRecord(record),
-    );
+    const latestCurrentDivisionRecord =
+      findRecentObservedDivisionRecord(playerRecords);
     const latestSummaryRecord = currentSummaryRecords[0];
     return {
       id: `${sourceCode}-${identityKey}`,

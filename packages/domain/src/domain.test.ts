@@ -14,6 +14,7 @@ import {
   inferDivisionSystem,
   inferEventDivisionSystem,
   inferRecordDivisionSystem,
+  findRecentObservedDivisionRecord,
   formatPreIntegratedDivisionNotice,
   isPreIntegratedDivisionRecord,
   formatDivisionObservation,
@@ -113,6 +114,72 @@ describe("division presentation", () => {
         division: "T4",
         awardCount: 1,
         participationCount: 0,
+      },
+    ]);
+  });
+
+  it("excludes future and non-individual records from current division observations", () => {
+    const common = {
+      tournamentRegion: "경기도 수원시",
+      tournament: "수원 탁구대회",
+      scale: "district" as const,
+      club: "엘리트탁구클럽",
+      sourceCode: "astree" as const,
+      sourceName: "애즈트리",
+      sourceUrl: "https://example.invalid/record",
+      lastCheckedAt: "2026-08-14T00:00:00.000Z",
+    };
+    const records: PlayerRecord[] = [
+      {
+        ...common,
+        id: "future-women-5",
+        date: "2026-08-22",
+        dateBasis: "tournament",
+        event: "[여자단식] 여자 1~6부",
+        division: "5부",
+        divisionSystem: "women",
+      },
+      {
+        ...common,
+        id: "same-day-open-8",
+        date: "2026-07-25",
+        dateBasis: "tournament",
+        event: "[남(혼)단체] 수원통합 7~10부 B",
+        eventType: "team",
+        division: "8부",
+        divisionSystem: "open",
+      },
+      {
+        ...common,
+        id: "same-day-mixed-5",
+        date: "2026-07-25",
+        dateBasis: "tournament",
+        event: "혼합복식 B그룹(합 15~19부)",
+        eventType: "doubles",
+        division: "5부",
+        divisionSystem: "integrated",
+      },
+      {
+        ...common,
+        id: "same-day-women-6",
+        date: "2026-07-25",
+        dateBasis: "tournament",
+        event: "[여자단식] 여자 3~6부",
+        eventType: "singles",
+        division: "6부",
+        divisionSystem: "women",
+      },
+    ];
+
+    expect(
+      findRecentObservedDivisionRecord(records, "2026-08-14"),
+    ).toMatchObject({ division: "6부", divisionSystem: "women" });
+    expect(summarizeDivisionObservations(records, "2026-08-14")).toEqual([
+      {
+        system: "women",
+        division: "6부",
+        awardCount: 0,
+        participationCount: 1,
       },
     ]);
   });
@@ -262,9 +329,9 @@ describe("Korean region inference", () => {
     expect(inferKoreanRegion("2026 부천시 전국오픈 탁구대회")).toBe(
       "경기도 부천시",
     );
-    expect(
-      inferKoreanRegion("2018 분당구 “내일은 탁구왕” 탁구대회"),
-    ).toBe("경기도 성남시 분당구");
+    expect(inferKoreanRegion("2018 분당구 “내일은 탁구왕” 탁구대회")).toBe(
+      "경기도 성남시 분당구",
+    );
     expect(inferKoreanRegion("제3회 가람군 체육회장배 탁구대회")).toBe(
       "가람군",
     );

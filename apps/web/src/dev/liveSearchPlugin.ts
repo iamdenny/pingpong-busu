@@ -3,7 +3,7 @@ import type { Plugin } from "vite";
 import { z } from "zod";
 import {
   isAwardRank,
-  isPreIntegratedDivisionRecord,
+  isCurrentSummaryRecord,
   normalizePlayerName,
   sortPlayerRecordsByLatest,
   type PlayerDetail,
@@ -47,12 +47,12 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 function latestParticipationSummary(player: PlayerDetail): {
   latestParticipationDate?: string;
   latestParticipationTournament?: string;
+  latestParticipationEvent?: string;
   latestParticipationCheckedAt?: string;
 } {
   const latestParticipation = sortPlayerRecordsByLatest(
     player.records.filter(
-      (record) =>
-        !isAwardRank(record.rank) && !isPreIntegratedDivisionRecord(record),
+      (record) => !isAwardRank(record.rank) && isCurrentSummaryRecord(record),
     ),
   )[0];
   if (!latestParticipation) return {};
@@ -61,6 +61,7 @@ function latestParticipationSummary(player: PlayerDetail): {
       ? { latestParticipationDate: latestParticipation.date }
       : {}),
     latestParticipationTournament: latestParticipation.tournament,
+    latestParticipationEvent: latestParticipation.event,
     latestParticipationCheckedAt: latestParticipation.lastCheckedAt,
   };
 }

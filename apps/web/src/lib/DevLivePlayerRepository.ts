@@ -39,12 +39,14 @@ const summarySchema = z.object({
         rank: z.string(),
         date: z.string().optional(),
         tournament: z.string().optional(),
+        event: z.string().optional(),
         lastCheckedAt: z.string().optional(),
       }),
     )
     .optional(),
   latestParticipationDate: z.string().optional(),
   latestParticipationTournament: z.string().optional(),
+  latestParticipationEvent: z.string().optional(),
   latestParticipationCheckedAt: z.string().optional(),
   divisionObservations: z
     .array(
@@ -139,6 +141,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
           rank: award.rank,
           ...(award.date ? { date: award.date } : {}),
           ...(award.tournament ? { tournament: award.tournament } : {}),
+          ...(award.event ? { event: award.event } : {}),
           ...(award.lastCheckedAt
             ? { lastCheckedAt: award.lastCheckedAt }
             : {}),
@@ -165,6 +168,9 @@ export class DevLivePlayerRepository implements PlayerRepository {
                 latestParticipationTournament:
                   row.latestParticipationTournament,
               }
+            : {}),
+          ...(row.latestParticipationEvent
+            ? { latestParticipationEvent: row.latestParticipationEvent }
             : {}),
           ...(row.latestParticipationCheckedAt
             ? {

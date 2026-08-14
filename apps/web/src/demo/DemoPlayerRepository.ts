@@ -1,6 +1,7 @@
 import {
+  findRecentObservedDivisionRecord,
   isAwardRank,
-  isPreIntegratedDivisionRecord,
+  isCurrentSummaryRecord,
   normalizeSearchText,
   sortPlayerRecordsByLatest,
   summarizeDivisionObservations,
@@ -25,12 +26,12 @@ import { demoPlayers } from "./data";
 function latestParticipationSummary(player: PlayerDetail): {
   latestParticipationDate?: string;
   latestParticipationTournament?: string;
+  latestParticipationEvent?: string;
   latestParticipationCheckedAt?: string;
 } {
   const latestParticipation = sortPlayerRecordsByLatest(
     player.records.filter(
-      (record) =>
-        !isAwardRank(record.rank) && !isPreIntegratedDivisionRecord(record),
+      (record) => !isAwardRank(record.rank) && isCurrentSummaryRecord(record),
     ),
   )[0];
   if (!latestParticipation) return {};
@@ -39,6 +40,7 @@ function latestParticipationSummary(player: PlayerDetail): {
       ? { latestParticipationDate: latestParticipation.date }
       : {}),
     latestParticipationTournament: latestParticipation.tournament,
+    latestParticipationEvent: latestParticipation.event,
     latestParticipationCheckedAt: latestParticipation.lastCheckedAt,
   };
 }
@@ -139,19 +141,15 @@ export class DemoPlayerRepository implements PlayerRepository {
             )),
       )
       .map((player) => {
-        const currentSummaryRecords = player.records.filter(
-          (record) => !isPreIntegratedDivisionRecord(record),
+        const currentSummaryRecords = player.records.filter((record) =>
+          isCurrentSummaryRecord(record),
         );
-        const currentDivisionRecord = sortPlayerRecordsByLatest(
+        const currentDivisionRecord = findRecentObservedDivisionRecord(
           currentSummaryRecords,
-        ).find((record) => record.division);
+        );
         const currentAwardRecords = currentSummaryRecords.filter((record) =>
           isAwardRank(record.rank),
         );
-        const historicalAwardCount = player.records.filter(
-          (record) =>
-            isAwardRank(record.rank) && isPreIntegratedDivisionRecord(record),
-        ).length;
         return {
           id: player.id,
           name: player.name,
@@ -167,7 +165,7 @@ export class DemoPlayerRepository implements PlayerRepository {
                   currentDivisionRecord.divisionSystem,
               }
             : {}),
-          resultCount: Math.max(0, player.resultCount - historicalAwardCount),
+          resultCount: currentAwardRecords.length,
           awardResults: currentAwardRecords.flatMap((record) =>
             record.rank
               ? [
@@ -175,6 +173,7 @@ export class DemoPlayerRepository implements PlayerRepository {
                     rank: record.rank,
                     ...(record.date ? { date: record.date } : {}),
                     tournament: record.tournament,
+                    event: record.event,
                     lastCheckedAt: record.lastCheckedAt,
                   },
                 ]

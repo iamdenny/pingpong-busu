@@ -31,6 +31,7 @@ export interface AwardResultSummary {
   rank: string;
   date?: string;
   tournament?: string;
+  event?: string;
   lastCheckedAt?: string;
 }
 
@@ -88,6 +89,7 @@ export interface PlayerSummary {
   awardResults?: AwardResultSummary[];
   latestParticipationDate?: string;
   latestParticipationTournament?: string;
+  latestParticipationEvent?: string;
   latestParticipationCheckedAt?: string;
   divisionObservations?: DivisionObservationSummary[];
   sourceCount: number;
@@ -105,6 +107,7 @@ export interface PlayerRecord {
   tournament: string;
   scale: "national" | "province" | "district" | "club" | "unknown";
   event: string;
+  eventType?: EventType;
   club?: string;
   division?: string;
   divisionSystem?: DivisionSystem;
