@@ -33,16 +33,17 @@ pnpm build
 pnpm docs-check:scan
 ```
 
-`pnpm build`는 Edge 공유 parser bundle을 먼저 동기화한 뒤 모든 workspace를 빌드한다. `supabase/functions/_shared/generated/astree-parser.js`는 직접 편집하지 않는다.
+`pnpm build`는 Edge 공유 parser bundle을 먼저 동기화한 뒤 모든 workspace를 빌드하고 web의 SEO 정적 파일을 생성한다. Supabase 공개 설정이 없으면 로컬 build는 빈 선수 목록으로 검색 문서·robots·sitemap을 만들며, 운영 workflow는 `SEO_MANIFEST_REQUIRED=true`라서 설정 누락·요청/검증 실패·빈 manifest가 있으면 실패한다. `supabase/functions/_shared/generated/astree-parser.js`와 `apps/web/dist`는 직접 편집하지 않는다.
 
 ## 브라우저 테스트
 
 ```bash
 pnpm test:e2e
+pnpm test:e2e:production
 pnpm test:e2e:live
 ```
 
-`test:e2e:live`는 실제 출처 네트워크를 사용할 수 있으므로 명시적인 `BUSU_LIVE_E2E=true` 구성과 수집 정책 확인이 필요하다.
+`test:e2e:production`은 production 설정으로 이미 생성한 `apps/web/dist`를 대상으로 공개 검색·상세 조회만 확인한다. 먼저 `VITE_APP_BASE_PATH=/`와 production publishable 설정으로 `pnpm build`를 실행해야 한다. `test:e2e:live`는 실제 출처 네트워크를 사용할 수 있으므로 명시적인 `BUSU_LIVE_E2E=true` 구성과 수집 정책 확인이 필요하다.
 
 ## Fixture crawler
 
@@ -113,6 +114,15 @@ pnpm db:size
 ```
 
 PAT, service role key, DB password는 명령 문자열이나 문서에 기록하지 않는다. development에는 production 데이터, Kakao key 또는 iPing 계정을 복제하지 않는다.
+
+production 공개 조회 배포 게이트를 로컬에서 재현하려면 publishable 설정만 주입해 다음 명령을 실행한다. service role key는 사용하지 않는다.
+
+```bash
+PUBLIC_READ_SUPABASE_URL=<url> \
+PUBLIC_READ_PUBLISHABLE_KEY=<publishable-key> \
+PUBLIC_READ_MAX_MS=2500 \
+node --import tsx scripts/check-public-read-health.ts
+```
 
 ## 배포 버전 미리보기
 

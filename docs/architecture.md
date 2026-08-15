@@ -54,6 +54,8 @@ flowchart LR
 
 순환 의존성을 만들지 않는다. UI가 출처 HTML을 해석하거나 parser가 React 타입을 알게 하지 않는다.
 
+교차 출처 동일 결과는 저장 단계가 아니라 조회 경계에서만 묶는다. Supabase는 `public_result_groups`에서 보수적 표시 fingerprint를 계산하고 `public_results`와 `public_player_search`가 같은 그룹을 사용한다. 로컬 live 경로는 domain의 동일 규칙을 사용한다. UI는 그룹 대표값을 한 행으로 렌더링하되 포함된 모든 출처 URL을 원문 근거로 노출한다.
+
 ## 검색 흐름
 
 1. `SearchResultsPage`가 repository에서 저장 후보를 읽는다.
@@ -114,9 +116,11 @@ Deno Edge 환경은 workspace import를 그대로 배포하지 않는다. `pnpm 
 
 ## 라우팅과 정적 호스팅
 
-로컬 개발의 기본 asset base는 `/pingpong-busu/`이고, GitHub Pages 커스텀 도메인 `https://busu.iamdenny.com/`의 production build는 `VITE_APP_BASE_PATH=/`를 사용한다. `HashRouter`를 사용해 정적 호스팅의 직접 새로고침 404를 피한다. desktop과 mobile은 같은 semantic DOM을 유지하되 상세 기록 표현만 table/card로 바꾼다.
+로컬 개발의 기본 asset base는 `/pingpong-busu/`이고, GitHub Pages 커스텀 도메인 `https://busu.iamdenny.com/`의 production build는 `VITE_APP_BASE_PATH=/`를 사용한다. `BrowserRouter`가 `/search`와 `/players/:id` 실제 경로를 처리하고, build가 복사한 일반 `404.html`이 생성되지 않은 경로의 SPA fallback을 맡는다. 이전 `/#/...` URL은 앱 부팅 전에 `history.replaceState`로 실제 경로에 이관한다. desktop과 mobile은 같은 semantic DOM을 유지하되 상세 기록 표현만 table/card로 바꾼다.
 
-정적 `index.html`은 홈용 기본 title, description, canonical, Open Graph와 Twitter 메타데이터를 제공한다. React 라우트는 검색어 또는 로드된 선수 데이터에 맞춰 동일 메타데이터를 갱신하고 홈으로 돌아오면 기본값으로 복원한다. 다만 fragment는 HTTP 요청에 포함되지 않으므로 자바스크립트를 실행하지 않는 링크 미리보기 봇에는 검색·상세별 동적 값이 전달되지 않는다. 해당 요구가 생기면 서버에서 OG HTML을 생성하는 공유 URL을 별도 경계로 둔다.
+정적 `index.html`은 홈 메타데이터를 제공한다. build의 SEO generator는 검색용 집계와 분리된 경량 공개 `public_player_seo_manifest` view를 publishable key로 페이지 단위 조회하고, 활성 공개 출처가 있는 유효 선수마다 `players/{uuid}/index.html`을 만든다. 각 문서는 초기 HTML부터 선수별 title, description, canonical, Open Graph와 Twitter large image 메타데이터를 가지며 React가 부팅된 뒤에도 공유 metadata builder로 같은 정책을 유지한다. 검색 직접 접근 문서 `search/index.html`과 client metadata는 `noindex,follow`이고 query를 canonical에서 제외한다. `sitemap.xml`에는 홈과 생성된 선수만 들어가며 `robots.txt`가 이를 가리킨다.
+
+이 구조는 상시 SSR이 아니라 배포 스냅샷이다. 새 공개 선수와 변경된 요약은 다음 배포에서 반영된다. 로컬·demo처럼 공개 설정이 없는 선택적 build는 빈 선수 목록으로 기반 산출물을 만들 수 있지만, Pages workflow는 `SEO_MANIFEST_REQUIRED=true`로 설정해 URL/key 누락, HTTP 오류, schema 오류, 빈 manifest를 모두 build 실패로 처리한다. generator는 service role이나 private table을 사용하지 않는다.
 
 루트 `package.json`의 `version`이 유일한 제품 버전이며 `YYYY.WEEK.SEQ` 형식을 사용한다. `appVersion.ts`는 이 JSON 값을 직접 가져와 형식을 검증하고 공통 `Layout` footer에 표시해 모든 라우트에서 같은 버전을 제공한다. Pages workflow는 build 성공 뒤 같은 값으로 `v{version}` 태그와 GitHub Release/자동 릴리즈 노트를 생성하며, release job이 성공한 뒤에만 deploy job을 실행한다. 다른 커밋이 이미 같은 태그를 사용하면 배포를 중단한다.
 

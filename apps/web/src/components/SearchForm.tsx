@@ -27,7 +27,7 @@ export function SearchForm({
   return (
     <form
       className={`search-form ${compact ? "search-form--compact" : ""}`}
-      action="#/search"
+      action={`${import.meta.env.BASE_URL}search`}
       method="get"
       role="search"
       onSubmit={submit}

@@ -16,6 +16,7 @@ import { PageMetadata } from "../components/PageMetadata";
 import { RefreshStatus } from "../components/RefreshStatus";
 import { SourceComparison } from "../components/SourceComparison";
 import { trackAnalyticsEvent } from "../lib/analytics";
+import { buildPlayerMetadata } from "../lib/pageMetadata";
 import { playerRepository } from "../lib/runtime";
 import { useCalmEntry } from "../lib/motion";
 
@@ -54,6 +55,50 @@ function searchQueryFromState(value: unknown): string | undefined {
     : undefined;
 }
 
+function RecordSources({
+  record,
+  playerId,
+}: {
+  record: PlayerRecord;
+  playerId: string;
+}) {
+  const sources = record.sources?.length
+    ? record.sources
+    : [
+        {
+          sourceCode: record.sourceCode,
+          sourceName: record.sourceName,
+          sourceUrl: record.sourceUrl,
+          lastCheckedAt: record.lastCheckedAt,
+          originalRecordId: record.id,
+        },
+      ];
+  return (
+    <span
+      className="record-source-list"
+      aria-label={`출처 ${sources.length}곳`}
+    >
+      {sources.map((source) => (
+        <a
+          key={`${source.sourceCode}-${source.originalRecordId}`}
+          href={source.sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() =>
+            trackAnalyticsEvent("player_source_clicked", {
+              player_id: playerId,
+              source_code: source.sourceCode,
+            })
+          }
+        >
+          {source.sourceName}
+          <ExternalLink size={14} />
+        </a>
+      ))}
+    </span>
+  );
+}
+
 export function PlayerDetailPage() {
   const { id = "" } = useParams();
   const location = useLocation();
@@ -83,6 +128,7 @@ export function PlayerDetailPage() {
         <PageMetadata
           title="선수를 찾을 수 없습니다 · BUSU"
           description="요청한 선수 기록을 찾을 수 없습니다. BUSU 홈에서 다시 검색해 주세요."
+          robots="noindex,follow"
         />
         <h1>선수를 찾을 수 없습니다.</h1>
         <Link to="/">홈으로</Link>
@@ -104,24 +150,20 @@ export function PlayerDetailPage() {
       source.recentObservedDivisionSystem === "women",
   );
   const returnQuery = searchQueryFromState(location.state) ?? player.name;
-  const identitySummary = [player.region, player.club]
-    .filter((value): value is string => Boolean(value))
-    .join(" · ");
-  const observedDivision = formatDivisionObservation(
-    player.recentObservedDivisionSystem,
-    player.recentObservedDivision,
-  );
-  const observedDivisionSummary = player.recentObservedDivision
-    ? `최근 관측 ${observedDivision}, `
-    : "";
   const nickname = homonymNicknameLabel(player.homonymNickname);
-  const pageTitle = `${player.name}${nickname ? ` · ${nickname}` : ""} 선수 탁구 부수·입상 기록 · BUSU`;
-  const pageDescription = `${player.name} 선수${nickname ? ` (${nickname}, 동명이인 기록 구분용 별칭)` : ""}${identitySummary ? ` (${identitySummary})` : ""}의 ${observedDivisionSummary}대회 출전 ${player.records.length}건과 4강 이상 입상 ${totalAwardCount}건의 원문 출처를 확인하세요.`;
+  const pageMetadata = buildPlayerMetadata({
+    name: player.name,
+    nickname: player.homonymNickname,
+    region: player.region ?? null,
+    club: player.club ?? null,
+    awardCount: player.resultCount,
+    sourceCount: player.sourceCount,
+  });
   return (
     <div className="page detail-page" ref={detailRef}>
       <PageMetadata
-        title={pageTitle}
-        description={pageDescription}
+        title={pageMetadata.title}
+        description={pageMetadata.description}
         type="profile"
       />
       <Link
@@ -279,20 +321,7 @@ export function PlayerDetailPage() {
                         </td>
                         <td>{record.rank ?? "-"}</td>
                         <td>
-                          <a
-                            href={record.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={() =>
-                              trackAnalyticsEvent("player_source_clicked", {
-                                player_id: player.id,
-                                source_code: record.sourceCode,
-                              })
-                            }
-                          >
-                            {record.sourceName}
-                            <ExternalLink size={14} />
-                          </a>
+                          <RecordSources record={record} playerId={player.id} />
                         </td>
                       </tr>
                     ))}
@@ -324,19 +353,7 @@ export function PlayerDetailPage() {
                         <dd>{record.rank ?? "-"}</dd>
                       </div>
                     </dl>
-                    <a
-                      href={record.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() =>
-                        trackAnalyticsEvent("player_source_clicked", {
-                          player_id: player.id,
-                          source_code: record.sourceCode,
-                        })
-                      }
-                    >
-                      {record.sourceName} 원문 <ExternalLink size={14} />
-                    </a>
+                    <RecordSources record={record} playerId={player.id} />
                   </article>
                 ))}
               </div>

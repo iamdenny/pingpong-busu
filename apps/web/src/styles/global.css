@@ -793,6 +793,10 @@ p {
   color: var(--primary);
   font-size: 0.78rem;
 }
+.division-overview__counts .division-overview__award-count--positive,
+.division-overview__counts .division-overview__award-count--positive b {
+  color: var(--warning);
+}
 .division-result-filter {
   display: flex;
   align-items: center;
@@ -2210,6 +2214,19 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+.record-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+}
+
+.record-source-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  white-space: nowrap;
 }
 .record-cards {
   display: none;

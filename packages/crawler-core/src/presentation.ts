@@ -8,6 +8,7 @@ import {
   normalizeSearchText,
   stableHash,
   summarizeDivisionObservations,
+  deduplicatePlayerRecords,
   type NormalizedRecord,
   type PlayerDetail,
   type PlayerRecord,
@@ -71,13 +72,16 @@ export function recordsToPlayerDetails(
           ? { divisionSystem: record.divisionSystem }
           : {}),
         ...(record.rankText ? { rank: record.rankText } : {}),
-        sourceCode,
-        sourceName,
+        ...(record.partnerText ? { partner: record.partnerText } : {}),
+        sourceCode: record.sourceCode,
+        sourceName:
+          record.sourceCode === sourceCode ? sourceName : record.sourceCode,
         sourceUrl: record.sourceUrl,
         lastCheckedAt: record.observedAt,
       });
     });
-    const currentSummaryRecords = playerRecords.filter((record) =>
+    const displayRecords = deduplicatePlayerRecords(playerRecords);
+    const currentSummaryRecords = displayRecords.filter((record) =>
       isCurrentSummaryRecord(record),
     );
     const currentAwardRecords = currentSummaryRecords.filter((record) =>
@@ -97,7 +101,7 @@ export function recordsToPlayerDetails(
         : [],
     );
     const latestCurrentDivisionRecord =
-      findRecentObservedDivisionRecord(playerRecords);
+      findRecentObservedDivisionRecord(displayRecords);
     const latestSummaryRecord = currentSummaryRecords[0];
     return {
       id: `${sourceCode}-${identityKey}`,
@@ -116,12 +120,12 @@ export function recordsToPlayerDetails(
         : {}),
       resultCount: currentAwardRecords.length,
       awardResults,
-      divisionObservations: summarizeDivisionObservations(playerRecords),
+      divisionObservations: summarizeDivisionObservations(displayRecords),
       sourceCount: 1,
       lastCheckedAt,
       identityStatus: "unreviewed",
       dataKind: "live",
-      records: playerRecords,
+      records: displayRecords,
       sources: [
         {
           sourceCode,

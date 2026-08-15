@@ -148,6 +148,8 @@ describe("Supabase production deployment contract", () => {
           SUPABASE_ACCESS_TOKEN: "test-access-token",
           SUPABASE_PROJECT_ID: "test-project-id",
           FEEDBACK_GITHUB_TOKEN: "",
+          PUBLIC_READ_SUPABASE_URL: "https://example.supabase.co",
+          PUBLIC_READ_PUBLISHABLE_KEY: "test-publishable-key",
         },
       },
     );
@@ -159,6 +161,8 @@ describe("Supabase production deployment contract", () => {
           SUPABASE_ACCESS_TOKEN: "test-access-token",
           SUPABASE_PROJECT_ID: "test-project-id",
           FEEDBACK_GITHUB_TOKEN: "test-issues-token",
+          PUBLIC_READ_SUPABASE_URL: "https://example.supabase.co",
+          PUBLIC_READ_PUBLISHABLE_KEY: "test-publishable-key",
         },
       },
     );

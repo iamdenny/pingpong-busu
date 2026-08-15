@@ -30,6 +30,22 @@ export const demoPlayers: PlayerDetail[] = [
         sourceName: "가상 출처",
         sourceUrl: "https://example.invalid/mock/result/1",
         lastCheckedAt: "2026-08-12T04:30:00.000Z",
+        sources: [
+          {
+            originalRecordId: "r1-mock",
+            sourceCode: "mock",
+            sourceName: "가상 출처",
+            sourceUrl: "https://example.invalid/mock/result/1",
+            lastCheckedAt: "2026-08-12T04:30:00.000Z",
+          },
+          {
+            originalRecordId: "r1-astree",
+            sourceCode: "astree",
+            sourceName: "가상 보조 출처",
+            sourceUrl: "https://example.invalid/mock/result/1-secondary",
+            lastCheckedAt: "2026-08-11T04:30:00.000Z",
+          },
+        ],
       },
       {
         id: "r2",

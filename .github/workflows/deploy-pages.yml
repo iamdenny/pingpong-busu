@@ -1,15 +1,26 @@
 name: Deploy GitHub Pages
 on:
-  push: { branches: [main] }
-  workflow_dispatch:
+  workflow_run:
+    workflows: [Deploy Supabase backend]
+    types: [completed]
 permissions: { contents: read }
 concurrency: { group: pages, cancel-in-progress: true }
 jobs:
   validate-ref:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
+    outputs:
+      deploy-sha: ${{ steps.ref.outputs.deploy-sha }}
     steps:
       - name: Require main branch
-        run: test "$GITHUB_REF" = "refs/heads/main"
+        id: ref
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          test -n "$DEPLOY_SHA"
+          echo "deploy-sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
   build:
     needs: validate-ref
     runs-on: ubuntu-latest
@@ -19,6 +30,8 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-ref.outputs.deploy-sha }}
       - uses: pnpm/action-setup@v4
         with: { version: 11.17.0 }
       - uses: actions/setup-node@v4
@@ -36,11 +49,19 @@ jobs:
           VITE_SOURCE_REFRESH_ENABLED: ${{ vars.VITE_SOURCE_REFRESH_ENABLED || 'false' }}
           VITE_UMAMI_SCRIPT_URL: ${{ vars.VITE_UMAMI_SCRIPT_URL }}
           VITE_UMAMI_WEBSITE_ID: ${{ vars.VITE_UMAMI_WEBSITE_ID }}
+          SEO_MANIFEST_REQUIRED: "true"
+      - name: Install production E2E browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Verify production-backed user journey
+        run: pnpm test:e2e:production
+        env:
+          PRODUCTION_E2E_BASE_PATH: ${{ vars.VITE_APP_BASE_PATH || '/' }}
+          VITE_APP_BASE_PATH: ${{ vars.VITE_APP_BASE_PATH || '/' }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: apps/web/dist }
   release:
-    needs: build
+    needs: [validate-ref, build]
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:
@@ -49,6 +70,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ needs.build.outputs.version }}
+          DEPLOY_SHA: ${{ needs.validate-ref.outputs.deploy-sha }}
         run: |
           tag="v${VERSION}"
           remote="https://github.com/${GITHUB_REPOSITORY}.git"
@@ -56,7 +78,7 @@ jobs:
           peeled_sha="$(git ls-remote --tags "$remote" "refs/tags/${tag}^{}" | cut -f1)"
           existing_sha="${peeled_sha:-$direct_sha}"
           if [ -n "$existing_sha" ]; then
-            if [ "$existing_sha" != "$GITHUB_SHA" ]; then
+            if [ "$existing_sha" != "$DEPLOY_SHA" ]; then
               echo "${tag} already points to ${existing_sha}; bump package.json before deploying." >&2
               exit 1
             fi
@@ -70,7 +92,7 @@ jobs:
             exit 0
           fi
           gh release create "$tag" \
-            --target "$GITHUB_SHA" \
+            --target "$DEPLOY_SHA" \
             --title "BUSU ${VERSION}" \
             --generate-notes
   deploy:

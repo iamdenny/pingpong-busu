@@ -174,6 +174,11 @@ function AwardResultSummary({
               {result.event}
             </span>
           )}
+          {result.sourceCount && result.sourceCount > 1 && (
+            <span className="award-result-summary__sources">
+              출처 {result.sourceCount}곳
+            </span>
+          )}
         </span>
       ))}
       {remaining > 0 && (
@@ -728,7 +733,13 @@ export function SearchResultsPage() {
                                       >
                                         <strong>{summary.division}</strong>
                                         <span className="division-overview__counts">
-                                          <span>
+                                          <span
+                                            className={
+                                              summary.awardCount > 0
+                                                ? "division-overview__award-count--positive"
+                                                : undefined
+                                            }
+                                          >
                                             입상 <b>{summary.awardCount}건</b>
                                           </span>
                                           <span>

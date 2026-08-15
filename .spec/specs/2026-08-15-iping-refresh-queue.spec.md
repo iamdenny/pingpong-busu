@@ -47,7 +47,7 @@ related_issues:
 - [x] T1/BSM-1: `packages/source-adapters/src/iping/adapter.test.ts`에 서로 다른 header cookie/form token 회귀 테스트를 먼저 추가하고 실패를 확인한다.
 - [x] T2/BSM-1: `packages/source-adapters/src/iping/adapter.ts`가 두 값을 분리해 로그인하도록 구현하고 adapter 테스트를 통과시킨다.
 - [x] T3/BSM-2/BSM-3/BSM-4: 새 migration contract test에 dedupe, `FOR UPDATE SKIP LOCKED`, stale lease, bounded backoff, terminal error, service-role revoke/grant를 먼저 선언한다.
-- [x] T4/BSM-2/BSM-3/BSM-4: `supabase/migrations/202608150005_iping_refresh_queue.sql`에 enqueue/claim/complete/fail/purge RPC와 인덱스·제약을 구현한다.
+- [x] T4/BSM-2/BSM-3/BSM-4: `supabase/migrations/202608150009_iping_refresh_queue.sql`에 enqueue/claim/complete/fail/purge RPC와 인덱스·제약을 구현한다.
 - [x] T5/BSM-2: worker token 검증과 browser/worker mode 분리 테스트를 먼저 추가한다.
 - [x] T6/BSM-1/BSM-2/BSM-3: `supabase/functions/refresh-player/index.ts`에 `mode: "drain-iping"` worker branch를 추가하고 일반 iPing 요청은 외부 fetch 없이 enqueue하도록 전환한다.
 - [x] T7/BSM-4: `.github/workflows/crawl-scheduled.yml`과 배포 workflow에 main schedule, concurrency, secret sync, curl 실패 처리를 추가하고 runtime contract test로 고정한다.
@@ -84,10 +84,10 @@ related_issues:
 
 - [x] `pnpm lint` passes.
 - [x] `pnpm typecheck` passes.
-- [x] `pnpm test` passes (67 files, 386 tests).
+- [x] `pnpm test` passes (75 files, 417 tests).
 - [x] `pnpm build` passes.
 - [x] `pnpm docs-check:scan` passes.
-- [x] `pnpm release:check` passes (`2026.33.58`).
+- [x] `pnpm release:check` passes (`2026.33.65`).
 - [x] `pnpm test:e2e` passes (8 tests, desktop/mobile).
 - [x] Supabase PostgreSQL 17.6 full migration + queue SQL scenario passes.
 
@@ -160,4 +160,4 @@ Changes: 로그인 프로토콜을 바로잡고, 외부 인증 장애의 지연�
 | Phase      | Date       | Agent             | Result                                                                                                                                                        |
 | ---------- | ---------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Plan+Spec  | 2026-08-15 | codex + architect | tier L: shared DB/Edge/UI/workflow interface and sequence risk; pre-validation clean; issue #74 created; FSD evidence producer unavailable in this repository |
-| Run+Verify | 2026-08-15 | codex + reviewers | adapter/queue/worker/UI/docs 구현; architecture·security·quality findings 보완; 386 unit/integration tests, 8 E2E, full PostgreSQL migration scenario 통과    |
+| Run+Verify | 2026-08-15 | codex + reviewers | adapter/queue/worker/UI/docs 구현; architecture·security·quality findings 보완; 417 unit/integration tests, 8 E2E, full PostgreSQL migration scenario 통과    |

@@ -97,11 +97,17 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 25. `202608150001_prioritize_women_division.sql`: 종목명·부수 값의 여자·여성 표시를 일반 통합부수보다 우선
 26. `202608150003_explicit_regional_events.sql`: 원본 관측 이력을 보존하면서 명시적 지역 종목의 공개 파생 체계를 날짜와 관계없이 지역부수로 일괄 정정
 27. `202608150004_enable_newttplay_source.sql`: 운영 승인된 뉴티티플레이 production 출처 활성화
-28. `202608150005_iping_refresh_queue.sql`: 아이핑 private queue, 원자적 lease·backoff·보존 RPC와 parser `iping-4`
+28. `202608150005_cross_source_result_groups.sql`: 원본 결과를 보존한 교차 출처 동일 결과 표시 그룹과 검색 요약 적용
+29. `202608150006_result_group_query_indexes.sql`: 표시 그룹의 선수 identity·결과 join을 위한 조회 index
+30. `202608150007_restore_result_view_availability.sql`: 전체 window 계산으로 인한 운영 조회 timeout을 막기 위해 결과 그룹을 일시적으로 원본 결과별 단일 그룹으로 복원
+31. `202608150008_public_player_seo_manifest.sql`: Pages 빌드가 필요한 공개 메타데이터만 읽도록 경량 SEO manifest view 제공
+32. `202608150009_iping_refresh_queue.sql`: 아이핑 private queue, 원자적 lease·backoff·보존 RPC와 parser `iping-4`
 
 배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 전체 migration 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports`, `source_request_diagnostics`, `operational_incident*` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request_with_policy`, `record_source_request_outcome`, `delete_expired_source_request_diagnostics`와 출처 상태 기록 및 참여 편집·문의·운영 오류 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
 `202608140007`은 파서가 저장한 관측 체계를 우선 보존하고, 대회명·종목명에서 직접 확인한 지역과 실제 대회일로 전환 규칙을 공개 view에서 보완합니다. 선수 단위 출처 지역, 출처 provenance가 없는 공유 대회 지역, 아이핑 클럽명에서 유추한 과거 지역은 개별 기록 판정에 사용하지 않습니다. `results.division_system`과 `content_hash`를 수정하지 않아 다음 수집에서 가짜 revision이 생기지 않습니다. 전환일 이전 기록과 제18회까지의 분당구청장기 기록은 상세 이력에 보존하되 현재 추정 부수·최근 대회 요약에서 제외합니다.
+
+`202608150007`은 `public_result_groups`의 전체 결과 window 계산이 PostgREST 선수 필터보다 먼저 실행되어 `57014 statement timeout`을 일으킨 운영 장애를 복구합니다. 공개 view의 컬럼과 provenance 배열 계약은 유지하되, 재설계 전까지 결과 하나를 그룹 하나로 취급하므로 교차 출처 중복 축약은 일시 중단됩니다. 배포 후 `public_player_search`와 선수별 `public_results`가 제한 시간 안에 200을 반환하는지 확인합니다.
 
 GitHub의 `production` environment에 아래 값을 설정합니다.
 
@@ -148,11 +154,19 @@ token을 회전하거나 누락을 복구할 때는 GitHub `production` environm
 
 GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`, `VITE_UMAMI_SCRIPT_URL`, `VITE_UMAMI_WEBSITE_ID`를 설정합니다. 커스텀 도메인은 `https://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. source refresh와 Umami 두 값은 브라우저 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다. Umami DB 연결 문자열·관리자 비밀번호·API token은 Pages 환경에 두지 않습니다.
 
+Pages build는 같은 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`로 경량 공개 `public_player_seo_manifest` view만 읽어 선수 SEO 스냅샷을 만든다. workflow의 `SEO_MANIFEST_REQUIRED=true`는 운영 전용 fail-closed 스위치이며 별도 secret이 아니다. 설정 누락, 공개 API 오류, 행 검증 실패, 빈 manifest면 build와 배포를 중단한다. service role/secret key 또는 private table 접근을 이 단계에 추가하지 않는다.
+
+운영 배포는 `CI → current production read-only E2E → Deploy Supabase backend → production public read health → 새 build의 production-backed E2E → Release → Deploy GitHub Pages` 순서로만 진행한다. main CI는 backend 변경 전에 현재 production 공개 API에 새 정적 build를 연결해 검색·상세 브라우저 흐름을 확인한다. backend workflow는 migration 직후 publishable key로 SEO manifest, 선수 검색, 선수 상세를 각각 조회하며 HTTP 오류·빈 결과·5초 timeout 또는 2.5초 성능 예산 초과가 하나라도 있으면 실패한다. Pages workflow는 성공한 backend workflow의 정확한 commit SHA만 checkout하고 새 정적 build를 갱신된 production API에 연결한 read-only 검색·상세 E2E를 다시 통과시킨 뒤 같은 SHA로 tag와 Release를 생성한다. 이 게이트를 우회해 Pages를 먼저 수동 배포하지 않는다.
+
 제품 버전은 루트 `package.json`에서만 관리하며 `YYYY.WEEK.SEQ` 형식이다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가한다. 배포 변경을 준비할 때 `pnpm release:bump`를 실행하면 같은 ISO 주에는 순번을 하나 올리고 새 주에는 `0`으로 초기화한다. workspace package와 환경 변수에는 별도 제품 버전을 두지 않으며 web build도 루트 값을 직접 읽는다.
 
 Pages workflow는 lint·typecheck·test·build를 먼저 통과시킨 뒤 `v{version}` 태그와 GitHub Release를 만들고 GitHub 자동 릴리즈 노트를 작성한다. release job이 성공해야 deploy job이 시작된다. 동일 태그가 현재 커밋을 가리키고 Release도 존재하면 재실행을 허용하지만, 다른 커밋을 가리키면 버전 미증가로 판단해 배포를 중단한다. 따라서 모든 배포 PR은 루트 `package.json` 버전 변경을 포함해야 한다.
 
 web은 일반 path 라우팅을 사용하며 build 시 `index.html`과 동일한 `404.html`을 생성한다. GitHub Pages에서 `/search`나 `/players/:id`로 직접 접근할 때 이 fallback이 SPA를 부팅하고 React Router가 현재 path를 처리한다. 과거 `/#/search?...`와 `/#/players/:id` 링크는 앱 시작 전에 같은 path URL로 치환한다. 검색어는 계속 `?q=`에 두며 path segment나 분석 이벤트로 옮기지 않는다.
+
+build는 추가로 `/search/index.html`, `/players/{public-id}/index.html`, `/robots.txt`, `/sitemap.xml`을 생성한다. 알려진 선수 URL은 HTTP 200 정적 문서에서 선수별 OG를 제공하고, 검색 문서는 `noindex,follow`이며 sitemap에는 홈과 생성된 선수만 포함한다. 선수 목록과 메타데이터는 배포 당시 스냅샷이므로 수집 후 즉시 반영되지 않는다. 새 선수 노출 또는 기존 선수 OG 갱신이 필요하면 정상 release 절차로 다시 배포한다. 배포 후 네 파일 유형을 직접 요청해 상태 코드와 초기 HTML을 확인한다.
+
+PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키와 아이핑 자격증명은 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 아이핑을 켤 때는 두 Secret을 먼저 등록한 뒤 `CRAWLER_SOURCE_IPING_ENABLED=true`, 마지막으로 DB `sources.enabled=true` 순서로 활성화합니다. 어느 하나라도 없으면 요청하지 않습니다. 수동 `crawl-manual.yml`은 보호 규칙 없는 브랜치에 운영 Secret을 노출하지 않도록 `production` environment를 연결하지 않습니다. dispatch 문자열은 step 환경 변수로 전달하고 `CRAWLER_REDACT_QUERY=true`로 선수 검색어를 Actions 출력에서 가립니다. 수동 아이핑 운영 계정 검증은 GitHub `production` 환경을 `main`으로 제한하고 required reviewer를 설정한 뒤에만 별도로 활성화합니다.
 
 `REFRESH_WORKER_TOKEN`은 GitHub repository secret으로 등록한 64자리 hex 값입니다. production environment secret이 아니라 main 예약 workflow와 Edge worker mode가 함께 읽는 repo-level secret이며 프런트와 로그에 전달하지 않습니다.
 

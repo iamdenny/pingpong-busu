@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
+  deduplicatePlayerRecords,
   divisionSystemSchema,
   findRecentObservedDivisionRecord,
   isAwardRank,
@@ -91,6 +92,7 @@ const summarySchema = z.object({
         tournament: z.string().nullish(),
         event: z.string().nullish(),
         last_checked_at: z.string().nullish(),
+        source_count: z.number().int().positive().optional(),
       }),
     )
     .nullish(),
@@ -114,6 +116,7 @@ const resultSchema = z.object({
   division_value: z.string().nullable(),
   rank_text: z.string().nullable(),
   club_text: z.string().nullable(),
+  partner_text: z.string().nullable().optional(),
   source_url: z.string().url(),
   source_code: sourceCodeSchema,
   source_name: z.string(),
@@ -130,6 +133,26 @@ const resultSchema = z.object({
   sort_date: z.string().nullish(),
   last_checked_at: z.string(),
   first_seen_at: z.string(),
+  sources: z
+    .array(
+      z.object({
+        original_record_id: z.coerce.string(),
+        source_code: sourceCodeSchema,
+        source_name: z.string(),
+        source_url: z.string().url(),
+        event: z.string().optional(),
+        club_text: z.string().nullable().optional(),
+        division_system: divisionSystemSchema.nullish(),
+        effective_division_system: divisionSystemSchema.nullish(),
+        division_value: z.string().nullable().optional(),
+        rank_text: z.string().nullable().optional(),
+        partner_text: z.string().nullable().optional(),
+        last_checked_at: z.string(),
+      }),
+    )
+    .min(1)
+    .max(20)
+    .optional(),
 });
 const candidateResultSchema = resultSchema.extend({
   player_public_id: z.coerce.string(),
@@ -172,6 +195,7 @@ function toSummary(row: z.infer<typeof summarySchema>): PlayerSummary {
     ...(award.tournament ? { tournament: award.tournament } : {}),
     ...(award.event ? { event: award.event } : {}),
     ...(award.last_checked_at ? { lastCheckedAt: award.last_checked_at } : {}),
+    ...(award.source_count ? { sourceCount: award.source_count } : {}),
   }));
   const divisionObservations = row.division_observations?.map(
     (observation) => ({
@@ -254,10 +278,22 @@ function toPlayerRecord(row: ResultRow): PlayerRecord {
     ...(row.division_value ? { division: row.division_value } : {}),
     ...(divisionSystem ? { divisionSystem } : {}),
     ...(row.rank_text ? { rank: row.rank_text } : {}),
+    ...(row.partner_text ? { partner: row.partner_text } : {}),
     sourceCode: row.source_code,
     sourceName: row.source_name,
     sourceUrl: row.source_url,
     lastCheckedAt: row.last_checked_at,
+    ...(row.sources
+      ? {
+          sources: row.sources.map((source) => ({
+            originalRecordId: source.original_record_id,
+            sourceCode: source.source_code,
+            sourceName: source.source_name,
+            sourceUrl: source.source_url,
+            lastCheckedAt: source.last_checked_at,
+          })),
+        }
+      : {}),
   });
 }
 
@@ -327,13 +363,49 @@ export class SupabasePlayerRepository implements PlayerRepository {
     if (recordsResponse.error) throw recordsResponse.error;
     const summary = toSummary(summarySchema.parse(summaryResponse.data));
     const rows = z.array(resultSchema).parse(recordsResponse.data);
-    const records = sortPlayerRecordsByLatest(rows.map(toPlayerRecord));
+    const records = sortPlayerRecordsByLatest(
+      deduplicatePlayerRecords(rows.map(toPlayerRecord)),
+    );
     const sourceGroups = new Map<string, typeof rows>();
-    for (const row of rows)
-      sourceGroups.set(row.source_code, [
-        ...(sourceGroups.get(row.source_code) ?? []),
-        row,
-      ]);
+    for (const row of rows) {
+      const sourceRows = row.sources?.length
+        ? row.sources.map((source) => ({
+            ...row,
+            id: source.original_record_id,
+            source_code: source.source_code,
+            source_name: source.source_name,
+            source_url: source.source_url,
+            event_name: source.event ?? row.event_name,
+            club_text:
+              source.club_text === undefined ? row.club_text : source.club_text,
+            division_system:
+              source.division_system === undefined
+                ? row.division_system
+                : source.division_system,
+            effective_division_system:
+              source.effective_division_system === undefined
+                ? row.effective_division_system
+                : source.effective_division_system,
+            division_value:
+              source.division_value === undefined
+                ? row.division_value
+                : source.division_value,
+            rank_text:
+              source.rank_text === undefined ? row.rank_text : source.rank_text,
+            partner_text:
+              source.partner_text === undefined
+                ? row.partner_text
+                : source.partner_text,
+            last_checked_at: source.last_checked_at,
+            sources: undefined,
+          }))
+        : [row];
+      for (const sourceRow of sourceRows)
+        sourceGroups.set(sourceRow.source_code, [
+          ...(sourceGroups.get(sourceRow.source_code) ?? []),
+          sourceRow,
+        ]);
+    }
     const sources: SourceComparison[] = [...sourceGroups.values()].map(
       (group) => {
         const sortedGroup = [...group].sort(

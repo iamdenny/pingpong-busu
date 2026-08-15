@@ -4,6 +4,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import rootPackage from "../../package.json";
 import { createDevLiveSearchPlugin } from "./src/dev/liveSearchPlugin";
+import { generateSeoPagesFromEnvironment } from "../../scripts/generate-seo-pages";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, resolve(import.meta.dirname, "../.."), "");
@@ -14,7 +15,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       {
-        name: "github-pages-spa-fallback",
+        name: "github-pages-static-entrypoints",
         apply: "build",
         async closeBundle() {
           const outputDirectory = resolve(import.meta.dirname, "dist");
@@ -22,6 +23,10 @@ export default defineConfig(({ mode }) => {
             resolve(outputDirectory, "index.html"),
             resolve(outputDirectory, "404.html"),
           );
+          await generateSeoPagesFromEnvironment(outputDirectory, {
+            ...env,
+            ...process.env,
+          });
         },
       },
       createDevLiveSearchPlugin({

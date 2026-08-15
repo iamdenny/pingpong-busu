@@ -290,6 +290,119 @@ describe("SupabasePlayerRepository identity evidence", () => {
 });
 
 describe("SupabasePlayerRepository player detail", () => {
+  it("keeps one display record with every cross-source URL and source comparison", async () => {
+    const summaryRow = {
+      id: "candidate-grouped",
+      canonical_name: "임대현",
+      normalized_name: "임대현",
+      primary_region: "분당구",
+      primary_club: "조경환탁구클럽",
+      recent_observed_division: "6부",
+      recent_observed_division_system: "integrated",
+      result_count: 1,
+      award_results: [],
+      latest_participation_date: null,
+      latest_participation_tournament: null,
+      latest_participation_event: null,
+      latest_participation_checked_at: null,
+      division_observations: [],
+      source_count: 2,
+      last_checked_at: "2026-08-16T00:00:00.000Z",
+      identity_status: "verified",
+      homonym_nickname: "데니",
+    };
+    const groupedRow = {
+      id: "group-1",
+      tournament_name_text: "2025년 화성특례시 코리요 탁구대회",
+      event_name: "[남(혼)단식] 남자6~7부",
+      event_type: "singles",
+      division_system: "integrated",
+      effective_division_system: "integrated",
+      division_value: "6부",
+      rank_text: "준우승",
+      club_text: "조경환탁구클럽",
+      partner_text: null,
+      source_url: "https://example.com/astree",
+      source_code: "astree",
+      source_name: "애즈트리",
+      tournament_scale: "district",
+      tournament_date: "2025-08-09",
+      tournament_region: "경기도 화성시",
+      source_published_date: null,
+      sort_date: "2025-08-09",
+      last_checked_at: "2026-08-16T00:00:00.000Z",
+      first_seen_at: "2026-08-15T00:00:00.000Z",
+      sources: [
+        {
+          original_record_id: "astree-1",
+          source_code: "astree",
+          source_name: "애즈트리",
+          source_url: "https://example.com/astree",
+          club_text: "조경환탁구클럽",
+          rank_text: "준우승",
+          last_checked_at: "2026-08-16T00:00:00.000Z",
+        },
+        {
+          original_record_id: "airping-1",
+          source_code: "airping",
+          source_name: "에어핑퐁",
+          source_url: "https://example.com/airping",
+          club_text: "코리요탁구클럽",
+          rank_text: "2위",
+          last_checked_at: "2026-08-15T00:00:00.000Z",
+        },
+      ],
+    };
+    const summaryQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn(),
+    };
+    summaryQuery.select.mockReturnValue(summaryQuery);
+    summaryQuery.eq.mockReturnValue(summaryQuery);
+    summaryQuery.maybeSingle.mockResolvedValue({
+      data: summaryRow,
+      error: null,
+    });
+    const recordsQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      order: vi.fn(),
+      limit: vi.fn(),
+    };
+    recordsQuery.select.mockReturnValue(recordsQuery);
+    recordsQuery.eq.mockReturnValue(recordsQuery);
+    recordsQuery.order.mockReturnValue(recordsQuery);
+    recordsQuery.limit.mockResolvedValue({ data: [groupedRow], error: null });
+    const client = {
+      from: vi
+        .fn()
+        .mockReturnValueOnce(summaryQuery)
+        .mockReturnValueOnce(recordsQuery),
+    };
+    const repository = new SupabasePlayerRepository(
+      client as unknown as SupabaseClient,
+    );
+
+    const detail = await repository.getPlayer("candidate-grouped");
+
+    expect(detail?.records).toHaveLength(1);
+    expect(detail?.records[0]?.sources).toHaveLength(2);
+    expect(detail?.sources.map((source) => source.sourceCode).sort()).toEqual([
+      "airping",
+      "astree",
+    ]);
+    expect(detail?.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceCode: "airping",
+          latestClub: "코리요탁구클럽",
+          latestRank: "2위",
+        }),
+      ]),
+    );
+  });
+
   it("keeps a historical regional award but omits it from source recent-summary fields", async () => {
     const summaryRow = {
       id: "candidate-historical",

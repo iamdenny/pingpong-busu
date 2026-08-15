@@ -1,6 +1,6 @@
 {
   "name": "pingpong-busu",
-  "version": "2026.33.58",
+  "version": "2026.33.65",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.17.0",
@@ -16,6 +16,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:production": "playwright test --config playwright.production.config.ts",
     "test:e2e:live": "BUSU_LIVE_E2E=true playwright test --config playwright.live.config.ts",
     "docs-check:scan": "node --import tsx scripts/docs-check.ts",
     "release:check": "node --import tsx scripts/release-version.ts check",
