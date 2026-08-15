@@ -73,11 +73,13 @@ export function findRecentObservedDivisionRecord(
   today = todayIsoDate(),
 ): PlayerRecord | undefined {
   const eligible = sortPlayerRecordsByLatest(
-    records.filter(
-      (record) =>
-        record.division !== undefined &&
-        isCurrentDivisionSummaryRecord(record, today),
-    ).map(normalizePlayerRecordDivisionSystem),
+    records
+      .filter(
+        (record) =>
+          record.division !== undefined &&
+          isCurrentDivisionSummaryRecord(record, today),
+      )
+      .map(normalizePlayerRecordDivisionSystem),
   );
   const latest = eligible[0];
   if (!latest) return undefined;
@@ -88,6 +90,24 @@ export function findRecentObservedDivisionRecord(
         record.date === latest.date &&
         isStandardDivisionSystem(record.divisionSystem),
     ) ?? latest
+  );
+}
+
+export function findRecentObservedDivisionRecordForSystems(
+  records: readonly PlayerRecord[],
+  systems: readonly DivisionSystem[],
+  today = todayIsoDate(),
+): PlayerRecord | undefined {
+  const allowedSystems = new Set(systems);
+  return findRecentObservedDivisionRecord(
+    records
+      .map(normalizePlayerRecordDivisionSystem)
+      .filter(
+        (record) =>
+          record.divisionSystem !== undefined &&
+          allowedSystems.has(record.divisionSystem),
+      ),
+    today,
   );
 }
 
