@@ -132,6 +132,12 @@ describe("SearchResultsPage", () => {
     expect(generalButton.closest("tr")).not.toBe(womenButton.closest("tr"));
     expect(generalButton.closest("tr")).toHaveTextContent("희망부");
     expect(womenButton.closest("tr")).toHaveTextContent("여자새싹");
+    expect(
+      within(generalButton).getByText("입상").closest("span"),
+    ).not.toHaveClass("division-overview__award-count--positive");
+    expect(within(womenButton).getByText("입상").closest("span")).toHaveClass(
+      "division-overview__award-count--positive",
+    );
   });
 
   it("keeps the existing rate-limit failure details", () => {
