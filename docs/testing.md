@@ -70,6 +70,7 @@ docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sq
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 부수·입상·지역 규칙   | domain unit + 영향을 받는 parser fixture                                                                                                                               |
 | 부수별 입상·참가 요약 | domain aggregation + public view migration contract + repository/component test                                                                                        |
+| 교차 출처 동일 결과   | domain fingerprint·fail-open unit + public grouped view contract + repository 다중 출처 보존 + 상세 UI 링크 확인                                                       |
 | 검색 결과/상세 UI     | component test + desktop/mobile 미리보기                                                                                                                               |
 | 별칭 기반 참여 편집   | 단일 후보 기본 배정 + 복수 후보 비자동 배정 + 10건 초과 별칭 그룹 배정 + 자유 입력 검증·중복 방지 + 기록 RPC fallback·재조회 + 자동 익명 ID 재사용 + migration dry-run |
 | 동명이인 연결·원복    | 후보별 별칭 공개 이력 component test + 다중 그룹 source identity 연결/전체 복구 + 후속 작업 충돌 확인                                                                  |
@@ -91,6 +92,7 @@ development 원격 검증은 production 데이터나 자격증명을 복사하�
 - 실제 공개 기록과 가상 데이터 badge가 구분되는가
 - 동명이인 경고, 지역 추정 표현, 원문 링크가 보이는가
 - 상세 기록의 전체 종목명이 desktop table과 mobile card에 동일하게 보이는가
+- 같은 입상이 한 행·한 건으로 보이면서 해당 행에 모든 출처 원문 링크가 보이는가
 - `별칭으로 기록 묶기` dialog의 각 후보에 최근 출전 대회명과 원문 종목명이 보이고, 단일 후보는 유일한 그룹에 기본 배정되며 복수 후보는 자동 배정되지 않는가. 사용자가 탁구 별칭을 직접 입력해 비밀번호 없이 기록을 배정할 수 있는가
 - 출처 조회 중·성공·실패 상태가 개별적으로 갱신되는가
 - 키보드 focus와 semantic heading/table 구조가 유지되는가

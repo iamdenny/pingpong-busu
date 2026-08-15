@@ -174,6 +174,11 @@ function AwardResultSummary({
               {result.event}
             </span>
           )}
+          {result.sourceCount && result.sourceCount > 1 && (
+            <span className="award-result-summary__sources">
+              출처 {result.sourceCount}곳
+            </span>
+          )}
         </span>
       ))}
       {remaining > 0 && (

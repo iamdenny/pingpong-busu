@@ -24,6 +24,8 @@ title: "데이터 모델"
 
 `results.rank_text`가 우승·준우승·1~3위·2강·4강을 나타낼 때만 입상으로 집계합니다. 단, `예선 12조 3위`나 `조별 1위`처럼 예선·조별 문맥의 순위는 숫자 등수가 있어도 참가 이력입니다. 8강 이하와 예선·본선 진출은 참가 이력으로 보존하지만 `public_player_search.result_count` 및 화면의 입상 필터에는 포함하지 않습니다. `public_player_search.award_results`는 입상 등수·대회명·원문 종목명과 `대회일 → 게시일` 기준 날짜를 최신순 JSON 배열로 제공하고, `latest_participation_date`, `latest_participation_tournament`, `latest_participation_event`는 입상이 아닌 최근 출전의 날짜·대회명·원문 종목명을 제공합니다. 전환일 이전 및 대회별 지역부수 예외 기록은 원문 이력에 남지만 이 검색 요약용 건수·입상·출전 필드에서는 제외합니다. 검색 화면은 `identity_status = verified`인 참여 편집 결과를 우선하고, 나머지는 입상일 또는 최근 출전일이 없을 때만 확인 시각을 보조 기준으로 사용합니다. `primary_region`과 `primary_club` 출력은 이 시간축에서 가장 최근의 비어 있지 않은 `tournaments.region`·출처 지역 및 `results.club_text`·출처 소속을 사용하고 관측값이 없을 때만 선수의 검토된 대표값으로 대체합니다. 애플리케이션의 `isAwardRank`와 DB의 `is_award_rank`는 같은 판정 기준을 사용합니다.
 
+`results.natural_key_hash`는 출처별 원본 증거와 revision을 구분하므로 교차 출처 중복을 제거하지 않습니다. 공개 표시용 `result_display_fingerprint`는 이미 연결된 한 선수 안에서 실제 대회일·정규화한 대회명·종목·종목 유형·유효 부수 체계와 값·정규화한 입상 결과·파트너가 모두 일치할 때만 사용합니다. `public_result_groups`는 대표 행 한 개와 모든 출처의 원본 ID·URL을 함께 내보내며 원본 `results`를 수정하지 않습니다. 날짜나 핵심 필드가 없거나 같은 출처 안에 동일 fingerprint가 둘 이상이면 해당 기록은 각각 유지합니다.
+
 `public_player_search.primary_region`은 `이름 지역` 검색의 부분 일치 필터에 사용합니다. 지역어는 외부 출처의 선수명 검색어에 포함하지 않습니다. 지역은 공개 대회 기록 기반 추정값이므로 동일인 자동 병합이나 거주지 판단의 단독 근거로 쓰지 않습니다.
 
 `identity_partition_operations.editor_hash`는 브라우저가 자동 생성한 임의의 익명 편집자 ID를 서버 전용 key로 HMAC한 값입니다. 브라우저 ID 원문, 비밀번호, 휴대폰 번호, 생년월일은 저장하지 않습니다. 익명 편집자 ID는 abuse 제한을 보조하는 가명 식별자일 뿐 인증이나 원복 권한이 아닙니다. 동일 이름에 대한 빈도 제한은 이 HMAC과 `normalized_name`을 함께 사용합니다. `fingerprint`는 별칭과 각 그룹의 공개 선수 ID를 정렬한 canonical JSON의 SHA-256이며 중복 편집 판정에만 사용합니다. 후보 수에는 고정 상한을 두지 않고 같은 정규화 이름의 활성 후보만 분류할 수 있습니다.

@@ -49,6 +49,8 @@ flowchart LR
 
 순환 의존성을 만들지 않는다. UI가 출처 HTML을 해석하거나 parser가 React 타입을 알게 하지 않는다.
 
+교차 출처 동일 결과는 저장 단계가 아니라 조회 경계에서만 묶는다. Supabase는 `public_result_groups`에서 보수적 표시 fingerprint를 계산하고 `public_results`와 `public_player_search`가 같은 그룹을 사용한다. 로컬 live 경로는 domain의 동일 규칙을 사용한다. UI는 그룹 대표값을 한 행으로 렌더링하되 포함된 모든 출처 URL을 원문 근거로 노출한다.
+
 ## 검색 흐름
 
 1. `SearchResultsPage`가 repository에서 저장 후보를 읽는다.
