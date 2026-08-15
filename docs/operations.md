@@ -99,10 +99,13 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 27. `202608150004_enable_newttplay_source.sql`: 운영 승인된 뉴티티플레이 production 출처 활성화
 28. `202608150005_cross_source_result_groups.sql`: 원본 결과를 보존한 교차 출처 동일 결과 표시 그룹과 검색 요약 적용
 29. `202608150006_result_group_query_indexes.sql`: 표시 그룹의 선수 identity·결과 join을 위한 조회 index
+30. `202608150007_restore_result_view_availability.sql`: 전체 window 계산으로 인한 운영 조회 timeout을 막기 위해 결과 그룹을 일시적으로 원본 결과별 단일 그룹으로 복원
 
 배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 전체 migration 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports`, `source_request_diagnostics`, `operational_incident*` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request_with_policy`, `record_source_request_outcome`, `delete_expired_source_request_diagnostics`와 출처 상태 기록 및 참여 편집·문의·운영 오류 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
 `202608140007`은 파서가 저장한 관측 체계를 우선 보존하고, 대회명·종목명에서 직접 확인한 지역과 실제 대회일로 전환 규칙을 공개 view에서 보완합니다. 선수 단위 출처 지역, 출처 provenance가 없는 공유 대회 지역, 아이핑 클럽명에서 유추한 과거 지역은 개별 기록 판정에 사용하지 않습니다. `results.division_system`과 `content_hash`를 수정하지 않아 다음 수집에서 가짜 revision이 생기지 않습니다. 전환일 이전 기록과 제18회까지의 분당구청장기 기록은 상세 이력에 보존하되 현재 추정 부수·최근 대회 요약에서 제외합니다.
+
+`202608150007`은 `public_result_groups`의 전체 결과 window 계산이 PostgREST 선수 필터보다 먼저 실행되어 `57014 statement timeout`을 일으킨 운영 장애를 복구합니다. 공개 view의 컬럼과 provenance 배열 계약은 유지하되, 재설계 전까지 결과 하나를 그룹 하나로 취급하므로 교차 출처 중복 축약은 일시 중단됩니다. 배포 후 `public_player_search`와 선수별 `public_results`가 제한 시간 안에 200을 반환하는지 확인합니다.
 
 GitHub의 `production` environment에 아래 값을 설정합니다.
 
