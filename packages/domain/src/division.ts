@@ -1,4 +1,4 @@
-import type { DivisionSystem } from "./models";
+import type { DivisionSystem, PlayerRecord } from "./models";
 import {
   findRegionalDivisionTransition,
   findTournamentDivisionOverride,
@@ -45,6 +45,32 @@ export function formatDivisionObservation(
 ): string {
   const observed = displayDivisionValue(system, value);
   return system ? `${divisionSystemLabels[system]} ${observed}` : observed;
+}
+
+export function prioritizeWomenDivisionSystem(
+  system: DivisionSystem | undefined,
+  eventName: string | undefined,
+  divisionValue: string | undefined,
+): DivisionSystem | undefined {
+  if (system === "regional" || system === "division") return system;
+  const evidence = [eventName, divisionValue]
+    .filter((value): value is string => value !== undefined)
+    .join(" ")
+    .normalize("NFKC");
+  return /(?:여자|여성)/u.test(evidence) ? "women" : system;
+}
+
+export function normalizePlayerRecordDivisionSystem(
+  record: PlayerRecord,
+): PlayerRecord {
+  const divisionSystem = prioritizeWomenDivisionSystem(
+    record.divisionSystem,
+    record.event,
+    record.division,
+  );
+  return divisionSystem === record.divisionSystem
+    ? record
+    : { ...record, ...(divisionSystem ? { divisionSystem } : {}) };
 }
 
 export function parseDivisionSystem(
@@ -107,6 +133,7 @@ export function inferEventDivisionSystem(
   if (override) return override;
   const inferred = inferDivisionSystem(eventName, ...additionalEvidence);
   if (inferred === "division") return inferred;
+  if (inferred === "women") return inferred;
   if (isIntegratedLocalEvent(eventName)) return "integrated";
   return inferred;
 }

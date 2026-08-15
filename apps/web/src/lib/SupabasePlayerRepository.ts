@@ -7,6 +7,7 @@ import {
   isHomonymNickname,
   isCurrentSummaryRecord,
   normalizePlayerName,
+  normalizePlayerRecordDivisionSystem,
   sortPlayerRecordsByLatest,
   sourceCodeSchema,
   type PlayerDetail,
@@ -234,7 +235,7 @@ function toPlayerRecord(row: ResultRow): PlayerRecord {
   const date = resultRowDate(row);
   const divisionSystem =
     row.effective_division_system ?? row.division_system ?? undefined;
-  return {
+  return normalizePlayerRecordDivisionSystem({
     id: row.id,
     ...(date ? { date } : {}),
     ...(row.tournament_date
@@ -257,7 +258,7 @@ function toPlayerRecord(row: ResultRow): PlayerRecord {
     sourceName: row.source_name,
     sourceUrl: row.source_url,
     lastCheckedAt: row.last_checked_at,
-  };
+  });
 }
 
 export class SupabasePlayerRepository implements PlayerRepository {

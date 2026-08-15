@@ -19,6 +19,7 @@ import {
   isPreIntegratedDivisionRecord,
   formatDivisionObservation,
   parseDivisionSystem,
+  prioritizeWomenDivisionSystem,
   parsePlayerSearchQuery,
   sortPlayerRecordsByLatest,
   summarizeDivisionObservations,
@@ -167,7 +168,7 @@ describe("division presentation", () => {
         event: "[여자단식] 여자 3~6부",
         eventType: "singles",
         division: "6부",
-        divisionSystem: "women",
+        divisionSystem: "integrated",
       },
     ];
 
@@ -384,6 +385,24 @@ describe("division system inference", () => {
     expect(inferDivisionSystem("전국대회", "남자 단식")).toBe("unknown");
     expect(parseDivisionSystem("전국오픈")).toBe("open");
     expect(parseDivisionSystem("디비전부수")).toBe("division");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "개인단식",
+        tournamentName: "2026 수원 탁구대회",
+        tournamentDate: "2026-07-01",
+        tournamentRegion: "경기도 수원시",
+        additionalEvidence: ["여자6부"],
+      }),
+    ).toBe("women");
+    expect(
+      prioritizeWomenDivisionSystem("integrated", "개인단식", "여자6부"),
+    ).toBe("women");
+    expect(
+      prioritizeWomenDivisionSystem("regional", "여자 개인단식", "6부"),
+    ).toBe("regional");
+    expect(
+      prioritizeWomenDivisionSystem("division", "여자 개인단식", "T6"),
+    ).toBe("division");
   });
 
   it("treats local event categories inside an open tournament as integrated", () => {
@@ -394,7 +413,7 @@ describe("division system inference", () => {
       "integrated",
     );
     expect(inferEventDivisionSystem("지역여성6부", "전국오픈 탁구대회")).toBe(
-      "integrated",
+      "women",
     );
     expect(inferEventDivisionSystem("지역혼성3/4부", "전국오픈 탁구대회")).toBe(
       "integrated",
