@@ -2101,10 +2101,22 @@ p {
   margin: 0.25rem 0;
 }
 .refresh-panel {
+  margin: 1rem 0;
+}
+.refresh-panel__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.refresh-panel__details {
   display: grid;
   grid-template-columns: 1fr 1.1fr;
   gap: 1.5rem;
-  margin: 1rem 0;
+  padding-block-start: 1rem;
+}
+.refresh-panel__details .subtle {
+  margin: 0;
 }
 .refresh-panel h2 {
   margin: 0;
@@ -2547,7 +2559,7 @@ p {
   .division-summary article:last-child {
     grid-column: 1/-1;
   }
-  .refresh-panel {
+  .refresh-panel__details {
     grid-template-columns: 1fr;
   }
   .subtle {
