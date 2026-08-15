@@ -50,6 +50,10 @@ jobs:
           VITE_UMAMI_SCRIPT_URL: ${{ vars.VITE_UMAMI_SCRIPT_URL }}
           VITE_UMAMI_WEBSITE_ID: ${{ vars.VITE_UMAMI_WEBSITE_ID }}
           SEO_MANIFEST_REQUIRED: "true"
+      - name: Install production E2E browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Verify production-backed user journey
+        run: pnpm test:e2e:production
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: apps/web/dist }
