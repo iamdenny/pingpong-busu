@@ -155,9 +155,15 @@ describe("summarizeObservedDivisions", () => {
       { system: "regional", systemLabel: "지역부수" },
       { system: "division", systemLabel: "디비전부수" },
     ]);
-    expect(groups[1]?.items.map(({ division }) => division)).toEqual([
-      "여자4부",
-      "5부",
+    expect(
+      groups[1]?.rows.map(({ kind, label, items }) => ({
+        kind,
+        label,
+        divisions: items.map(({ division }) => division),
+      })),
+    ).toEqual([
+      { kind: "general", label: "일반부수", divisions: ["5부"] },
+      { kind: "women", label: "여자부수", divisions: ["여자4부"] },
     ]);
   });
 
@@ -175,7 +181,7 @@ describe("summarizeObservedDivisions", () => {
 
     const groups = groupDivisionSummaries(summaries);
 
-    expect(groups[0]?.items.map(({ division }) => division)).toEqual([
+    expect(groups[0]?.rows[0]?.items.map(({ division }) => division)).toEqual([
       "선수부",
       "0부",
       "1부",
@@ -183,7 +189,7 @@ describe("summarizeObservedDivisions", () => {
       "7부",
       "신입생",
     ]);
-    expect(groups[1]?.items.map(({ division }) => division)).toEqual([
+    expect(groups[1]?.rows[0]?.items.map(({ division }) => division)).toEqual([
       "T2",
       "T5",
     ]);

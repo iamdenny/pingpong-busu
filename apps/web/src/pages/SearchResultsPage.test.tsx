@@ -73,6 +73,67 @@ describe("SearchResultsPage", () => {
     });
   });
 
+  it("renders general and women observations on separate integrated rows", async () => {
+    vi.spyOn(playerRepository, "listSourceStatuses").mockResolvedValue([]);
+    vi.spyOn(playerRepository, "searchPlayers").mockResolvedValue([
+      {
+        id: "song-suwon",
+        name: "송승희",
+        normalizedName: "송승희",
+        divisionObservations: [
+          {
+            system: "integrated",
+            division: "9부",
+            awardCount: 0,
+            participationCount: 1,
+          },
+          {
+            system: "integrated",
+            division: "희망부",
+            awardCount: 0,
+            participationCount: 2,
+          },
+          {
+            system: "women",
+            division: "6부",
+            awardCount: 2,
+            participationCount: 3,
+          },
+          {
+            system: "women",
+            division: "새싹",
+            awardCount: 1,
+            participationCount: 0,
+          },
+        ],
+        resultCount: 3,
+        sourceCount: 1,
+        lastCheckedAt: "2026-08-15T00:00:00.000Z",
+        identityStatus: "unreviewed",
+      },
+    ]);
+
+    renderSearch("송승희");
+
+    const summary = await screen.findByRole("region", {
+      name: "현재 추정 부수",
+    });
+    const integratedHeader = within(summary).getByRole("rowheader", {
+      name: "통합부수",
+    });
+    const generalButton = within(summary).getByRole("button", {
+      name: "통합부수 9부 입상 0건 참가 1건 결과 보기",
+    });
+    const womenButton = within(summary).getByRole("button", {
+      name: "통합부수 여자6부 입상 2건 참가 3건 결과 보기",
+    });
+
+    expect(integratedHeader).toHaveAttribute("rowspan", "2");
+    expect(generalButton.closest("tr")).not.toBe(womenButton.closest("tr"));
+    expect(generalButton.closest("tr")).toHaveTextContent("희망부");
+    expect(womenButton.closest("tr")).toHaveTextContent("여자새싹");
+  });
+
   it("keeps the existing rate-limit failure details", () => {
     expect(
       sourceRefreshFailureView(new SourceRefreshRateLimitError(5_000, 10_000)),
