@@ -139,7 +139,7 @@ jobs:
       - name: Deploy Edge Functions
         run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_ID"
       - name: Recover iPing after credential rotation
-        if: steps.version.outputs.version == '2026.33.71'
+        if: steps.version.outputs.version == '2026.33.72'
         run: >-
           curl --fail --silent --show-error --max-time 60
           --request POST

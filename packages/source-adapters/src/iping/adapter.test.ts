@@ -92,6 +92,11 @@ describe("IpingSourceAdapter authentication", () => {
     );
     expect(loginCall?.[1]?.headers).toMatchObject({
       cookie: "PHPSESSID=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      origin: "https://www.iping.club",
+    });
+    expect(loginCall?.[1]?.headers).toMatchObject({
+      "accept-language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+      "user-agent": expect.stringMatching(/^Mozilla\/5\.0/u),
     });
     expect(loginCall?.[1]?.body).toContain(
       "PHPSESSID=0123456789abcdef0123456789abcdef",

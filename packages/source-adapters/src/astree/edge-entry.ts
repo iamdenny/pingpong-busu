@@ -14,5 +14,6 @@ export {
   extractIpingSessionCookieFromHeaders,
   extractIpingSessionId,
   extractIpingSessionIdFromCookie,
+  ipingBrowserNavigationHeaders,
 } from "../iping/session";
 export { fetchWithRetry } from "../resilient-fetch";

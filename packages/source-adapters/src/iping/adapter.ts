@@ -22,6 +22,7 @@ import {
   extractIpingSessionCookie,
   extractIpingSessionCookieFromHeaders,
   extractIpingSessionId,
+  ipingBrowserNavigationHeaders,
 } from "./session";
 import { fetchWithRetry } from "../resilient-fetch";
 
@@ -66,9 +67,7 @@ async function request(
       ...init,
       ...(input.signal ? { signal: input.signal } : {}),
       headers: {
-        accept: "text/html",
-        "accept-encoding": "identity",
-        "user-agent": context.userAgent ?? "BUSU",
+        ...ipingBrowserNavigationHeaders,
         ...init.headers,
       },
     } satisfies RequestInit;
@@ -139,6 +138,7 @@ async function createAuthenticatedSession(
       body,
       headers: {
         cookie: initialCookie,
+        origin: new URL(IPING_BASE_URL).origin,
         referer: loginUrl,
         "content-type": "application/x-www-form-urlencoded; charset=euc-kr",
       },
