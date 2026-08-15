@@ -22,7 +22,6 @@ import {
   extractIpingSessionCookie,
   extractIpingSessionCookieFromHeaders,
   extractIpingSessionId,
-  extractIpingSessionIdFromCookie,
 } from "./session";
 import { fetchWithRetry } from "../resilient-fetch";
 
@@ -112,17 +111,19 @@ async function createAuthenticatedSession(
   });
   assertHtmlResponse(loginPage, "로그인 화면");
   const loginPageHtml = await responseHtml(loginPage);
+  const formSessionId = extractIpingSessionId(loginPageHtml);
+  if (!formSessionId)
+    throw new SourceSchemaChangedError(
+      "아이핑 로그인 폼 토큰을 찾지 못했습니다.",
+    );
   const initialCookie =
     responseCookie(loginPage) ?? extractIpingSessionCookie(loginPageHtml);
   if (!initialCookie)
     throw new SourceSchemaChangedError(
       "아이핑 로그인 세션 쿠키를 찾지 못했습니다.",
     );
-  const sessionId =
-    extractIpingSessionIdFromCookie(initialCookie) ??
-    extractIpingSessionId(loginPageHtml);
   const body = encodeIpingForm({
-    ...(sessionId ? { PHPSESSID: sessionId } : {}),
+    PHPSESSID: formSessionId,
     path: "",
     pg: "login",
     Mid: credentials.username,
@@ -200,7 +201,7 @@ async function fetchSearchHtml(
 export class IpingSourceAdapter implements SourceAdapter {
   readonly sourceCode = "iping";
   readonly mode = "http";
-  readonly parserVersion = "iping-3";
+  readonly parserVersion = "iping-4";
 
   constructor(
     readonly enabled = false,

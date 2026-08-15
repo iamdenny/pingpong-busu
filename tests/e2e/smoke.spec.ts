@@ -6,7 +6,7 @@ test("demo search vertical slice", async ({ page }) => {
     page.getByRole("heading", { name: /전국 탁구 선수/u }),
   ).toBeVisible();
   await page.getByLabel("선수 검색").fill("김탁구");
-  await page.getByRole("button", { name: "검색" }).click();
+  await page.getByRole("button", { name: "검색", exact: true }).click();
 
   await expect(
     page.getByRole("heading", { name: "“김탁구” 선수" }),
@@ -14,9 +14,9 @@ test("demo search vertical slice", async ({ page }) => {
   await expect(page.getByText("2건", { exact: true })).toBeVisible();
   await expect(page.getByText(/같은 이름의 선수가 여러 명/u)).toBeVisible();
 
-  await page.getByRole("button", { name: "동명이인 구분하기" }).click();
+  await page.getByRole("button", { name: "별칭으로 기록 묶기" }).click();
   const editDialog = page.getByRole("dialog", {
-    name: "동명이인 기록 구분하기",
+    name: "별칭으로 기록 묶기",
   });
   await expect(editDialog).toBeVisible();
   await expect(editDialog.getByText(/후보 수 제한은 없습니다/u)).toBeVisible();
@@ -60,7 +60,7 @@ test("reduced motion keeps search navigation usable", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("");
   await page.getByLabel("선수 검색").fill("김탁구");
-  await page.getByRole("button", { name: "검색" }).click();
+  await page.getByRole("button", { name: "검색", exact: true }).click();
 
   await expect(
     page.getByRole("heading", { name: "“김탁구” 선수" }),
@@ -86,7 +86,7 @@ test("navigation fallback and rapid result state changes converge", async ({
   });
   await page.goto("");
   await page.getByLabel("선수 검색").fill("김탁구");
-  await page.getByRole("button", { name: "검색" }).click();
+  await page.getByRole("button", { name: "검색", exact: true }).click();
 
   const divisionFilter = page.getByRole("button", {
     name: /통합부수 6부 .* 결과 보기/,

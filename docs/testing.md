@@ -25,7 +25,7 @@ title: "테스트 전략"
 | Release unit        | `tests/release-version.test.ts`             | package 버전 형식·ISO 주차·순번 증가                 |
 | Deployment contract | `tests/*-deployment.test.ts`                | environment 격리·수동 trigger·seed·crawler 안전장치  |
 | SEO generator       | `scripts/generate-seo-pages.test.ts`        | 공개 manifest 검증·escape·정적 HTML·robots/sitemap   |
-| Edge auth           | `tests/edge-auth.test.ts`                   | publishable key 경계                                 |
+| Edge auth           | `tests/edge-auth.test.ts`                   | publishable key와 worker bearer 경계                 |
 | Browser smoke       | `tests/e2e`                                 | home → 검색 → 상세 흐름                              |
 | Live opt-in         | `tests/live-e2e`                            | 허용된 실제 출처 연결                                |
 
@@ -81,7 +81,7 @@ docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sq
 | 운영 오류 자동 보고   | category/필드/origin/auth 거부 + event 멱등 집계 + 3회 threshold + lease·marker 조정 + 비차단 fallback                                                                 |
 | 출처 활성화           | 정책 문서 + synthetic fixture + opt-in live test                                                                                                                       |
 | 출처 요청 복원력      | 일시적 HTTP/timeout만 재시도 + 호출자 취소 유지 + 출처별 timeout 확인                                                                                                  |
-| 아이핑 인증           | guest/authenticated/challenge/unknown fixture + hidden session POST 전달 + 쿠키 비저장 + 로그인 POST 단일 시도                                                         |
+| 아이핑 인증·예약 큐   | header Cookie/hidden form token 분리 + 큐 dedupe/lease/backoff/terminal SQL contract + worker token + queued UI                                                        |
 | 배포 workflow         | package 버전 형식·주차 순번 unit test + 태그/Release 선행 + GitHub Actions 성공 + 실제 URL 버전 확인                                                                   |
 | Supabase 개발 배포    | main 수동 trigger + project ref 불일치 + seed 2회 적용 + mock 외 source 비활성 + Edge function 목록 확인                                                               |
 

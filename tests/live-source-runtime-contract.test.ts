@@ -20,6 +20,10 @@ const refreshPlayer = readFileSync(
   resolve(process.cwd(), "supabase/functions/refresh-player/index.ts"),
   "utf8",
 );
+const workerAuth = readFileSync(
+  resolve(process.cwd(), "supabase/functions/_shared/worker-auth.ts"),
+  "utf8",
+);
 const manualCrawlWorkflow = readFileSync(
   resolve(process.cwd(), ".github/workflows/crawl-manual.yml"),
   "utf8",
@@ -71,6 +75,68 @@ describe("live source database contract", () => {
 });
 
 describe("refresh-player live source contract", () => {
+  it("separates browser queueing from a strongly authenticated worker drain", () => {
+    expect(refreshPlayer).toContain('mode === "drain-iping"');
+    expect(refreshPlayer).toContain("REFRESH_WORKER_TOKEN");
+    expect(refreshPlayer).toContain("hasValidWorkerAuthorization");
+    expect(refreshPlayer).toMatch(
+      /if \(!workerAuthorized && !browserAuthorized\)[\s\S]+?unauthorized/u,
+    );
+    expect(refreshPlayer).toMatch(
+      /client\.rpc\(\s*"enqueue_iping_refresh_job"/u,
+    );
+    expect(refreshPlayer).toMatch(/client\.rpc\(\s*"claim_iping_refresh_job"/u);
+    expect(refreshPlayer).toMatch(
+      /client\.rpc\(\s*"resolve_iping_refresh_job"/u,
+    );
+    expect(refreshPlayer).toContain('status: "queued"');
+    expect(refreshPlayer).toContain("아이핑 최신 기록 수집을 예약했습니다.");
+    expect(refreshPlayer).toContain('iping: "iping-4"');
+    expect(refreshPlayer).toMatch(
+      /resolution\.status === "retry_scheduled"[\s\S]+?status: 200[\s\S]+?counters\.failed = 1;[\s\S]+?status: 500/u,
+    );
+    expect(workerAuth).toContain("crypto.subtle.digest");
+    expect(workerAuth).toContain("difference |=");
+    expect(workerAuth).toContain("^[a-f0-9]{64}$");
+    expect(refreshPlayer).toContain("isSafeIpingPlayerName(input.name)");
+    expect(refreshPlayer).toContain("!isSafeIpingPlayerName(queryName)");
+    expect(refreshPlayer).toContain("hashRequestOrigin");
+    expect(refreshPlayer).toContain("p_scope_hash: requestOriginHash");
+    expect(refreshPlayer).toContain('reason: "source_cooldown"');
+  });
+
+  it("keeps iPing HTTP cookies separate from the mandatory form token", () => {
+    expect(refreshPlayer).toMatch(
+      /const headerCookie = ipingCookie\(loginPage\);[\s\S]+?const formSessionId = extractIpingSessionId\(loginPageHtml\);/u,
+    );
+    expect(refreshPlayer).toMatch(
+      /const initialCookie =[\s\S]+?headerCookie \?\?[\s\S]+?extractIpingSessionCookie\(loginPageHtml\)/u,
+    );
+    expect(refreshPlayer).toContain("PHPSESSID: formSessionId");
+    expect(refreshPlayer).not.toContain(
+      "extractIpingSessionIdFromCookie(initialCookie) ??",
+    );
+  });
+
+  it("treats only timeout, rate limits, network failures, and 5xx as retryable iPing work", () => {
+    expect(refreshPlayer).toContain(
+      "response.status === 408 || response.status >= 500",
+    );
+    expect(refreshPlayer).toContain('"source_request_failed"');
+    expect(refreshPlayer).toMatch(
+      /if \(!response\.ok\)[\s\S]+?"source_schema_changed"/u,
+    );
+  });
+
+  it("never performs an iPing network fetch from a browser refresh", () => {
+    expect(refreshPlayer).toMatch(
+      /if \(sourceCode === "iping"\)[\s\S]+?enqueue_iping_refresh_job[\s\S]+?continue;/u,
+    );
+    expect(refreshPlayer).not.toMatch(
+      /else if \(sourceCode === "iping"\)[\s\S]+?fetchIpingRecords\(input\.name/u,
+    );
+  });
+
   it("performs one bounded Airping request and returns deterministic timeout cooldown", () => {
     expect(refreshPlayer).toContain("const airpingRetryAfterMs = 5_000");
     expect(refreshPlayer).toMatch(

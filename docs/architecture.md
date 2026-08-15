@@ -31,8 +31,13 @@ flowchart LR
   I --> G
   E --> Q
   E --> G
-  E --> A["출처별 HTTP adapter"]
+  E --> A["동기 출처별 HTTP adapter"]
   A --> X["공개·인증형 탁구 사이트"]
+  E --> J["private refresh_jobs"]
+  C["main 예약 worker"] --> E
+  J --> E
+  E --> IX["아이핑 인증 조회"]
+  IX --> X
   E --> P["upsert RPC / PostgreSQL"]
   P --> V
 ```
@@ -55,15 +60,19 @@ flowchart LR
 
 1. `SearchResultsPage`가 repository에서 저장 후보를 읽는다.
 2. refresh 기능이 켜져 있으면 source catalog의 활성 출처를 구한다.
-3. 활성 출처마다 별도 TanStack Query로 `requestRefresh`를 호출한다.
-4. 각 출처의 완료 직후 선수 query cache를 무효화해 새 저장 결과를 반영한다.
+3. 활성 출처마다 별도 TanStack Query로 `requestRefresh`를 호출한다. 일반 출처는 동기 갱신하고 아이핑은 6시간 freshness와 중복 작업을 확인한 뒤 private queue에 등록한다.
+4. 동기 출처의 완료 직후 선수 query cache를 무효화한다. 아이핑은 기존 저장 결과를 그대로 표시하고 `수집 예약됨` 상태로 요청을 끝낸다.
 5. 출처 하나가 실패해도 다른 query와 기존 결과는 유지한다.
 
-현재 production refresh는 동기 Edge 요청이지만 UI에서는 활성 출처별로 분리해 실시간 진행 상태를 표현한다. 서버의 안전한 오류 코드로 시간 초과·접근 차단·구조 변경·인증 실패를 구분하며, 아이핑을 포함한 `출처 + 정규화 검색어` 단위 호출 제한은 5~60초 범위의 설정값과 1분당 4회 상한, 남은 시간을 제공한다. 같은 이름의 연속 요청만 대기시키므로 다른 이름 검색을 출처 전체 잠금으로 직렬화하지 않는다. 아이핑은 이와 별도로 짧은 DB 행 잠금으로 원자적으로 관리하는 계정 단위 분당 6회 예산을 적용해, 서로 다른 이름을 이용한 무제한 인증 요청을 막는다. 클라이언트는 호출 제한과 에어핑퐁의 명시적 `source_timeout`만 최대 2회 자동 재시도한다. 시간 초과 재시도는 최소 5초를 기다리고, 아이핑 인증 시간 초과·인증 실패·구조 변경 같은 결정적인 실패는 자동 반복하지 않는다. 그 밖의 실패는 사용자가 5초 간격·최대 3회 수동 재시도할 수 있으며 성공하면 해당 검색의 수동 재시도 횟수를 초기화한다. `refresh-status`는 저장된 refresh ID 상태를 공개 응답으로 변환한다.
+현재 production refresh는 아이핑을 제외한 출처만 동기 Edge 요청으로 처리한다. UI는 활성 출처별 상태를 분리해 표현하고, 서버의 안전한 오류 코드로 시간 초과·접근 차단·구조 변경·인증 실패를 구분한다. 동기 출처의 `출처 + 정규화 검색어` 단위 호출 제한은 5~60초 범위의 설정값과 1분당 4회 상한을 적용한다. 클라이언트는 호출 제한과 에어핑퐁의 명시적 `source_timeout`만 최대 2회 자동 재시도하며, 그 밖의 동기 출처 실패에는 5초 간격·최대 3회 수동 재시도를 제공한다. `refresh-status`는 저장된 refresh ID 상태를 공개 응답으로 변환한다.
+
+아이핑은 브라우저 요청에서 외부 사이트에 접속하지 않는다. 선수 이름 형태만 허용하는 service-role 전용 `enqueue_iping_refresh_job`이 6시간 내 성공 캐시와 활성 중복 작업을 검사하고, 분당 신규 4건·활성 12건의 전역 admission budget 안에서 `refresh_jobs`에 넣는다. main 전용 GitHub Actions가 10분마다 64자리 hex shared token으로 `refresh-player`의 정확한 `{"mode":"drain-iping"}` 모드를 호출하고, worker는 가장 오래된 작업 하나를 4분 lease로 claim한다. 일시적 timeout·5xx는 15~60분 backoff와 최대 3회 시도 후 종료한다. 인증·구조 변경·접근 차단은 enqueue와 공유하는 잠금 안에서 terminal 처리하고 backlog를 멈추며 회로를 6시간 연다. 대기 작업은 24시간 뒤 만료하고 terminal 메타데이터는 7일 뒤 삭제한다.
 
 Supabase Edge의 에어핑퐁 요청은 5초 제한의 단일 서버 시도만 수행하고 `source_timeout`과 `retryAfterMs=5000`을 반환한다. 브라우저가 이 메타데이터에 따라 최대 2회 다시 Edge를 호출하므로 한 번의 Edge 실행에서 장시간 대기하거나 서버 내부 재시도를 겹치지 않는다. workspace live CLI adapter의 `fetchWithRetry`는 별도 진단 경로로, 호출자 취소를 보존하면서 네트워크·시간 초과와 HTTP 408·500·502·503·504만 최대 2회 시도한다. 이 경로에서는 에어핑퐁 16초, 오케이핑퐁 10초, 아이핑 12초 이상의 제한과 250ms 선형 지연 뒤 1회 재시도를 유지한다. 408을 제외한 4xx처럼 결정적인 응답과 아이핑 로그인 POST는 자동 재시도하지 않는다.
 
-아이핑은 로그인 화면의 서버용 `getSetCookie()` 배열, 결합 헤더, 숨은 입력값 순서로 검증된 세션 쿠키를 찾아 조회마다 임시 세션을 만들고 로그인 폼·로그아웃 표식·사람 확인 화면을 별도로 판별한다. 인증 후 참가·전국 입상·지역 입상 세 요청을 같은 세션으로 실행하되 쿠키를 저장소나 응답에 남기지 않는다. 세션 만료는 인증 실패, 사람 확인은 접근 차단, 알 수 없는 성공 화면은 구조 변경으로 분류한다. workspace adapter와 Edge Function은 같은 안전한 오류 분류를 사용하지만 호출 제한과 네트워크 재시도 정책은 각 런타임의 실행 한도에 맞게 분리한다.
+아이핑은 로그인 GET의 `Set-Cookie`에 담긴 PHP 세션을 HTTP Cookie로, HTML hidden `PHPSESSID`를 POST form token으로 별도 검증한다. `Set-Cookie`가 없을 때만 검증된 form token을 Cookie 값으로 대체하고, 로그인 응답이 Cookie를 회전하면 이후 확인·검색 요청은 새 값을 사용한다. 조회마다 임시 세션을 만들고 참가·전국 입상·지역 입상 세 요청을 순차 실행하되 쿠키를 저장소나 응답에 남기지 않는다. 세션 만료는 인증 실패, 사람 확인은 접근 차단, 알 수 없는 성공 화면은 구조 변경으로 분류한다.
+
+아이핑 요청 원점은 원본 주소를 저장하지 않고 service-role HMAC으로만 구분하며, 해시별 10분 4건 예산을 전역 admission budget 앞에서 적용한다. 원점 예산은 하루 뒤 삭제한다.
 
 ## 실행 모드 선택
 
@@ -80,7 +89,7 @@ Supabase Edge의 에어핑퐁 요청은 5초 제한의 단일 서버 시도만 �
 
 - 검색·상세 읽기는 RLS가 적용된 `public_player_search`, `public_results`, `public_source_status` view를 사용한다. `public_player_search.division_observations`는 체계·부수별 4강 이상 입상과 나머지 참가 건수를 집계한 공개 요약이다.
 - 브라우저는 publishable key만 가진다.
-- `refresh-player`는 publishable key를 검증한 뒤 service role로 source 상태와 upsert RPC에 접근한다.
+- `refresh-player`의 브라우저 mode는 publishable key를 검증한다. worker mode는 별도 `REFRESH_WORKER_TOKEN`을 digest 후 상수시간 비교하고 service role로 private queue와 upsert RPC에 접근한다.
 - 외부 HTTP는 Edge Function이 수행하고 브라우저는 출처에 직접 연결하지 않는다.
 - 아이핑 자격증명은 Edge Secret에만 두고 요청마다 생성한 세션 쿠키는 조회가 끝나면 폐기한다.
 - 출처 실패는 허용 목록의 `last_error_code`만 저장하고 검색어·원문 오류·쿠키·HTML은 실패 상태 RPC에 전달하지 않는다. 성공 상태는 record upsert 트랜잭션이 원자적으로 갱신하며 이전 오류 코드를 지운다.

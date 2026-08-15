@@ -6,7 +6,8 @@ import { CollapsibleContent } from "./CollapsibleContent";
 export interface SourceRefreshView {
   sourceCode: SourceCode;
   sourceName: string;
-  state: "waiting" | "refreshing" | "succeeded" | "failed" | "skipped";
+  state:
+    "waiting" | "refreshing" | "succeeded" | "failed" | "skipped" | "queued";
   found?: number;
   inserted?: number;
   updated?: number;
@@ -49,6 +50,7 @@ export function sourceRefreshStateText(
   }
   if (source.state === "waiting") return "조회 대기";
   if (source.state === "refreshing") return "조회 중";
+  if (source.state === "queued") return "수집 예약됨";
   if (source.state === "failed") {
     return errorLabels[source.errorCode ?? ""] ?? "조회 실패";
   }
@@ -58,6 +60,8 @@ export function sourceRefreshStateText(
     if (source.reason === "manual_only") return "원문 수동 확인";
     if (source.reason === "demo_mode") return "데모 모드";
     if (source.reason === "source_rate_limited") return "호출 제한";
+    if (source.reason === "source_cooldown") return "다음 예약 대기";
+    if (source.reason === "invalid_name") return "선수 이름 확인 필요";
     return "조회 제외";
   }
   const changes = (source.inserted ?? 0) + (source.updated ?? 0);
@@ -182,20 +186,22 @@ function SourceRefreshDisclosure({
                     <strong>{sourceRefreshStateText(source, now)}</strong>
                     {source.message && <small>{source.message}</small>}
                   </span>
-                  {source.state === "failed" && onRetry && (
-                    <button
-                      type="button"
-                      className="source-refresh-progress__retry"
-                      aria-disabled={retryDisabled}
-                      aria-label={`${source.sourceName} 재시도${retrySeconds > 0 ? `, ${retrySeconds}초 후 가능` : retriesRemaining > 0 ? `, ${retriesRemaining}회 남음` : ", 한도 도달"}`}
-                      onClick={() => {
-                        if (!retryDisabled) onRetry(source.sourceCode, now);
-                      }}
-                    >
-                      <RotateCcw aria-hidden="true" size={12} />
-                      {retryText}
-                    </button>
-                  )}
+                  {source.state === "failed" &&
+                    source.sourceCode !== "iping" &&
+                    onRetry && (
+                      <button
+                        type="button"
+                        className="source-refresh-progress__retry"
+                        aria-disabled={retryDisabled}
+                        aria-label={`${source.sourceName} 재시도${retrySeconds > 0 ? `, ${retrySeconds}초 후 가능` : retriesRemaining > 0 ? `, ${retriesRemaining}회 남음` : ", 한도 도달"}`}
+                        onClick={() => {
+                          if (!retryDisabled) onRetry(source.sourceCode, now);
+                        }}
+                      >
+                        <RotateCcw aria-hidden="true" size={12} />
+                        {retryText}
+                      </button>
+                    )}
                 </li>
               );
             })}
@@ -242,12 +248,17 @@ export function SourceRefreshProgress({
       (source.state === "skipped" &&
         !["fresh", "demo_mode"].includes(source.reason ?? "")),
   ).length;
+  const queued = sources.filter((source) => source.state === "queued").length;
   const summary =
     refreshing > 0
       ? `${sources.length}곳 중 ${completed}곳 완료 · ${refreshing}곳 조회 중`
       : needsAttention > 0
         ? `${sources.length}곳 조회 완료 · ${needsAttention}곳 확인 필요`
-        : `${sources.length}곳 조회 완료`;
+        : queued > 0
+          ? existingRecordCount !== null && existingRecordCount > 0
+            ? "저장된 기록 표시 · 아이핑 수집 예약"
+            : "아이핑 수집 예약됨"
+          : `${sources.length}곳 조회 완료`;
   const isComplete = refreshing === 0;
   const initiallyExpanded = !isComplete && existingRecordCount === 0;
 

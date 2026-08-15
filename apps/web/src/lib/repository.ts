@@ -21,7 +21,7 @@ export interface RefreshRequest {
 }
 export interface RefreshSourceResult {
   sourceCode: SourceCode;
-  status: "succeeded" | "failed" | "skipped";
+  status: "succeeded" | "failed" | "skipped" | "queued";
   inserted?: number | undefined;
   updated?: number | undefined;
   unchanged?: number | undefined;

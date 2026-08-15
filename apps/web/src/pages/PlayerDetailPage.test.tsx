@@ -63,6 +63,27 @@ describe("PlayerDetailPage metadata", () => {
     expect(tabs[0]).toHaveTextContent("입상 이력 (4강 이상)");
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
     expect(tabs[1]).toHaveTextContent("전체 이력");
+
+    const sourceStatusToggle = screen.getByRole("button", {
+      name: "상세 보기",
+    });
+    const sourceStatusDetails = document.getElementById(
+      "player-source-status-details",
+    );
+    expect(sourceStatusToggle).toHaveAttribute("aria-expanded", "false");
+    expect(sourceStatusDetails).toHaveAttribute("aria-hidden", "true");
+
+    const user = userEvent.setup();
+    await user.click(sourceStatusToggle);
+    expect(sourceStatusToggle).toHaveAttribute("aria-expanded", "true");
+    expect(sourceStatusDetails).toHaveAttribute("aria-hidden", "false");
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "상세 접기",
+      }),
+    );
+    expect(sourceStatusDetails).toHaveAttribute("aria-hidden", "true");
   });
 
   it("keeps an unknown player out of the search index", async () => {

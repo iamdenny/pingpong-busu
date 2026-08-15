@@ -5,7 +5,6 @@ import {
   extractIpingSessionCookie,
   extractIpingSessionCookieFromHeaders,
   extractIpingSessionId,
-  extractIpingSessionIdFromCookie,
   fetchWithRetry,
   parseAirpingSearchHtml,
   parseAstreeSearchHtml,
@@ -20,14 +19,17 @@ import {
 } from "../_shared/generated/astree-parser.js";
 import { hasValidPublishableApiKey } from "../_shared/auth.ts";
 import { corsHeaders, json } from "../_shared/http.ts";
+import { isSafeIpingPlayerName } from "../_shared/iping-query.ts";
 import { isRecord, normalizeName } from "../_shared/normalize.ts";
 import { reportOperationalIncident } from "../_shared/operational-incidents.ts";
+import { hashRequestOrigin } from "../_shared/request-origin.ts";
 import {
   SafeSourceError,
   publicSourceError,
   retryAfterMilliseconds,
 } from "../_shared/source-errors.ts";
 import { ttaDivisionCa } from "../_shared/tta-ca.ts";
+import { hasValidWorkerAuthorization } from "../_shared/worker-auth.ts";
 
 const sourceCodes = [
   "mock",
@@ -83,7 +85,7 @@ const parserVersions: Record<LiveSourceCode, string> = {
   mytt: "mytt-3",
   superstar: "superstar-2",
   yongintt: "yongintt-4",
-  iping: "iping-3",
+  iping: "iping-4",
 };
 
 const airpingRetryAfterMs = 5_000;
@@ -470,7 +472,16 @@ function assertIpingHtmlResponse(response: Response, label: string): void {
       "아이핑 요청 제한에 도달했습니다.",
       retryAfterMilliseconds(response.headers.get("retry-after")),
     );
-  if (!response.ok) throw new Error(`아이핑 ${label} HTTP ${response.status}`);
+  if (response.status === 408 || response.status >= 500)
+    throw new SafeSourceError(
+      "source_request_failed",
+      `아이핑 ${label} 요청이 일시적으로 실패했습니다.`,
+    );
+  if (!response.ok)
+    throw new SafeSourceError(
+      "source_schema_changed",
+      `아이핑 ${label} 요청 규격을 확인하지 못했습니다.`,
+    );
   if (
     !(response.headers.get("content-type") ?? "")
       .toLocaleLowerCase()
@@ -506,23 +517,27 @@ async function fetchIpingRecords(
   );
   assertIpingHtmlResponse(loginPage, "로그인 화면");
   const loginPageHtml = await decodeIpingResponse(loginPage);
+  const headerCookie = ipingCookie(loginPage);
+  const formSessionId = extractIpingSessionId(loginPageHtml);
+  if (!formSessionId)
+    throw new SafeSourceError(
+      "source_schema_changed",
+      "아이핑 로그인 폼 토큰을 찾지 못했습니다.",
+    );
   const initialCookie =
-    ipingCookie(loginPage) ?? extractIpingSessionCookie(loginPageHtml);
+    headerCookie ?? extractIpingSessionCookie(loginPageHtml);
   if (!initialCookie)
     throw new SafeSourceError(
       "source_schema_changed",
       "아이핑 로그인 세션 구조 점검이 필요합니다.",
     );
-  const sessionId =
-    extractIpingSessionIdFromCookie(initialCookie) ??
-    extractIpingSessionId(loginPageHtml);
   onPhase("login_submit");
   const loginResponse = await fetch(loginUrl, {
     method: "POST",
     signal: AbortSignal.timeout(12_000),
     redirect: "manual",
     body: encodeIpingForm({
-      ...(sessionId ? { PHPSESSID: sessionId } : {}),
+      PHPSESSID: formSessionId,
       path: "",
       pg: "login",
       Mid: username,
@@ -546,8 +561,16 @@ async function fetchIpingRecords(
       "아이핑 요청 제한에 도달했습니다.",
       retryAfterMilliseconds(loginResponse.headers.get("retry-after")),
     );
+  if (loginResponse.status === 408 || loginResponse.status >= 500)
+    throw new SafeSourceError(
+      "source_request_failed",
+      "아이핑 로그인 요청이 일시적으로 실패했습니다.",
+    );
   if (loginResponse.status >= 400)
-    throw new Error(`아이핑 로그인 HTTP ${loginResponse.status}`);
+    throw new SafeSourceError(
+      "source_schema_changed",
+      "아이핑 로그인 요청 규격을 확인하지 못했습니다.",
+    );
   const sessionCookie = ipingCookie(loginResponse) ?? initialCookie;
   let verificationResponse = loginResponse;
   onPhase("login_verify");
@@ -735,21 +758,287 @@ async function fetchMyttRecords(
   }
 }
 
+interface WorkerCounters {
+  claimed: number;
+  succeeded: number;
+  retried: number;
+  failed: number;
+  skipped: number;
+}
+
+const emptyWorkerCounters = (): WorkerCounters => ({
+  claimed: 0,
+  succeeded: 0,
+  retried: 0,
+  failed: 0,
+  skipped: 0,
+});
+
+function isDrainIpingInput(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Object.keys(value).length === 1 &&
+    value.mode === "drain-iping"
+  );
+}
+
+type EdgeSupabaseClient = ReturnType<typeof createClient>;
+
+function reportIpingIncident(
+  client: EdgeSupabaseClient,
+  errorCode: string,
+): void {
+  if (
+    errorCode !== "source_schema_changed" &&
+    errorCode !== "source_auth_failed"
+  )
+    return;
+  scheduleBackground(
+    reportOperationalIncident(
+      {
+        eventId: crypto.randomUUID(),
+        category: errorCode,
+        appVersion: "unknown",
+        sourceCode: "iping",
+        parserVersion: parserVersions.iping,
+      },
+      {
+        rpc: async (name, parameters) => {
+          const { data, error } = await client.rpc(name, parameters);
+          return {
+            data,
+            ...(error ? { error: { message: error.message } } : {}),
+          };
+        },
+        fetch,
+        githubRepository: Deno.env.get("GITHUB_ISSUES_REPOSITORY"),
+        githubToken: Deno.env.get("GITHUB_ISSUES_TOKEN"),
+      },
+    ),
+  );
+}
+
+async function drainOneIpingJob(
+  client: EdgeSupabaseClient,
+): Promise<{ counters: WorkerCounters; status: number }> {
+  const counters = emptyWorkerCounters();
+  if (
+    Deno.env.get("CRAWL_LIVE") !== "true" ||
+    Deno.env.get(sourceFlags.iping) !== "true"
+  ) {
+    counters.skipped = 1;
+    return { counters, status: 200 };
+  }
+  const { data: source, error: sourceError } = await client
+    .from("sources")
+    .select("enabled")
+    .eq("code", "iping")
+    .maybeSingle();
+  if (sourceError) {
+    counters.failed = 1;
+    return { counters, status: 500 };
+  }
+  if (!source?.enabled) {
+    counters.skipped = 1;
+    return { counters, status: 200 };
+  }
+
+  const leaseToken = crypto.randomUUID();
+  const { data: claim, error: claimError } = await client.rpc(
+    "claim_iping_refresh_job",
+    { p_lease_token: leaseToken },
+  );
+  if (claimError || !isRecord(claim)) {
+    counters.failed = 1;
+    return { counters, status: 500 };
+  }
+  if (claim.status !== "claimed") {
+    counters.skipped = 1;
+    return { counters, status: 200 };
+  }
+  const jobId = claim.jobId;
+  const queryName = claim.queryName;
+  const queryKey = claim.queryKey;
+  const attemptCount = claim.attemptCount;
+  if (
+    (typeof jobId !== "number" && typeof jobId !== "string") ||
+    typeof queryName !== "string" ||
+    typeof queryKey !== "string" ||
+    typeof attemptCount !== "number" ||
+    !isSafeIpingPlayerName(queryName) ||
+    queryKey.length < 1 ||
+    queryKey.length > 50
+  ) {
+    counters.failed = 1;
+    return { counters, status: 500 };
+  }
+  counters.claimed = 1;
+  const requestStartedAt = Date.now();
+  let diagnosticPhase: SourceDiagnosticPhase = "fetch";
+  try {
+    const fetchedAt = new Date().toISOString();
+    const records = await fetchIpingRecords(queryName, fetchedAt, (phase) => {
+      diagnosticPhase = phase;
+    });
+    const unique = [
+      ...new Map(
+        records.map((record) => [String(record.naturalKeyHash), record]),
+      ).values(),
+    ];
+    diagnosticPhase = "persist";
+    const { data: summary, error: persistError } = await client.rpc(
+      "upsert_source_records_with_regions",
+      {
+        p_source_code: "iping",
+        p_query_name: queryName,
+        p_query_key: queryKey,
+        p_records: unique,
+        p_parser_version: parserVersions.iping,
+      },
+    );
+    if (persistError || !isRecord(summary))
+      throw new SafeSourceError(
+        "source_persist_failed",
+        "정규화한 출처 기록을 저장하지 못했습니다.",
+      );
+    const refreshId = summary.refreshId;
+    if (typeof refreshId !== "number" && typeof refreshId !== "string")
+      throw new SafeSourceError(
+        "source_persist_failed",
+        "정규화한 출처 기록을 저장하지 못했습니다.",
+      );
+    diagnosticPhase = "complete";
+    const { error: outcomeError } = await client.rpc(
+      "record_source_request_outcome",
+      {
+        p_source_code: "iping",
+        p_error_code: null,
+        p_phase: diagnosticPhase,
+        p_duration_ms: Date.now() - requestStartedAt,
+      },
+    );
+    if (outcomeError)
+      throw new SafeSourceError(
+        "source_refresh_failed",
+        "출처 보호 상태를 기록하지 못했습니다.",
+      );
+    const { data: resolution, error: resolutionError } = await client.rpc(
+      "resolve_iping_refresh_job",
+      {
+        p_job_id: jobId,
+        p_lease_token: leaseToken,
+        p_refresh_id: refreshId,
+        p_error_code: null,
+        p_retry_after_ms: null,
+      },
+    );
+    if (
+      resolutionError ||
+      !isRecord(resolution) ||
+      resolution.status !== "succeeded"
+    ) {
+      counters.failed = 1;
+      return { counters, status: 500 };
+    }
+    counters.succeeded = 1;
+    return { counters, status: 200 };
+  } catch (error) {
+    const safe = publicSourceError(error);
+    try {
+      await client.rpc("record_source_refresh_failure", {
+        p_source_code: "iping",
+        p_error_code: safe.code,
+      });
+    } catch {
+      // Diagnostics must never replace the original safe source outcome.
+    }
+    let resolutionErrorCode = safe.code;
+    try {
+      const { error: outcomeError } = await client.rpc(
+        "record_source_request_outcome",
+        {
+          p_source_code: "iping",
+          p_error_code: safe.code,
+          p_phase: diagnosticPhase,
+          p_duration_ms: Date.now() - requestStartedAt,
+        },
+      );
+      if (outcomeError) resolutionErrorCode = "source_refresh_failed";
+    } catch {
+      resolutionErrorCode = "source_refresh_failed";
+    }
+    reportIpingIncident(client, safe.code);
+    let resolution: unknown;
+    let resolutionFailed = false;
+    try {
+      const outcome = await client.rpc("resolve_iping_refresh_job", {
+        p_job_id: jobId,
+        p_lease_token: leaseToken,
+        p_refresh_id: null,
+        p_error_code: resolutionErrorCode,
+        p_retry_after_ms: safe.retryAfterMs ?? null,
+      });
+      resolution = outcome.data;
+      resolutionFailed = Boolean(outcome.error);
+    } catch {
+      resolutionFailed = true;
+    }
+    if (resolutionFailed || !isRecord(resolution)) {
+      counters.failed = 1;
+      return { counters, status: 500 };
+    }
+    if (resolution.status === "retry_scheduled") {
+      counters.retried = 1;
+      return { counters, status: 200 };
+    }
+    counters.failed = 1;
+    return { counters, status: 500 };
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS")
     return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST")
     return json({ error: "method_not_allowed" }, 405);
-  if (
-    !hasValidPublishableApiKey(request, {
-      publishableKeys: Deno.env.get("SUPABASE_PUBLISHABLE_KEYS"),
-      publishableKey: Deno.env.get("SUPABASE_PUBLISHABLE_KEY"),
-      legacyAnonKey: Deno.env.get("SUPABASE_ANON_KEY"),
-    })
-  )
+  const workerAuthorized = await hasValidWorkerAuthorization(
+    request,
+    Deno.env.get("REFRESH_WORKER_TOKEN"),
+  );
+  const browserAuthorized = hasValidPublishableApiKey(request, {
+    publishableKeys: Deno.env.get("SUPABASE_PUBLISHABLE_KEYS"),
+    publishableKey: Deno.env.get("SUPABASE_PUBLISHABLE_KEY"),
+    legacyAnonKey: Deno.env.get("SUPABASE_ANON_KEY"),
+  });
+  if (!workerAuthorized && !browserAuthorized)
     return json({ error: "unauthorized" }, 401);
+  let requestBody: unknown;
   try {
-    const input = parseInput(await request.json());
+    requestBody = await request.json();
+  } catch {
+    return json({ error: "invalid_request", message: "invalid_json" }, 400);
+  }
+  if (workerAuthorized) {
+    if (!isDrainIpingInput(requestBody))
+      return json({ ...emptyWorkerCounters(), failed: 1 }, 400);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceRoleKey)
+      return json({ ...emptyWorkerCounters(), failed: 1 }, 503);
+    const client = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false },
+    });
+    try {
+      const outcome = await drainOneIpingJob(client);
+      return json(outcome.counters, outcome.status);
+    } catch {
+      return json({ ...emptyWorkerCounters(), failed: 1 }, 500);
+    }
+  }
+  try {
+    if (isRecord(requestBody) && "mode" in requestBody)
+      throw new Error("invalid_mode");
+    const input = parseInput(requestBody);
     const normalizedName = normalizeName(input.name);
     const selected = input.sourceCodes ?? [
       "mock",
@@ -810,7 +1099,7 @@ Deno.serve(async (request) => {
         });
         continue;
       }
-      if (!input.force) {
+      if (!input.force || sourceCode === "iping") {
         const { data: fresh, error: freshError } = await client
           .from("source_refreshes")
           .select(
@@ -847,6 +1136,126 @@ Deno.serve(async (request) => {
           });
           continue;
         }
+      }
+      if (sourceCode === "iping") {
+        if (!isSafeIpingPlayerName(input.name)) {
+          results.push({
+            sourceCode,
+            status: "skipped",
+            reason: "invalid_name",
+            message: "아이핑 수집은 선수 이름 형식만 예약할 수 있습니다.",
+          });
+          continue;
+        }
+        const requestOriginHash = await hashRequestOrigin(
+          request,
+          serviceRoleKey,
+        );
+        const { data: queued, error: queueError } = await client.rpc(
+          "enqueue_iping_refresh_job",
+          {
+            p_query_name: input.name,
+            p_query_key: normalizedName,
+            p_scope_hash: requestOriginHash,
+          },
+        );
+        if (queueError || !isRecord(queued)) {
+          results.push({
+            sourceCode,
+            status: "failed",
+            errorCode: "source_refresh_failed",
+            message: "아이핑 기록 수집을 예약하지 못했습니다.",
+          });
+          continue;
+        }
+        if (queued.status === "queued") {
+          const jobId = queued.jobId;
+          if (typeof jobId === "number" || typeof jobId === "string")
+            refreshId = `job:${jobId}`;
+          results.push({
+            sourceCode,
+            status: "queued",
+            reason: "queued",
+            message: "아이핑 최신 기록 수집을 예약했습니다.",
+          });
+        } else if (queued.status === "fresh") {
+          if (
+            typeof queued.refreshId === "number" ||
+            typeof queued.refreshId === "string"
+          )
+            refreshId = queued.refreshId;
+          results.push({ sourceCode, status: "skipped", reason: "fresh" });
+        } else if (queued.status === "source_disabled") {
+          results.push({
+            sourceCode,
+            status: "skipped",
+            reason: "source_disabled",
+          });
+        } else if (queued.status === "source_unavailable") {
+          const retryAfterMs = Number(queued.retryAfterMs);
+          results.push({
+            sourceCode,
+            status: "failed",
+            errorCode: "source_circuit_open",
+            message: "반복된 인증 오류로 아이핑 수집을 잠시 보호합니다.",
+            ...(Number.isFinite(retryAfterMs)
+              ? {
+                  retryAfterMs: Math.min(
+                    6 * 60 * 60 * 1000,
+                    Math.max(1, Math.ceil(retryAfterMs)),
+                  ),
+                }
+              : {}),
+          });
+        } else if (queued.status === "cooldown") {
+          const retryAfterMs = Number(queued.retryAfterMs);
+          results.push({
+            sourceCode,
+            status: "skipped",
+            reason: "source_cooldown",
+            message: "최근 아이핑 수집이 종료되어 다음 예약까지 기다립니다.",
+            ...(Number.isFinite(retryAfterMs)
+              ? {
+                  retryAfterMs: Math.min(
+                    6 * 60 * 60 * 1000,
+                    Math.max(1, Math.ceil(retryAfterMs)),
+                  ),
+                }
+              : {}),
+          });
+        } else if (
+          queued.status === "queue_full" ||
+          queued.status === "origin_limited"
+        ) {
+          const retryAfterMs = Number(queued.retryAfterMs);
+          results.push({
+            sourceCode,
+            status: "skipped",
+            reason: "source_rate_limited",
+            message:
+              queued.status === "origin_limited"
+                ? "아이핑 수집 예약 요청이 잠시 제한됐습니다."
+                : "아이핑 수집 대기열이 가득 찼습니다.",
+            ...(Number.isFinite(retryAfterMs)
+              ? {
+                  retryAfterMs: Math.min(
+                    queued.status === "origin_limited"
+                      ? 10 * 60 * 1000
+                      : 60 * 1000,
+                    Math.max(1, Math.ceil(retryAfterMs)),
+                  ),
+                }
+              : {}),
+          });
+        } else {
+          results.push({
+            sourceCode,
+            status: "failed",
+            errorCode: "source_refresh_failed",
+            message: "아이핑 기록 수집 상태를 확인하지 못했습니다.",
+          });
+        }
+        continue;
       }
       const configuredMinimumIntervalMs = Number(
         Deno.env.get("CRAWLER_SOURCE_MIN_INTERVAL_MS") ?? 5000,
@@ -927,12 +1336,6 @@ Deno.serve(async (request) => {
         } else if (sourceCode === "yongintt") {
           records.push(
             ...(await fetchYonginCafeRecords(input.name, fetchedAt)),
-          );
-        } else if (sourceCode === "iping") {
-          records.push(
-            ...(await fetchIpingRecords(input.name, fetchedAt, (phase) => {
-              diagnosticPhase = phase;
-            })),
           );
         } else {
           records.push(
