@@ -774,11 +774,24 @@ const emptyWorkerCounters = (): WorkerCounters => ({
   skipped: 0,
 });
 
-function isDrainIpingInput(value: unknown): boolean {
+type IpingWorkerMode = "drain-iping" | "recover-iping";
+
+function isIpingWorkerInput(
+  value: unknown,
+): value is { mode: IpingWorkerMode } {
   return (
     isRecord(value) &&
     Object.keys(value).length === 1 &&
-    value.mode === "drain-iping"
+    (value.mode === "drain-iping" || value.mode === "recover-iping")
+  );
+}
+
+function hasIpingRecoveryRuntime(): boolean {
+  return (
+    Deno.env.get("CRAWL_LIVE") === "true" &&
+    Deno.env.get("CRAWLER_SOURCE_IPING_ENABLED") === "true" &&
+    Boolean(Deno.env.get("IPING_USERNAME")) &&
+    Boolean(Deno.env.get("IPING_PASSWORD"))
   );
 }
 
@@ -815,6 +828,15 @@ function reportIpingIncident(
         githubToken: Deno.env.get("GITHUB_ISSUES_TOKEN"),
       },
     ),
+  );
+}
+
+function isIpingKillSwitchError(errorCode: string): boolean {
+  return (
+    errorCode === "source_auth_failed" ||
+    errorCode === "source_schema_changed" ||
+    errorCode === "source_blocked" ||
+    errorCode === "source_not_configured"
   );
 }
 
@@ -963,9 +985,11 @@ async function drainOneIpingJob(
           p_duration_ms: Date.now() - requestStartedAt,
         },
       );
-      if (outcomeError) resolutionErrorCode = "source_refresh_failed";
+      if (outcomeError && !isIpingKillSwitchError(safe.code))
+        resolutionErrorCode = "source_refresh_failed";
     } catch {
-      resolutionErrorCode = "source_refresh_failed";
+      if (!isIpingKillSwitchError(safe.code))
+        resolutionErrorCode = "source_refresh_failed";
     }
     reportIpingIncident(client, safe.code);
     let resolution: unknown;
@@ -1019,7 +1043,7 @@ Deno.serve(async (request) => {
     return json({ error: "invalid_request", message: "invalid_json" }, 400);
   }
   if (workerAuthorized) {
-    if (!isDrainIpingInput(requestBody))
+    if (!isIpingWorkerInput(requestBody))
       return json({ ...emptyWorkerCounters(), failed: 1 }, 400);
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -1029,7 +1053,38 @@ Deno.serve(async (request) => {
       auth: { persistSession: false },
     });
     try {
+      if (requestBody.mode === "recover-iping") {
+        if (!hasIpingRecoveryRuntime())
+          return json({ ...emptyWorkerCounters(), failed: 1 }, 503);
+        const { data: source, error: sourceError } = await client
+          .from("sources")
+          .select("enabled")
+          .eq("code", "iping")
+          .maybeSingle();
+        if (sourceError || !source?.enabled)
+          return json({ ...emptyWorkerCounters(), failed: 1 }, 503);
+        const { data: recovery, error: recoveryError } = await client.rpc(
+          "recover_iping_refresh_job",
+        );
+        if (recoveryError || !isRecord(recovery))
+          return json({ ...emptyWorkerCounters(), failed: 1 }, 500);
+        if (recovery.status === "busy" || recovery.status === "reset_only")
+          return json({ ...emptyWorkerCounters(), skipped: 1 }, 409);
+        if (
+          recovery.status !== "requeued" &&
+          recovery.status !== "already_pending"
+        )
+          return json({ ...emptyWorkerCounters(), failed: 1 }, 500);
+      }
       const outcome = await drainOneIpingJob(client);
+      if (
+        requestBody.mode === "recover-iping" &&
+        outcome.counters.succeeded !== 1
+      )
+        return json(
+          outcome.counters,
+          outcome.status >= 400 ? outcome.status : 503,
+        );
       return json(outcome.counters, outcome.status);
     } catch {
       return json({ ...emptyWorkerCounters(), failed: 1 }, 500);

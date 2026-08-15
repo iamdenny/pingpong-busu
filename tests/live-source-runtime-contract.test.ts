@@ -77,6 +77,7 @@ describe("live source database contract", () => {
 describe("refresh-player live source contract", () => {
   it("separates browser queueing from a strongly authenticated worker drain", () => {
     expect(refreshPlayer).toContain('mode === "drain-iping"');
+    expect(refreshPlayer).toContain('mode === "recover-iping"');
     expect(refreshPlayer).toContain("REFRESH_WORKER_TOKEN");
     expect(refreshPlayer).toContain("hasValidWorkerAuthorization");
     expect(refreshPlayer).toMatch(
@@ -88,6 +89,9 @@ describe("refresh-player live source contract", () => {
     expect(refreshPlayer).toMatch(/client\.rpc\(\s*"claim_iping_refresh_job"/u);
     expect(refreshPlayer).toMatch(
       /client\.rpc\(\s*"resolve_iping_refresh_job"/u,
+    );
+    expect(refreshPlayer).toMatch(
+      /client\.rpc\(\s*"recover_iping_refresh_job"/u,
     );
     expect(refreshPlayer).toContain('status: "queued"');
     expect(refreshPlayer).toContain("아이핑 최신 기록 수집을 예약했습니다.");
@@ -103,6 +107,33 @@ describe("refresh-player live source contract", () => {
     expect(refreshPlayer).toContain("hashRequestOrigin");
     expect(refreshPlayer).toContain("p_scope_hash: requestOriginHash");
     expect(refreshPlayer).toContain('reason: "source_cooldown"');
+  });
+
+  it("checks the iPing runtime before mutating recovery state and drains only after recovery", () => {
+    expect(refreshPlayer).toMatch(
+      /function hasIpingRecoveryRuntime[\s\S]+?CRAWL_LIVE[\s\S]+?CRAWLER_SOURCE_IPING_ENABLED[\s\S]+?IPING_USERNAME[\s\S]+?IPING_PASSWORD/u,
+    );
+    expect(refreshPlayer).toMatch(
+      /requestBody\.mode === "recover-iping"[\s\S]+?hasIpingRecoveryRuntime[\s\S]+?select\("enabled"\)[\s\S]+?recover_iping_refresh_job[\s\S]+?drainOneIpingJob/u,
+    );
+    expect(refreshPlayer).toMatch(
+      /Object\.keys\(value\)\.length === 1[\s\S]+?recover-iping/u,
+    );
+    expect(refreshPlayer).toMatch(
+      /recovery\.status === "busy" \|\| recovery\.status === "reset_only"[\s\S]+?409/u,
+    );
+    expect(refreshPlayer).toMatch(
+      /requestBody\.mode === "recover-iping"[\s\S]+?outcome\.counters\.succeeded !== 1[\s\S]+?503/u,
+    );
+  });
+
+  it("preserves deterministic iPing errors when diagnostics fail", () => {
+    expect(refreshPlayer).toMatch(
+      /outcomeError && !isIpingKillSwitchError\(safe\.code\)[\s\S]+?resolutionErrorCode = "source_refresh_failed"/u,
+    );
+    expect(refreshPlayer).toMatch(
+      /catch \{[\s\S]+?if \(!isIpingKillSwitchError\(safe\.code\)\)[\s\S]+?resolutionErrorCode = "source_refresh_failed"/u,
+    );
   });
 
   it("keeps iPing HTTP cookies separate from the mandatory form token", () => {
