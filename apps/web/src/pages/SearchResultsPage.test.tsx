@@ -298,6 +298,42 @@ describe("SearchResultsPage", () => {
       screen.getByRole("tabpanel", { name: "입상 선수 검색 결과 목록" }),
     ).toHaveAttribute("data-transition-direction", "backward");
     expect(screen.getByText(/같은 이름의 선수가 여러 명/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers alias grouping for a single search candidate without a homonym warning", async () => {
+    const [candidate] = await playerRepository.searchPlayers({
+      query: "김탁구",
+      region: "서울",
+    });
+    if (!candidate) throw new Error("단일 후보 데모 데이터가 필요합니다.");
+    vi.spyOn(playerRepository, "searchPlayers").mockResolvedValue([candidate]);
+
+    renderSearch("김탁구");
+
+    expect(
+      await screen.findByRole("button", { name: "별칭으로 기록 묶기" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/같은 이름의 선수가 여러 명/u),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not offer alias grouping when no search candidate exists", async () => {
+    vi.spyOn(playerRepository, "searchPlayers").mockResolvedValue([]);
+
+    renderSearch("없는선수");
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "확인된 대회 기록이 없습니다.",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "별칭으로 기록 묶기" }),
+    ).not.toBeInTheDocument();
   });
 
   it("filters same-name candidates when a region follows the player name", async () => {

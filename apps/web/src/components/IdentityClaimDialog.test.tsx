@@ -62,6 +62,105 @@ beforeEach(() => {
 });
 
 describe("IdentityClaimDialog", () => {
+  it("requires a custom alias while defaulting a single candidate to its sole group", async () => {
+    window.localStorage.setItem(ANONYMOUS_EDITOR_STORAGE_KEY, editorId);
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue([]);
+    const apply = vi
+      .spyOn(playerRepository, "applyIdentityEdit")
+      .mockResolvedValue({
+        accepted: true,
+        referenceId: "SINGLE01",
+        operationId: "00000000-0000-4000-8000-000000000004",
+        status: "applied",
+        groupCount: 1,
+      });
+    const user = userEvent.setup();
+    renderDialog([candidates[0]!]);
+
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
+
+    const nicknameInput = screen.getByRole("textbox", { name: "탁구 별칭" });
+    expect(nicknameInput).toHaveValue("");
+    expect(nicknameInput).toHaveAttribute("placeholder", "예: 용인 치키타");
+    await user.type(nicknameInput, "용인 치키타");
+    expect(
+      within(
+        screen.getByRole("group", { name: /서울.*스핀탁구클럽/u }),
+      ).getByRole("radio", { name: "용인 치키타" }),
+    ).toBeChecked();
+    expect(screen.getByText(/분류 1건 · 전체 1건/u)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "사람 추가" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/내 기록이라면/u)).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /잘못된 경우 다른 참여자가 이 편집 전체를 되돌릴 수/u,
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "선택한 기록 묶기" }));
+
+    expect(apply).toHaveBeenCalledWith({
+      groups: [
+        {
+          nickname: "용인 치키타",
+          candidateIds: ["candidate-seoul"],
+        },
+      ],
+      editorId,
+    });
+  });
+
+  it("keeps the candidate list stable while an open edit session receives refreshed props", async () => {
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue([]);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const user = userEvent.setup();
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <IdentityClaimDialog candidates={[candidates[0]!]} />
+      </QueryClientProvider>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
+    view.rerender(
+      <QueryClientProvider client={queryClient}>
+        <IdentityClaimDialog candidates={candidates} />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole("heading", { name: "나를 알아볼 별칭" })).toBeInTheDocument();
+    expect(screen.queryByText(/부산.*블루라켓/u)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "사람 추가" })).not.toBeInTheDocument();
+  });
+
+  it("does not auto-assign multiple candidates", async () => {
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
+
+    expect(screen.getByText(/분류 0건 · 전체 2건/u)).toBeInTheDocument();
+    expect(screen.getByText(/소속과 활동 지역/u)).toBeInTheDocument();
+  });
+
   it("starts a new classification with one randomized suggestion", async () => {
     vi.mocked(Math.random).mockReturnValue(0.5);
     vi.spyOn(
@@ -71,7 +170,9 @@ describe("IdentityClaimDialog", () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
 
     expect(screen.getByRole("textbox", { name: "사람 1 별칭" })).toHaveValue(
       homonymNicknameSuggestions[
@@ -95,7 +196,9 @@ describe("IdentityClaimDialog", () => {
     const user = userEvent.setup();
     renderDialog(savedCandidates);
 
-    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
 
     expect(screen.getByRole("textbox", { name: "사람 1 별칭" })).toHaveValue(
       "용인 치키타",
@@ -168,23 +271,27 @@ describe("IdentityClaimDialog", () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
     expect(
-      screen.getByRole("dialog", { name: "동명이인 기록 구분하기" }),
+      screen.getByRole("dialog", { name: "별칭으로 기록 묶기" }),
     ).toHaveAttribute("open");
     expect(
       await screen.findByText("제1회 서울 라켓배 탁구대회"),
     ).toBeInTheDocument();
     expect(screen.getByText("여자 개인단식 5~7부")).toBeInTheDocument();
     expect(
-      screen.getByText(/실제 실력이나 공식 등급을 뜻하지 않습니다/u),
+      screen.getByText(
+        /본인 인증이나 실제 실력, 부수, 공식 등급을 뜻하지 않습니다/u,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("textbox", { name: /구분 근거/u }),
     ).not.toBeInTheDocument();
 
     const submitButton = screen.getByRole("button", {
-      name: "구분 바로 반영",
+      name: "선택한 기록 묶기",
     });
     fireEvent.submit(submitButton.closest("form")!);
     expect(screen.getByRole("alert")).toHaveTextContent("한 사람 이상의 별칭");
@@ -218,7 +325,7 @@ describe("IdentityClaimDialog", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "동명이인 기록을 구분했습니다.",
+        name: "별칭으로 기록을 묶었습니다.",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText(/AB12CD34/u)).toBeInTheDocument();
@@ -253,7 +360,9 @@ describe("IdentityClaimDialog", () => {
       },
     ]);
 
-    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
     await user.click(screen.getByRole("button", { name: "사람 추가" }));
 
     const nicknameInput = screen.getByRole("textbox", { name: "사람 2 별칭" });
@@ -296,7 +405,9 @@ describe("IdentityClaimDialog", () => {
     const user = userEvent.setup();
     renderDialog(manyCandidates);
 
-    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
     await user.click(screen.getByRole("button", { name: "사람 추가" }));
     for (const [index, candidate] of manyCandidates.entries()) {
       const candidateGroup = screen.getByRole("group", {
@@ -314,7 +425,7 @@ describe("IdentityClaimDialog", () => {
         name: /잘못된 경우 다른 참여자가 이 편집 전체를 되돌릴 수/u,
       }),
     );
-    await user.click(screen.getByRole("button", { name: "구분 바로 반영" }));
+    await user.click(screen.getByRole("button", { name: "선택한 기록 묶기" }));
 
     expect(apply).toHaveBeenCalledWith({
       groups: [
@@ -349,7 +460,9 @@ describe("IdentityClaimDialog", () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
     const nicknameInput = screen.getByRole("textbox", { name: "사람 1 별칭" });
     await user.clear(nicknameInput);
     await user.type(nicknameInput, "용인 치키타");
@@ -364,7 +477,7 @@ describe("IdentityClaimDialog", () => {
         name: /잘못된 경우 다른 참여자가 이 편집 전체를 되돌릴 수/u,
       }),
     );
-    await user.click(screen.getByRole("button", { name: "구분 바로 반영" }));
+    await user.click(screen.getByRole("button", { name: "선택한 기록 묶기" }));
 
     expect(apply).toHaveBeenCalledWith({
       groups: [{ nickname: "용인 치키타", candidateIds: ["candidate-seoul"] }],
@@ -397,7 +510,9 @@ describe("IdentityClaimDialog", () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.click(screen.getByRole("button", { name: "동명이인 구분하기" }));
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
     expect(
       await screen.findAllByText("최근 출전 기록을 불러오지 못했습니다."),
     ).not.toHaveLength(0);

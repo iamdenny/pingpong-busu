@@ -160,8 +160,8 @@ export function HomePage() {
         </article>
         <article>
           <Users />
-          <h2>동명이인 구분</h2>
-          <p>이름이 같아도 소속과 지역별 후보를 따로 표시합니다.</p>
+          <h2>별칭으로 기록 모으기</h2>
+          <p>탁구 별칭을 붙여 여러 출처의 공개 기록을 한곳에 모아봅니다.</p>
         </article>
         <article>
           <ScanSearch />

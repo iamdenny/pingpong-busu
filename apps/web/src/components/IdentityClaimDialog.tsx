@@ -58,8 +58,12 @@ function identityFormState(
   if (groups.length === 0) {
     groups.push({
       id: "identity-group-1",
-      nickname: pickHomonymNicknameSuggestion(),
+      nickname:
+        candidates.length === 1 ? "" : pickHomonymNicknameSuggestion(),
     });
+    if (candidates.length === 1 && candidates[0]) {
+      assignments[candidates[0].id] = "identity-group-1";
+    }
   }
 
   return { groups, assignments };
@@ -82,14 +86,17 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   const [referenceId, setReferenceId] = useState<string>();
   const [appliedGroupCount, setAppliedGroupCount] = useState<number>();
   const [isOpen, setIsOpen] = useState(false);
+  const [activeCandidates, setActiveCandidates] = useState(candidates);
+  const dialogCandidates = isOpen ? activeCandidates : candidates;
+  const isSingleCandidate = dialogCandidates.length === 1;
   const [dialogState, setDialogState] = useState<"closed" | "open" | "closing">(
     "closed",
   );
   const closeTimerRef = useRef<number | undefined>(undefined);
   const isClosingRef = useRef(false);
   const candidateIds = useMemo(
-    () => candidates.map((candidate) => candidate.id),
-    [candidates],
+    () => dialogCandidates.map((candidate) => candidate.id),
+    [dialogCandidates],
   );
   const evidence = useQuery({
     queryKey: ["identity-candidate-evidence", candidateIds],
@@ -106,6 +113,7 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
 
   const open = () => {
     const restoredFormState = identityFormState(candidates);
+    setActiveCandidates(candidates);
     isClosingRef.current = false;
     if (closeTimerRef.current !== undefined) {
       window.clearTimeout(closeTimerRef.current);
@@ -308,7 +316,7 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   return (
     <>
       <button className="identity-claim-trigger" type="button" onClick={open}>
-        <UsersRound size={17} aria-hidden="true" /> 동명이인 구분하기
+        <UsersRound size={17} aria-hidden="true" /> 별칭으로 기록 묶기
       </button>
       <dialog
         className="identity-claim-dialog"
@@ -324,13 +332,13 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
         <div className="identity-claim-dialog__header">
           <div>
             <p className="eyebrow">공개 참여 편집</p>
-            <h2 id="identity-claim-title">동명이인 기록 구분하기</h2>
+            <h2 id="identity-claim-title">별칭으로 기록 묶기</h2>
           </div>
           <button
             className="icon-button"
             type="button"
             onClick={close}
-            aria-label="동명이인 기록 구분하기 닫기"
+            aria-label="별칭으로 기록 묶기 닫기"
           >
             <X aria-hidden="true" />
           </button>
@@ -339,7 +347,7 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
         {submissionState === "success" ? (
           <div className="identity-claim-success" role="status">
             <ShieldCheck aria-hidden="true" />
-            <h3>동명이인 기록을 구분했습니다.</h3>
+            <h3>별칭으로 기록을 묶었습니다.</h3>
             <p>
               편집번호 <strong>{referenceId}</strong> · 기록을{" "}
               <strong>{appliedGroupCount}개 별칭</strong>으로 나눴습니다. 잘못
@@ -352,9 +360,11 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
         ) : (
           <form onSubmit={submit}>
             <p className="identity-claim-dialog__intro">
-              같은 이름의 각 사람에게 기억하기 쉬운 탁구 별칭을 붙이고, 해당하는
-              공개 대회 기록을 나눠 주세요. 별칭은 재미있는 구분자일 뿐 실제
-              실력이나 공식 등급을 뜻하지 않습니다.
+              {isSingleCandidate
+                ? "내 기록이라면 알아보기 쉬운 탁구 별칭을 붙여 한곳에 모아 보세요. "
+                : "내 기록이라면 소속과 활동 지역을 확인하고, 같은 이름의 각 사람에게 기억하기 쉬운 탁구 별칭을 붙여 주세요. "}
+              별칭은 공개 기록을 구분하는 이름일 뿐 본인 인증이나 실제 실력,
+              부수, 공식 등급을 뜻하지 않습니다.
             </p>
 
             <section
@@ -363,16 +373,22 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
             >
               <div className="identity-groups__heading">
                 <div>
-                  <h3 id="identity-groups-title">사람별 탁구 별칭</h3>
+                  <h3 id="identity-groups-title">
+                    {isSingleCandidate
+                      ? "나를 알아볼 별칭"
+                      : "사람별 탁구 별칭"}
+                  </h3>
                   <p>추천 문구를 바꾸거나 원하는 별칭을 직접 입력하세요.</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={addGroup}
-                  disabled={groups.length >= candidates.length}
-                >
-                  <Plus size={15} aria-hidden="true" /> 사람 추가
-                </button>
+                {!isSingleCandidate && (
+                  <button
+                    type="button"
+                    onClick={addGroup}
+                    disabled={groups.length >= candidates.length}
+                  >
+                    <Plus size={15} aria-hidden="true" /> 사람 추가
+                  </button>
+                )}
               </div>
               <ol>
                 {groups.map((group, index) => {
@@ -382,7 +398,9 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                   return (
                     <li key={group.id}>
                       <label htmlFor={group.id + "-nickname"}>
-                        사람 {index + 1} 별칭
+                        {isSingleCandidate
+                          ? "탁구 별칭"
+                          : `사람 ${index + 1} 별칭`}
                       </label>
                       <input
                         id={group.id + "-nickname"}
@@ -392,6 +410,7 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                         minLength={2}
                         maxLength={homonymNicknameMaxLength}
                         required
+                        placeholder={isSingleCandidate ? "예: 용인 치키타" : undefined}
                         value={group.nickname}
                         onChange={(event) =>
                           updateGroupNickname(group.id, event.target.value)
@@ -424,12 +443,18 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
               className="identity-candidate-options"
               aria-describedby="identity-candidate-hint"
             >
-              <legend>기록을 사람별로 나누기</legend>
+              <legend>
+                {isSingleCandidate
+                  ? "별칭에 연결할 기록"
+                  : "기록을 사람별로 나누기"}
+              </legend>
               <p id="identity-candidate-hint">
-                후보 수 제한은 없습니다. 확실하지 않은 기록은 미분류로 남겨도
-                됩니다. 분류 {assignedCount}건 · 전체 {candidates.length}건
+                {isSingleCandidate
+                  ? "표시된 공개 기록이 내 기록이 아니라면 모름을 선택할 수 있습니다. "
+                  : "후보 수 제한은 없습니다. 확실하지 않은 기록은 미분류로 남겨도 됩니다. "}
+                분류 {assignedCount}건 · 전체 {candidates.length}건
               </p>
-              {candidates.map((candidate) => {
+              {dialogCandidates.map((candidate) => {
                 const evidenceId =
                   "identity-candidate-evidence-" + candidate.id;
                 const candidateEvidence = evidenceByCandidate.get(candidate.id);
@@ -606,7 +631,9 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                 취소
               </button>
               <button type="submit" disabled={submissionState === "pending"}>
-                {submissionState === "pending" ? "반영 중…" : "구분 바로 반영"}
+                {submissionState === "pending"
+                  ? "반영 중…"
+                  : "선택한 기록 묶기"}
               </button>
             </div>
           </form>

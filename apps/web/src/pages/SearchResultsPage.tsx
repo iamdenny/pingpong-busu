@@ -777,12 +777,19 @@ export function SearchResultsPage() {
           조회할 출처 목록을 불러오지 못했습니다. 현재 저장된 기록만 표시합니다.
         </div>
       )}
-      {duplicate && (
+      {identityCandidates.length > 0 && (
         <div className="identity-warning warning">
-          <span role="status">
-            같은 이름의 선수가 여러 명 있습니다. 이름 뒤에 지역을 함께
-            입력하거나 소속을 확인해 주세요.
-          </span>
+          {duplicate ? (
+            <span role="status">
+              같은 이름의 선수가 여러 명 있습니다. 이름 뒤에 지역을 함께
+              입력하거나 소속을 확인해 주세요.
+            </span>
+          ) : (
+            <span>
+              내 기록이라면 탁구 별칭을 붙여 여러 출처의 기록을 한곳에 모아볼 수
+              있습니다.
+            </span>
+          )}
           <IdentityClaimDialog candidates={identityCandidates} />
         </div>
       )}
