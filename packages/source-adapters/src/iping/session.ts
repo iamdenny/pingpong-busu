@@ -1,6 +1,21 @@
 export type IpingSessionPage =
   "authenticated" | "guest" | "challenge" | "unknown";
 
+export const IPING_BROWSER_USER_AGENT =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+export const ipingBrowserNavigationHeaders = {
+  accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  "accept-encoding": "identity",
+  "accept-language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+  "cache-control": "no-cache",
+  pragma: "no-cache",
+  "upgrade-insecure-requests": "1",
+  "user-agent": IPING_BROWSER_USER_AGENT,
+} as const;
+
 const ipingSessionIdPattern = /^[A-Za-z0-9,-]{16,128}$/u;
 
 export function extractIpingSessionId(html: string): string | undefined {

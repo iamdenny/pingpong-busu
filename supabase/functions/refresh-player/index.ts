@@ -6,6 +6,7 @@ import {
   extractIpingSessionCookieFromHeaders,
   extractIpingSessionId,
   fetchWithRetry,
+  ipingBrowserNavigationHeaders,
   parseAirpingSearchHtml,
   parseAstreeSearchHtml,
   parseIpingSearchHtml,
@@ -502,12 +503,7 @@ async function fetchIpingRecords(
       "source_not_configured",
       "아이핑 전용 계정 Secret이 설정되지 않았습니다.",
     );
-  const userAgent = Deno.env.get("CRAWLER_USER_AGENT") ?? "BUSU";
-  const baseHeaders = {
-    accept: "text/html",
-    "accept-encoding": "identity",
-    "user-agent": userAgent,
-  };
+  const baseHeaders = { ...ipingBrowserNavigationHeaders };
   const loginUrl = `${ipingBaseUrl}?pg=login`;
   onPhase("login_page");
   const loginPage = await fetchWithRetry(
@@ -546,6 +542,7 @@ async function fetchIpingRecords(
     headers: {
       ...baseHeaders,
       cookie: initialCookie,
+      origin: new URL(ipingBaseUrl).origin,
       referer: loginUrl,
       "content-type": "application/x-www-form-urlencoded; charset=euc-kr",
     },
