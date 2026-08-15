@@ -54,6 +54,9 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Verify production-backed user journey
         run: pnpm test:e2e:production
+        env:
+          PRODUCTION_E2E_BASE_PATH: ${{ vars.VITE_APP_BASE_PATH || '/' }}
+          VITE_APP_BASE_PATH: ${{ vars.VITE_APP_BASE_PATH || '/' }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: apps/web/dist }

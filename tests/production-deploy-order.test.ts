@@ -21,6 +21,12 @@ describe("production deployment ordering", () => {
     expect(ciWorkflow).toContain("needs: validate");
     expect(ciWorkflow).toContain("environment: production");
     expect(ciWorkflow).toContain("pnpm test:e2e:production");
+    expect(ciWorkflow).toContain(
+      "PRODUCTION_E2E_BASE_PATH: ${{ vars.VITE_APP_BASE_PATH || '/' }}",
+    );
+    expect(ciWorkflow).toContain(
+      "VITE_APP_BASE_PATH: ${{ vars.VITE_APP_BASE_PATH || '/' }}",
+    );
     expect(backendWorkflow).toContain("workflows: [CI]");
   });
 
@@ -50,6 +56,9 @@ describe("production deployment ordering", () => {
     expect(artifactStep).toBeGreaterThan(e2eStep);
     expect(releaseJob).toBeGreaterThan(artifactStep);
     expect(pagesWorkflow).toContain("needs: [validate-ref, build]");
+    expect(pagesWorkflow).toContain(
+      "PRODUCTION_E2E_BASE_PATH: ${{ vars.VITE_APP_BASE_PATH || '/' }}",
+    );
   });
 
   it("runs the public read gate immediately after migrations", () => {
