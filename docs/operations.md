@@ -146,11 +146,15 @@ token을 회전하거나 누락을 복구할 때는 GitHub `production` environm
 
 GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`, `VITE_UMAMI_SCRIPT_URL`, `VITE_UMAMI_WEBSITE_ID`를 설정합니다. 커스텀 도메인은 `https://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. source refresh와 Umami 두 값은 브라우저 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다. Umami DB 연결 문자열·관리자 비밀번호·API token은 Pages 환경에 두지 않습니다.
 
+Pages build는 같은 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`로 공개 `public_player_search` view만 읽어 선수 SEO 스냅샷을 만든다. workflow의 `SEO_MANIFEST_REQUIRED=true`는 운영 전용 fail-closed 스위치이며 별도 secret이 아니다. 설정 누락, 공개 API 오류, 행 검증 실패, 빈 manifest면 build와 배포를 중단한다. service role/secret key 또는 private table 접근을 이 단계에 추가하지 않는다.
+
 제품 버전은 루트 `package.json`에서만 관리하며 `YYYY.WEEK.SEQ` 형식이다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가한다. 배포 변경을 준비할 때 `pnpm release:bump`를 실행하면 같은 ISO 주에는 순번을 하나 올리고 새 주에는 `0`으로 초기화한다. workspace package와 환경 변수에는 별도 제품 버전을 두지 않으며 web build도 루트 값을 직접 읽는다.
 
 Pages workflow는 lint·typecheck·test·build를 먼저 통과시킨 뒤 `v{version}` 태그와 GitHub Release를 만들고 GitHub 자동 릴리즈 노트를 작성한다. release job이 성공해야 deploy job이 시작된다. 동일 태그가 현재 커밋을 가리키고 Release도 존재하면 재실행을 허용하지만, 다른 커밋을 가리키면 버전 미증가로 판단해 배포를 중단한다. 따라서 모든 배포 PR은 루트 `package.json` 버전 변경을 포함해야 한다.
 
 web은 일반 path 라우팅을 사용하며 build 시 `index.html`과 동일한 `404.html`을 생성한다. GitHub Pages에서 `/search`나 `/players/:id`로 직접 접근할 때 이 fallback이 SPA를 부팅하고 React Router가 현재 path를 처리한다. 과거 `/#/search?...`와 `/#/players/:id` 링크는 앱 시작 전에 같은 path URL로 치환한다. 검색어는 계속 `?q=`에 두며 path segment나 분석 이벤트로 옮기지 않는다.
+
+build는 추가로 `/search/index.html`, `/players/{public-id}/index.html`, `/robots.txt`, `/sitemap.xml`을 생성한다. 알려진 선수 URL은 HTTP 200 정적 문서에서 선수별 OG를 제공하고, 검색 문서는 `noindex,follow`이며 sitemap에는 홈과 생성된 선수만 포함한다. 선수 목록과 메타데이터는 배포 당시 스냅샷이므로 수집 후 즉시 반영되지 않는다. 새 선수 노출 또는 기존 선수 OG 갱신이 필요하면 정상 release 절차로 다시 배포한다. 배포 후 네 파일 유형을 직접 요청해 상태 코드와 초기 HTML을 확인한다.
 
 PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키와 아이핑 자격증명은 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 아이핑을 켤 때는 두 Secret을 먼저 등록한 뒤 `CRAWLER_SOURCE_IPING_ENABLED=true`, 마지막으로 DB `sources.enabled=true` 순서로 활성화합니다. 어느 하나라도 없으면 요청하지 않습니다. 수동 `crawl-manual.yml`은 보호 규칙 없는 브랜치에 운영 Secret을 노출하지 않도록 `production` environment를 연결하지 않습니다. dispatch 문자열은 step 환경 변수로 전달하고 `CRAWLER_REDACT_QUERY=true`로 선수 검색어를 Actions 출력에서 가립니다. 수동 아이핑 운영 계정 검증은 GitHub `production` 환경을 `main`으로 제한하고 required reviewer를 설정한 뒤에만 별도로 활성화합니다.
 

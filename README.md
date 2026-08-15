@@ -11,7 +11,7 @@ Korean table tennis player rank and tournament record search.
 ## 현재 MVP
 
 - 탁구 라켓과 부수 단계를 결합한 BUSU 심볼, 브라우저 파비콘과 홈 헤더 브랜딩
-- 홈·검색 결과·선수 상세별 의미 있는 title, description, canonical, Open Graph와 Twitter 메타데이터
+- 홈·검색 결과·선수 상세별 의미 있는 title, description, canonical, Open Graph와 Twitter 메타데이터. 공개 선수를 배포 시 정적 HTML로 생성해 자바스크립트 없이도 선수별 메타데이터를 제공
 - 환경 변수 없이 동작하는 한국어 demo 검색 결과 3건(가상 선수)
 - 홈의 `김탁구`, `이라켓`, `김탁구 용인` 빠른 예시 검색
 - 홈의 최근 검색어 10개 브라우저 저장, 최신순·중복 제거와 전체 삭제
@@ -107,7 +107,9 @@ Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니
 
 제품 버전의 단일 기준은 루트 `package.json`의 `version`이며 `YYYY.WEEK.SEQ` 형식을 사용합니다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가하며, 배포 변경은 `pnpm release:bump`로 같은 주의 순번을 올리거나 새 주에는 `0`으로 초기화합니다. web 화면은 이 값을 직접 읽어 홈·검색 결과·선수 상세를 포함한 모든 페이지의 공통 footer에 표시합니다. Pages workflow는 빌드가 통과한 뒤 `v{version}` 태그와 GitHub Release 및 자동 릴리즈 노트를 먼저 만들고 정적 사이트를 게시합니다. 이미 다른 커밋이 같은 태그를 사용하면 배포를 중단하므로 모든 배포 PR은 버전 변경을 포함해야 합니다.
 
-정적 HTML에는 홈의 기본 OG 메타데이터가 포함되고, React가 실행되면 검색어와 선수 상세 데이터에 맞게 title·description·canonical·Open Graph·Twitter 메타데이터를 갱신합니다. 현재 `HashRouter` 기반 GitHub Pages에서는 URL fragment가 서버로 전달되지 않으므로 자바스크립트를 실행하지 않는 SNS 미리보기 봇은 검색·상세 주소에서도 홈 기본 메타데이터를 표시할 수 있습니다. 검색·상세별 서버 생성 미리보기가 필요하면 별도 OG 렌더링 endpoint 또는 SSR 호스팅을 추가해야 합니다.
+web은 `BrowserRouter`의 실제 경로를 사용하고, 알려지지 않은 직접 접근은 `404.html`이 SPA를 부팅합니다. 이전 `/#/...` 링크는 시작 시 같은 실제 경로로 이관합니다. production build는 공개 Supabase view를 publishable key로 페이지 단위 조회해 활성 공개 출처가 있는 선수마다 `/players/{public-id}/index.html`을 생성합니다. 생성 문서에는 선수별 title·description·canonical·Open Graph·Twitter 메타데이터가 초기 HTML부터 들어가며, `/search/index.html`은 `noindex,follow`, `sitemap.xml`은 홈과 생성된 선수 URL만 포함합니다. `robots.txt`는 이 sitemap을 가리킵니다.
+
+이 목록은 배포 시점 스냅샷이므로 새로 수집된 선수는 다음 배포 후 검색엔진에 발견됩니다. Pages workflow는 `SEO_MANIFEST_REQUIRED=true`로 빌드하여 공개 설정 누락, manifest 요청·검증 실패 또는 빈 manifest가 발생하면 게시 전에 실패합니다. build에는 공개 URL과 publishable key만 사용하며 service role/secret key는 전달하지 않습니다.
 
 ## 서버 배포
 
