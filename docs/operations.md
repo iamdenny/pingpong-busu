@@ -95,7 +95,8 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 23. `202608140011_current_division_summary.sql`: 미래 대회 신청을 현재 부수 관측에서 제외하고 같은 날 통합·여자 관측 우선
 24. `202608140012_individual_division_summary.sql`: 최근 관측 부수와 현재 추정부수를 개인전 중심으로 제한
 25. `202608150001_prioritize_women_division.sql`: 종목명·부수 값의 여자·여성 표시를 일반 통합부수보다 우선
-26. `202608150003_explicit_regional_events.sql`: 원본 관측 이력을 보존하면서 명시적 지역 종목의 공개 파생 체계를 날짜와 관계없이 지역부수로 일괄 정정
+26. `202608150002_enable_newttplay_source.sql`: 운영 승인된 뉴티티플레이 production 출처 활성화
+27. `202608150003_explicit_regional_events.sql`: 원본 관측 이력을 보존하면서 명시적 지역 종목의 공개 파생 체계를 날짜와 관계없이 지역부수로 일괄 정정
 
 배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 전체 migration 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports`, `source_request_diagnostics`, `operational_incident*` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request_with_policy`, `record_source_request_outcome`, `delete_expired_source_request_diagnostics`와 출처 상태 기록 및 참여 편집·문의·운영 오류 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
@@ -109,7 +110,7 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 | Variable  | `SUPABASE_PROJECT_ID`                | Supabase project ref                                                                                                                                                   |
 | Variable  | `CRAWL_LIVE`                         | 운영 crawler 전체 스위치. 기본 `false`                                                                                                                                 |
 | Variable  | `CRAWLER_SOURCE_ASTREE_ENABLED`      | 애즈트리 adapter 스위치. 기본 `false`                                                                                                                                  |
-| Variable  | `CRAWLER_SOURCE_NEWTTPLAY_ENABLED`   | 뉴티티플레이 adapter 스위치. 운영 허가 확인 전 기본 `false`                                                                                                            |
+| Variable  | `CRAWLER_SOURCE_NEWTTPLAY_ENABLED`   | 뉴티티플레이 adapter 스위치. production 기본 `true`, 긴급 중지 시 DB 출처와 함께 `false`                                                                               |
 | Variable  | `CRAWLER_SOURCE_TTADIVISION_ENABLED` | 대한탁구협회 디비전 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                                                              |
 | Variable  | `CRAWLER_SOURCE_MYTT_ENABLED`        | 마이티티 공개 참가 정보 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                                                          |
 | Variable  | `CRAWLER_SOURCE_SUPERSTAR_ENABLED`   | 슈퍼스타탁구 공개 개인별 결과 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                                                    |

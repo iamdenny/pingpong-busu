@@ -11,6 +11,7 @@ BUSU는 기록 근거를 빠르게 비교하는 차분하고 신뢰감 있는 �
 - 라우트 이동은 React Router view transition을 점진적 향상으로 사용하고 root crossfade만 허용한다. 비동기 상세 데이터와 카드 사이의 가짜 shared-element morph는 만들지 않는다.
 - `prefers-reduced-motion: reduce`에서는 transform, stagger, source pulse, smooth scroll, view-transition animation을 제거한다.
 - `별칭으로 기록 묶기` dialog는 검색 후보가 한 건 이상이면 제공하고, desktop에서 중앙 리프트(18px, scale 0.96), 700px 이하에서 bottom sheet로 연다. 닫기 효과가 끝날 때까지 native dialog top layer를 유지하고 reduced motion에서는 즉시 닫는다.
+- 접기·펼치기 영역은 `CollapsibleContent`를 재사용한다. 트리거는 native `button`과 `aria-controls`·`aria-expanded`를 사용하고, 내용은 `grid-template-rows: 0fr → 1fr`와 opacity를 240ms 이내에 전환한다. 닫힌 내용에는 `aria-hidden`과 `inert`를 함께 적용하며 `prefers-reduced-motion: reduce`에서는 즉시 전환한다. 페이지별 `details` 또는 임의의 `max-height` 효과를 새로 만들지 않는다.
 
 ## 1. Visual Theme & Atmosphere
 

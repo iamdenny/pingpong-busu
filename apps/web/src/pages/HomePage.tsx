@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Database, ScanSearch, Users } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { CollapsibleContent } from "../components/CollapsibleContent";
 import { PageMetadata } from "../components/PageMetadata";
 import { SearchForm } from "../components/SearchForm";
 import { trackAnalyticsEvent } from "../lib/analytics";
@@ -36,6 +37,7 @@ export function HomePage() {
   const heroRef = useCalmEntry(".motion-entry");
   const navigate = useNavigate();
   const [recentSearches, setRecentSearches] = useState(loadRecentSearches);
+  const [sourceOverviewExpanded, setSourceOverviewExpanded] = useState(false);
   const sources = useQuery({
     queryKey: ["source-statuses"],
     queryFn: () => playerRepository.listSourceStatuses(),
@@ -110,54 +112,67 @@ export function HomePage() {
         )}
       </section>
       {sources.data && (
-        <details className="source-overview">
-          <summary>
+        <section className="source-overview">
+          <button
+            type="button"
+            className="source-overview__toggle"
+            aria-controls="home-source-overview-details"
+            aria-expanded={sourceOverviewExpanded}
+            onClick={() => setSourceOverviewExpanded((expanded) => !expanded)}
+          >
             <span className="source-overview__summary">
               <strong>검색 출처</strong>
               <small>
                 {activeSourceCount}곳 검색 중 · 전체 {sources.data.length}곳
               </small>
             </span>
-            <span className="source-overview__action">상세</span>
-          </summary>
-          <div className="source-overview__content">
-            <p>활성 출처는 검색할 때 최신 공개 기록을 확인합니다.</p>
-            <ul role="list">
-              {sources.data.map((source) => (
-                <li key={source.sourceCode}>
-                  <span
-                    className={`source-state source-state--${source.enabled ? "active" : source.adapterMode}`}
-                    aria-hidden="true"
-                  />
-                  <span className="source-overview__source">
-                    <strong>{source.displayName}</strong>
-                    <a
-                      href={source.baseUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`${source.displayName} 사이트 열기`}
-                      onClick={() =>
-                        trackAnalyticsEvent("source_catalog_clicked", {
-                          source_code: source.sourceCode,
-                          source_enabled: source.enabled,
-                        })
-                      }
-                    >
-                      {source.baseUrl}
-                    </a>
-                  </span>
-                  <small>
-                    {statusText(
-                      source.sourceCode,
-                      source.enabled,
-                      source.adapterMode,
-                    )}
-                  </small>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </details>
+            <span className="source-overview__action">
+              상세 {sourceOverviewExpanded ? "−" : "+"}
+            </span>
+          </button>
+          <CollapsibleContent
+            id="home-source-overview-details"
+            expanded={sourceOverviewExpanded}
+          >
+            <div className="source-overview__content">
+              <p>활성 출처는 검색할 때 최신 공개 기록을 확인합니다.</p>
+              <ul role="list">
+                {sources.data.map((source) => (
+                  <li key={source.sourceCode}>
+                    <span
+                      className={`source-state source-state--${source.enabled ? "active" : source.adapterMode}`}
+                      aria-hidden="true"
+                    />
+                    <span className="source-overview__source">
+                      <strong>{source.displayName}</strong>
+                      <a
+                        href={source.baseUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`${source.displayName} 사이트 열기`}
+                        onClick={() =>
+                          trackAnalyticsEvent("source_catalog_clicked", {
+                            source_code: source.sourceCode,
+                            source_enabled: source.enabled,
+                          })
+                        }
+                      >
+                        {source.baseUrl}
+                      </a>
+                    </span>
+                    <small>
+                      {statusText(
+                        source.sourceCode,
+                        source.enabled,
+                        source.adapterMode,
+                      )}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </CollapsibleContent>
+        </section>
       )}
       <section className="benefits" aria-label="서비스 특징">
         <article>
