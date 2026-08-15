@@ -16,7 +16,7 @@ title: "운영"
 
 파서 오류가 증가하면 `sources.enabled=false`와 source 환경 변수 false를 적용하고 기존 저장 결과를 유지합니다. sanitized synthetic fixture로 구조 변경을 재현하고 parser version/test를 함께 올립니다. 내부 stack/secret은 공개 status에 반환하지 않습니다.
 
-Supabase Edge의 에어핑퐁 요청은 10초 단일 시도 뒤 `source_timeout`과 5초 재시도 정보를 반환합니다. 화면은 최소 5초 간격으로 최대 2회 다시 Edge를 호출하며, 재시도 뒤에도 실패하면 시간 초과를 표시합니다. 수동 진단용 workspace live CLI에서는 에어핑퐁 16초, 오케이핑퐁 10초, 아이핑 12초 제한과 일시 오류 1회 재시도를 유지합니다. 아이핑이 `인증 실패`이면 Secret 값과 계정 상태를 확인하고, `사이트 구조 변경`이면 로그인 성공 화면 식별자가 달라졌는지 확인합니다. 로그인 POST는 중복 인증 시도를 막기 위해 자동 재시도하지 않습니다. 같은 결정적 오류가 연속 2회면 10분간 `보호 대기`로 실제 요청을 중단하며, 성공하거나 회로가 만료되면 초기화합니다. `source_request_diagnostics`에는 허용된 단계·오류 코드·소요 시간·시각만 남기고 매일 14일 초과분을 삭제하므로 원문 응답이나 검색어로 진단하려고 해서는 안 됩니다.
+Supabase Edge의 에어핑퐁 요청은 10초 단일 시도 뒤 `source_timeout`과 5초 재시도 정보를 반환합니다. 화면은 최소 5초 간격으로 최대 2회 다시 Edge를 호출하며, 재시도 뒤에도 실패하면 시간 초과를 표시합니다. 수동 진단용 workspace live CLI에서는 에어핑퐁 16초, 오케이핑퐁 10초, 아이핑 12초 제한과 일시 오류 1회 재시도를 유지합니다. 아이핑 브라우저 요청은 외부 사이트를 호출하지 않고 private queue에 등록합니다. 예약 worker의 인증 또는 구조 실패는 해당 job과 backlog를 terminal 처리하고 6시간 회로를 열며 기존 저장 결과는 유지합니다. `source_request_diagnostics`에는 허용된 단계·오류 코드·소요 시간·시각만 남기고 매일 14일 초과분을 삭제하므로 원문 응답이나 검색어로 진단하려고 해서는 안 됩니다.
 
 실시간 조회의 사용자 표시와 우선 대응은 다음과 같습니다.
 
@@ -97,6 +97,7 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 25. `202608150001_prioritize_women_division.sql`: 종목명·부수 값의 여자·여성 표시를 일반 통합부수보다 우선
 26. `202608150003_explicit_regional_events.sql`: 원본 관측 이력을 보존하면서 명시적 지역 종목의 공개 파생 체계를 날짜와 관계없이 지역부수로 일괄 정정
 27. `202608150004_enable_newttplay_source.sql`: 운영 승인된 뉴티티플레이 production 출처 활성화
+28. `202608150005_iping_refresh_queue.sql`: 아이핑 private queue, 원자적 lease·backoff·보존 RPC와 parser `iping-4`
 
 배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 전체 migration 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports`, `source_request_diagnostics`, `operational_incident*` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request_with_policy`, `record_source_request_outcome`, `delete_expired_source_request_diagnostics`와 출처 상태 기록 및 참여 편집·문의·운영 오류 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
@@ -119,7 +120,7 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 | Variable  | `CRAWLER_SOURCE_OKPINGPONG_ENABLED`  | 오케이핑퐁 adapter 스위치. production workflow 기본 `true`, 긴급 중지 시 `false`                                                                                       |
 | Variable  | `CRAWLER_SOURCE_IPING_ENABLED`       | 아이핑 인증형 adapter 스위치. 전용 계정 Secret 설정 전 기본 `false`                                                                                                    |
 | Generated | `CRAWLER_USER_AGENT`                 | 배포 시 루트 package 버전으로 만드는 `BUSU/{version}` 출처 요청 식별자                                                                                                 |
-| Variable  | `CRAWLER_SOURCE_MIN_INTERVAL_MS`     | 아이핑을 포함한 출처·정규화 검색어별 최소 호출 간격. 5~60초 범위, 기본 5초                                                                                             |
+| Variable  | `CRAWLER_SOURCE_MIN_INTERVAL_MS`     | 일반 동기 출처의 출처·정규화 검색어별 최소 호출 간격. 5~60초 범위, 기본 5초                                                                                            |
 | Secret    | `KAKAO_REST_API_KEY`                 | 카카오 공식 Daum 카페 검색 API 키. 브라우저와 로그에 노출하지 않음                                                                                                     |
 | Secret    | `IPING_USERNAME`                     | 아이핑 조회 전용 최소권한 계정 ID. Supabase Edge 런타임에만 전달                                                                                                       |
 | Secret    | `IPING_PASSWORD`                     | 아이핑 조회 전용 계정 비밀번호. Supabase Edge 런타임에만 전달                                                                                                          |
@@ -153,11 +154,17 @@ Pages workflow는 lint·typecheck·test·build를 먼저 통과시킨 뒤 `v{ver
 
 web은 일반 path 라우팅을 사용하며 build 시 `index.html`과 동일한 `404.html`을 생성한다. GitHub Pages에서 `/search`나 `/players/:id`로 직접 접근할 때 이 fallback이 SPA를 부팅하고 React Router가 현재 path를 처리한다. 과거 `/#/search?...`와 `/#/players/:id` 링크는 앱 시작 전에 같은 path URL로 치환한다. 검색어는 계속 `?q=`에 두며 path segment나 분석 이벤트로 옮기지 않는다.
 
-PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키와 아이핑 자격증명은 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 아이핑을 켤 때는 두 Secret을 먼저 등록한 뒤 `CRAWLER_SOURCE_IPING_ENABLED=true`, 마지막으로 DB `sources.enabled=true` 순서로 활성화합니다. 어느 하나라도 없으면 요청하지 않습니다. 수동 `crawl-manual.yml`은 보호 규칙 없는 브랜치에 운영 Secret을 노출하지 않도록 `production` environment를 연결하지 않습니다. dispatch 문자열은 step 환경 변수로 전달하고 `CRAWLER_REDACT_QUERY=true`로 선수 검색어를 Actions 출력에서 가립니다. 수동 아이핑 운영 계정 검증은 GitHub `production` 환경을 `main`으로 제한하고 required reviewer를 설정한 뒤에만 별도로 활성화합니다.
+`REFRESH_WORKER_TOKEN`은 GitHub repository secret으로 등록한 64자리 hex 값입니다. production environment secret이 아니라 main 예약 workflow와 Edge worker mode가 함께 읽는 repo-level secret이며 프런트와 로그에 전달하지 않습니다.
 
-Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 함수 내부에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 검색 화면의 자동 조회는 같은 이름의 최근 6시간 성공 결과를 재사용하며, 실패 행의 수동 재시도만 `force=true`를 전달합니다. 서버는 강제 갱신에도 아이핑을 포함한 `출처 + 정규화 검색어`별 5~60초 범위의 최소 호출 간격과 1분당 최대 4회 제한을 적용하며 `source_request_throttles`에 제한 구간과 시도 횟수를 저장합니다. 다른 이름 검색은 출처 전체 잠금 때문에 대기하지 않지만 원자적 정책 claim과 `source_request_budgets`에서 아이핑 계정 단위 분당 실제 요청 2회, 에어핑퐁 출처 단위 분당 실제 요청 6회 예산을 적용합니다. 제한 응답이나 에어핑퐁 10초 단일 시도의 시간 초과에 `retryAfterMs`가 있으면 프런트가 남은 시간을 표시하고 최대 2회 자동 재시도합니다. 에어핑퐁 시간 초과 재시도 사이에는 최소 5초를 두며 아이핑 인증 시간 초과·인증·파서 실패는 자동 반복하지 않습니다. 아이핑 인증·구조 오류가 연속 2회면 10분 회로를 열고 회로 만료 또는 성공 시 초기화합니다. 실패 행의 수동 재시도는 출처별로 현재 검색 화면에서 최대 3회이며 5초 쿨다운을 두고, 성공하면 횟수를 초기화합니다. 페이지를 새로 열어 클라이언트 횟수가 초기화돼도 서버 제한은 계속 적용됩니다. publishable key 자체는 비밀이 아니므로 트래픽 증가 시 CAPTCHA, gateway rate limit 또는 사용자 단위 quota를 추가해야 합니다.
+PAT는 배포 job에만 주입되며 프런트 build에 전달하지 않습니다. Supabase CLI의 passwordless login role로 migration을 적용하므로 DB 비밀번호를 CI에 보관하지 않습니다. `sb_publishable_...`은 브라우저용이고, `sb_secret_...`은 DB 비밀번호나 PAT가 아닙니다. 카카오 키와 아이핑 자격증명은 GitHub Actions가 Supabase Edge Secret으로 전달하며 프런트 build에는 주입하지 않습니다. 아이핑을 켤 때는 계정 Secret과 repo-level `REFRESH_WORKER_TOKEN`을 먼저 등록한 뒤 `CRAWLER_SOURCE_IPING_ENABLED=true`, 마지막으로 DB `sources.enabled=true` 순서로 활성화합니다. `SUPABASE_PROJECT_ID`는 production environment뿐 아니라 main 예약 workflow가 읽을 repository variable에도 둡니다. 예약 workflow는 정확한 worker mode 본문만 보내며 query·계정·service role key를 갖지 않습니다. 어느 하나라도 없으면 요청하지 않습니다. 수동 `crawl-manual.yml`은 보호 규칙 없는 브랜치에 운영 Secret을 노출하지 않도록 `production` environment를 연결하지 않습니다. dispatch 문자열은 step 환경 변수로 전달하고 `CRAWLER_REDACT_QUERY=true`로 선수 검색어를 Actions 출력에서 가립니다. 수동 아이핑 운영 계정 검증은 GitHub `production` 환경을 `main`으로 제한하고 required reviewer를 설정한 뒤에만 별도로 활성화합니다.
+
+Edge Functions는 새 publishable key를 지원하기 위해 platform의 legacy JWT 검증을 끄고, 브라우저 mode에서 `apikey`를 `SUPABASE_PUBLISHABLE_KEYS`와 대조합니다. 아이핑 요청은 선수 이름 형태만 허용하고 같은 이름의 최근 6시간 성공 결과를 재사용하거나 service-role 전용 queue에 등록하며 `force=true`도 freshness·dedupe를 우회하지 않습니다. 분당 신규 4건·활성 12건의 DB admission budget이 공개 key를 이용한 대기열 독점을 제한합니다. worker mode는 64자리 hex `REFRESH_WORKER_TOKEN`만 허용하고 한 실행에서 최대 한 job을 claim합니다. `refresh_jobs`의 4분 lease, 최대 3회 시도, 15~60분 backoff, 24시간 pending 만료와 7일 terminal 보존이 재진입과 장애를 제한합니다. 일반 동기 출처는 기존 호출 제한과 수동 재시도 정책을 유지합니다. 지속적인 분산 남용이 관측되면 CAPTCHA 또는 gateway/IP rate limit을 추가합니다.
+
+아이핑 queue 운영 상태는 `Scheduled iPing refresh worker` Actions 실행과 private `refresh_jobs` 집계로 확인합니다. `queued`가 계속 증가하면 workflow secret/variable과 Edge 배포 상태를 먼저 확인합니다. `running`의 lease가 4분을 넘으면 다음 claim이 자동 회수하며, `source_backlog_stopped`가 생기면 인증·구조·접근 차단 원인을 해결한 뒤 `sources.enabled`와 환경 스위치를 다시 확인합니다. 긴급 중지는 두 스위치를 false로 내려 새 enqueue와 drain을 모두 막고 저장 기록은 삭제하지 않습니다. token 회전 시에는 새 repo secret으로 배포 workflow를 실행해 Edge secret을 먼저 동기화한 뒤 예약 workflow를 재개합니다.
 
 Edge가 장애를 기록할 때는 service role 전용 `record_source_refresh_failure` RPC에 출처 코드와 허용 목록의 오류 코드만 전달합니다. 검색어, query key, 원문 오류, 쿠키, HTML은 전달하거나 저장하지 않습니다. 다음 성공은 기존 record upsert 트랜잭션 안에서 `last_error_code`를 지우고 성공 시각과 parser version을 갱신합니다. 별도의 `record_source_request_outcome` RPC는 허용된 진단 메타데이터를 남기고 아이핑의 연속 실패 회로를 열거나 성공 시 초기화합니다. 이 회로 상태 기록이 실패하면 성공으로 가장하지 않고 안전한 갱신 실패를 반환합니다. `delete_expired_source_request_diagnostics`는 pg_cron으로 매일 실행되어 14일 초과 진단을 삭제합니다.
+
+아이핑 enqueue에는 service-role HMAC 요청 원점별 10분 4건 제한도 적용합니다. 원본 IP는 저장하지 않고 budget hash는 하루 뒤 삭제하며, 전역 분당 4건·활성 12건 제한과 함께 단일 호출자의 대기열 독점을 막습니다.
 
 ## 동명이인 참여 편집
 

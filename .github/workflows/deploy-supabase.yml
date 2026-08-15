@@ -36,6 +36,7 @@ jobs:
       KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
       IPING_USERNAME: ${{ secrets.IPING_USERNAME }}
       IPING_PASSWORD: ${{ secrets.IPING_PASSWORD }}
+      REFRESH_WORKER_TOKEN: ${{ secrets.REFRESH_WORKER_TOKEN }}
       GITHUB_ISSUES_REPOSITORY: ${{ vars.GITHUB_ISSUES_REPOSITORY || 'iamdenny/pingpong-busu' }}
       FEEDBACK_ALLOWED_ORIGINS: ${{ vars.FEEDBACK_ALLOWED_ORIGINS || 'https://busu.iamdenny.com' }}
       RUNTIME_INCIDENT_ALLOWED_ORIGINS: ${{ vars.RUNTIME_INCIDENT_ALLOWED_ORIGINS || 'https://busu.iamdenny.com' }}
@@ -111,6 +112,10 @@ jobs:
         run: |
           test -n "$IPING_USERNAME"
           test -n "$IPING_PASSWORD"
+          test "${#REFRESH_WORKER_TOKEN}" -eq 64
+          case "$REFRESH_WORKER_TOKEN" in
+            *[!0-9a-fA-F]*) exit 1 ;;
+          esac
       - name: Configure iPing runtime credentials
         if: env.IPING_USERNAME != '' && env.IPING_PASSWORD != ''
         run: >-
@@ -118,5 +123,11 @@ jobs:
           --project-ref "$SUPABASE_PROJECT_ID"
           IPING_USERNAME="$IPING_USERNAME"
           IPING_PASSWORD="$IPING_PASSWORD"
+      - name: Configure refresh worker token
+        if: env.REFRESH_WORKER_TOKEN != ''
+        run: >-
+          supabase secrets set
+          --project-ref "$SUPABASE_PROJECT_ID"
+          REFRESH_WORKER_TOKEN="$REFRESH_WORKER_TOKEN"
       - name: Deploy Edge Functions
         run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_ID"

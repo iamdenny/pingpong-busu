@@ -122,7 +122,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
         baseUrl: "https://www.iping.club/?pg=Search",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "iping-3",
+        parserVersion: "iping-4",
       },
     ];
   }

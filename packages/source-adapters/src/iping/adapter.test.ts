@@ -24,7 +24,7 @@ describe("IpingSourceAdapter authentication", () => {
     vi.resetModules();
   });
 
-  it("forwards a hidden session id as both Cookie and login form data", async () => {
+  it("keeps the response cookie and hidden form token separate, then follows cookie rotation", async () => {
     const loginHtml = readFileSync(
       resolve(fixtureDirectory, "login-form.html"),
       "utf8",
@@ -45,12 +45,27 @@ describe("IpingSourceAdapter authentication", () => {
             ? input.href
             : input.url;
       if (init?.method === "POST") {
-        return cp949Response('<a href="/?pg=logout">로그아웃</a>');
+        return new Response(null, {
+          status: 302,
+          headers: {
+            location: "/",
+            "set-cookie":
+              "PHPSESSID=cccccccccccccccccccccccccccccccc; Path=/; HttpOnly",
+          },
+        });
       }
       if (url.includes("pg=Search")) {
         return cp949Response(url.includes("&B=Y") ? entriesHtml : awardsHtml);
       }
-      return cp949Response(loginHtml);
+      if (url.includes("pg=login")) {
+        return cp949Response(loginHtml, {
+          headers: {
+            "set-cookie":
+              "PHPSESSID=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Path=/; HttpOnly",
+          },
+        });
+      }
+      return cp949Response('<a href="/?pg=logout">로그아웃</a>');
     });
     vi.stubGlobal("fetch", fetchMock);
     const { IpingSourceAdapter } = await import("./adapter");
@@ -76,12 +91,63 @@ describe("IpingSourceAdapter authentication", () => {
       ([, init]) => init?.method === "POST",
     );
     expect(loginCall?.[1]?.headers).toMatchObject({
-      cookie: "PHPSESSID=0123456789abcdef0123456789abcdef",
+      cookie: "PHPSESSID=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     });
     expect(loginCall?.[1]?.body).toContain(
       "PHPSESSID=0123456789abcdef0123456789abcdef",
     );
+    const authenticatedGetCalls = fetchMock.mock.calls.filter(
+      ([input, init]) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url;
+        return init?.method !== "POST" && !url.includes("pg=login");
+      },
+    );
+    expect(authenticatedGetCalls).toHaveLength(4);
+    for (const [, init] of authenticatedGetCalls) {
+      expect(init?.headers).toMatchObject({
+        cookie: "PHPSESSID=cccccccccccccccccccccccccccccccc",
+      });
+    }
     expect(result.records).toHaveLength(3);
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(result.parserVersion).toBe("iping-4");
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
+  it("rejects a login page without a hidden session token", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      cp949Response('<form><input name="Mid"><input name="Pwd"></form>', {
+        headers: {
+          "set-cookie":
+            "PHPSESSID=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Path=/; HttpOnly",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { IpingSourceAdapter } = await import("./adapter");
+    const adapter = new IpingSourceAdapter(true, {
+      username: "fixture-user",
+      password: "fixture-password",
+    });
+
+    await expect(
+      adapter.search(
+        {
+          name: "홍라켓",
+          normalizedName: "홍라켓",
+          maxPages: 1,
+          live: true,
+        },
+        {
+          now: () => new Date("2026-08-13T00:00:00.000Z"),
+          timeoutMs: 12_000,
+        },
+      ),
+    ).rejects.toThrow("아이핑 로그인 폼 토큰을 찾지 못했습니다.");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

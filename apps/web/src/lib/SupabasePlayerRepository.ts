@@ -448,7 +448,7 @@ export class SupabasePlayerRepository implements PlayerRepository {
         sources: z.array(
           z.object({
             sourceCode: sourceCodeSchema,
-            status: z.enum(["succeeded", "failed", "skipped"]),
+            status: z.enum(["succeeded", "failed", "skipped", "queued"]),
             inserted: z.number().optional(),
             updated: z.number().optional(),
             unchanged: z.number().optional(),
@@ -460,7 +460,7 @@ export class SupabasePlayerRepository implements PlayerRepository {
               .number()
               .int()
               .nonnegative()
-              .max(10 * 60_000)
+              .max(6 * 60 * 60_000)
               .optional(),
           }),
         ),

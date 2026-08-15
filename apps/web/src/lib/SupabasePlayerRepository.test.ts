@@ -73,7 +73,49 @@ describe("SupabasePlayerRepository player search", () => {
 });
 
 describe("SupabasePlayerRepository source refresh", () => {
-  it("accepts the full ten-minute iPing circuit delay", async () => {
+  it("accepts a queued iPing refresh without treating it as a failure", async () => {
+    const client = {
+      functions: {
+        invoke: vi.fn().mockResolvedValue({
+          data: {
+            refreshId: "job:42",
+            sources: [
+              {
+                sourceCode: "iping",
+                status: "queued",
+                reason: "queued",
+                message: "아이핑 최신 기록 수집을 예약했습니다.",
+              },
+            ],
+          },
+          error: null,
+        }),
+      },
+    };
+    const repository = new SupabasePlayerRepository(
+      client as unknown as SupabaseClient,
+    );
+
+    await expect(
+      repository.requestRefresh({
+        name: "임대현",
+        sourceCodes: ["iping"],
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        refreshId: "job:42",
+        sources: [
+          expect.objectContaining({
+            sourceCode: "iping",
+            status: "queued",
+            reason: "queued",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("accepts the full six-hour iPing worker circuit delay", async () => {
     const client = {
       functions: {
         invoke: vi.fn().mockResolvedValue({
@@ -85,7 +127,7 @@ describe("SupabasePlayerRepository source refresh", () => {
                 status: "failed",
                 errorCode: "source_circuit_open",
                 message: "반복된 인증 오류로 아이핑 조회를 잠시 보호합니다.",
-                retryAfterMs: 600_000,
+                retryAfterMs: 21_600_000,
               },
             ],
           },
@@ -105,7 +147,7 @@ describe("SupabasePlayerRepository source refresh", () => {
       }),
     ).resolves.toEqual(
       expect.objectContaining({
-        sources: [expect.objectContaining({ retryAfterMs: 600_000 })],
+        sources: [expect.objectContaining({ retryAfterMs: 21_600_000 })],
       }),
     );
   });

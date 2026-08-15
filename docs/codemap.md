@@ -8,6 +8,8 @@ flowchart LR
   REPO --> DEMO["Demo data"]
   REPO --> PUBLIC["Supabase public views"]
   UI --> EDGE["refresh-player Edge Function"]
+  EDGE --> QUEUE["private refresh_jobs"]
+  SCHEDULE["main scheduled worker"] --> EDGE
   UI --> IDENTITY["identity edit Edge Functions"]
   UI --> FEEDBACK["submit-feedback Edge Function"]
   UI --> INCIDENT["report-runtime-incident Edge Function"]
@@ -35,7 +37,7 @@ flowchart LR
 | `packages/source-adapters/src/<source>`           | `adapter.ts`, `parser.ts`, `schema.ts`, 아이핑 `session.ts`                                       | 출처별 fetch/parse/validate와 인증 세션 판별                | synthetic fixture, parser version, source notes    |
 | `packages/source-adapters/src/resilient-fetch.ts` | `fetchWithRetry`                                                                                  | timeout·일시적 HTTP 오류에 한정한 재시도와 호출자 취소 전파 | resilient-fetch unit test, Edge 동등 구현          |
 | `supabase/migrations`                             | timestamped SQL                                                                                   | schema, RLS, public views, RPC, source catalog              | rollback 영향, development/production dry-run      |
-| `supabase/functions/refresh-player`               | `index.ts`                                                                                        | 출처 선택·안전 스위치·fetch·upsert                          | Edge auth, generated bundle, operations docs       |
+| `supabase/functions/refresh-player`               | `index.ts`                                                                                        | 동기 출처 fetch·upsert, 아이핑 enqueue·worker drain         | Edge auth, queue migration, operations docs        |
 | `supabase/functions/refresh-status`               | `index.ts`                                                                                        | refresh 공개 상태                                           | repository response schema                         |
 | `supabase/functions/submit-identity-claim`        | `index.ts`                                                                                        | 참여형 동일인 연결, 익명 편집자 ID HMAC                     | public history, merge RPC, abuse control           |
 | `supabase/functions/revert-identity-edit`         | `index.ts`                                                                                        | 공개 편집 원복, 익명 편집자 ID HMAC                         | merge snapshot, conflict guard                     |
@@ -68,6 +70,10 @@ page/component → component test → `global.css` → desktop/mobile preview �
 ### 출처 재시도 변경
 
 `resilient-fetch.ts`/출처 session → adapter unit·fixture → Edge 동등 구현 → per-source/query throttle migration → web 자동·수동 재시도 → crawling-policy/operations 문서.
+
+### 아이핑 예약 수집 변경
+
+아이핑 session fixture → `refresh_jobs` migration/RPC → worker bearer auth → `refresh-player` enqueue/drain → main schedule → queued UI → source notes/architecture/operations.
 
 ### 배포 버전 변경
 
