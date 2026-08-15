@@ -138,3 +138,12 @@ jobs:
           REFRESH_WORKER_TOKEN="$REFRESH_WORKER_TOKEN"
       - name: Deploy Edge Functions
         run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Recover iPing after credential rotation
+        if: steps.version.outputs.version == '2026.33.71'
+        run: >-
+          curl --fail --silent --show-error --max-time 60
+          --request POST
+          --header "authorization: Bearer $REFRESH_WORKER_TOKEN"
+          --header "content-type: application/json"
+          --data '{"mode":"recover-iping"}'
+          "https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/refresh-player"
