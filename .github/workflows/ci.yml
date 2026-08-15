@@ -18,3 +18,28 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+  production-read-e2e:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11.17.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Build against current production reads
+        run: pnpm build
+        env:
+          VITE_APP_BASE_PATH: ${{ vars.VITE_APP_BASE_PATH || '/' }}
+          VITE_APP_MODE: production
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SOURCE_REFRESH_ENABLED: "false"
+          SEO_MANIFEST_REQUIRED: "true"
+      - name: Install production E2E browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Verify current production user journey
+        run: pnpm test:e2e:production

@@ -39,10 +39,11 @@ pnpm docs-check:scan
 
 ```bash
 pnpm test:e2e
+pnpm test:e2e:production
 pnpm test:e2e:live
 ```
 
-`test:e2e:live`는 실제 출처 네트워크를 사용할 수 있으므로 명시적인 `BUSU_LIVE_E2E=true` 구성과 수집 정책 확인이 필요하다.
+`test:e2e:production`은 production 설정으로 이미 생성한 `apps/web/dist`를 대상으로 공개 검색·상세 조회만 확인한다. 먼저 `VITE_APP_BASE_PATH=/`와 production publishable 설정으로 `pnpm build`를 실행해야 한다. `test:e2e:live`는 실제 출처 네트워크를 사용할 수 있으므로 명시적인 `BUSU_LIVE_E2E=true` 구성과 수집 정책 확인이 필요하다.
 
 ## Fixture crawler
 
