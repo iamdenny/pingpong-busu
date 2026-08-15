@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Worker operation
+        required: true
+        default: drain-iping
+        type: choice
+        options:
+          - drain-iping
+          - recover-iping
 
 permissions:
   contents: read
@@ -13,8 +22,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  branch-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Require the main branch
+        run: test "$GITHUB_REF" = "refs/heads/main"
+
   drain:
-    if: github.ref == 'refs/heads/main'
+    needs: branch-guard
+    if: needs.branch-guard.result == 'success' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     env:
@@ -28,11 +45,30 @@ jobs:
           case "$REFRESH_WORKER_TOKEN" in
             *[!0-9a-fA-F]*) exit 1 ;;
           esac
-      - name: Drain one iPing refresh job
+      - name: Drain one scheduled iPing refresh job
+        if: github.event_name == 'schedule'
         run: >-
           curl --fail --silent --show-error --max-time 60
           --request POST
           --header "authorization: Bearer $REFRESH_WORKER_TOKEN"
           --header "content-type: application/json"
           --data '{"mode":"drain-iping"}'
+          "https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/refresh-player"
+      - name: Drain one manually requested iPing refresh job
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'drain-iping'
+        run: >-
+          curl --fail --silent --show-error --max-time 60
+          --request POST
+          --header "authorization: Bearer $REFRESH_WORKER_TOKEN"
+          --header "content-type: application/json"
+          --data '{"mode":"drain-iping"}'
+          "https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/refresh-player"
+      - name: Recover and verify one iPing refresh job
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'recover-iping'
+        run: >-
+          curl --fail --silent --show-error --max-time 60
+          --request POST
+          --header "authorization: Bearer $REFRESH_WORKER_TOKEN"
+          --header "content-type: application/json"
+          --data '{"mode":"recover-iping"}'
           "https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/refresh-player"

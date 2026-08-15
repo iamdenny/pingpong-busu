@@ -16,12 +16,31 @@ describe("scheduled iPing worker workflow", () => {
     const workflow = readFileSync(scheduledWorkflowPath, "utf8");
 
     expect(workflow).toContain('cron: "*/10 * * * *"');
-    expect(workflow).toContain("github.ref == 'refs/heads/main'");
+    expect(workflow).toContain(
+      'run: test "$GITHUB_REF" = "refs/heads/main"',
+    );
+    expect(workflow).toContain("needs: branch-guard");
+    expect(workflow).toContain(
+      "if: needs.branch-guard.result == 'success' && github.ref == 'refs/heads/main'",
+    );
     expect(workflow).toContain("group: iping-refresh-worker");
     expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).toContain("--max-time 60");
     expect(workflow).toContain("--fail");
     expect(workflow).toContain(`--data '{"mode":"drain-iping"}'`);
+  });
+
+  it("allows an explicit manual recovery without changing the scheduled drain", () => {
+    const workflow = readFileSync(scheduledWorkflowPath, "utf8");
+
+    expect(workflow).toMatch(
+      /workflow_dispatch:[\s\S]+?mode:[\s\S]+?type: choice[\s\S]+?drain-iping[\s\S]+?recover-iping/u,
+    );
+    expect(workflow).toContain("github.event_name == 'schedule'");
+    expect(workflow).toContain("inputs.mode == 'drain-iping'");
+    expect(workflow).toContain("inputs.mode == 'recover-iping'");
+    expect(workflow).toContain(`--data '{"mode":"recover-iping"}'`);
+    expect(workflow).not.toMatch(/--data[^\n]*inputs\.mode/u);
   });
 
   it("uses only the worker token and public project locator", () => {
@@ -41,6 +60,13 @@ describe("scheduled iPing worker workflow", () => {
     expect(workflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(workflow).not.toContain("actions/checkout");
     expect(workflow).not.toContain("pnpm install");
+
+    const guardJob = workflow.slice(
+      workflow.indexOf("  branch-guard:"),
+      workflow.indexOf("  drain:"),
+    );
+    expect(guardJob).not.toContain("REFRESH_WORKER_TOKEN");
+    expect(guardJob).not.toContain("SUPABASE_PROJECT_ID");
   });
 });
 
