@@ -2211,6 +2211,19 @@ p {
   align-items: center;
   gap: 0.25rem;
 }
+
+.record-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+}
+
+.record-source-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
 .record-cards {
   display: none;
 }

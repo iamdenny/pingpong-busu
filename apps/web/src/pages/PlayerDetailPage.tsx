@@ -54,6 +54,50 @@ function searchQueryFromState(value: unknown): string | undefined {
     : undefined;
 }
 
+function RecordSources({
+  record,
+  playerId,
+}: {
+  record: PlayerRecord;
+  playerId: string;
+}) {
+  const sources = record.sources?.length
+    ? record.sources
+    : [
+        {
+          sourceCode: record.sourceCode,
+          sourceName: record.sourceName,
+          sourceUrl: record.sourceUrl,
+          lastCheckedAt: record.lastCheckedAt,
+          originalRecordId: record.id,
+        },
+      ];
+  return (
+    <span
+      className="record-source-list"
+      aria-label={`출처 ${sources.length}곳`}
+    >
+      {sources.map((source) => (
+        <a
+          key={`${source.sourceCode}-${source.originalRecordId}`}
+          href={source.sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() =>
+            trackAnalyticsEvent("player_source_clicked", {
+              player_id: playerId,
+              source_code: source.sourceCode,
+            })
+          }
+        >
+          {source.sourceName}
+          <ExternalLink size={14} />
+        </a>
+      ))}
+    </span>
+  );
+}
+
 export function PlayerDetailPage() {
   const { id = "" } = useParams();
   const location = useLocation();
@@ -279,20 +323,7 @@ export function PlayerDetailPage() {
                         </td>
                         <td>{record.rank ?? "-"}</td>
                         <td>
-                          <a
-                            href={record.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={() =>
-                              trackAnalyticsEvent("player_source_clicked", {
-                                player_id: player.id,
-                                source_code: record.sourceCode,
-                              })
-                            }
-                          >
-                            {record.sourceName}
-                            <ExternalLink size={14} />
-                          </a>
+                          <RecordSources record={record} playerId={player.id} />
                         </td>
                       </tr>
                     ))}
@@ -324,19 +355,7 @@ export function PlayerDetailPage() {
                         <dd>{record.rank ?? "-"}</dd>
                       </div>
                     </dl>
-                    <a
-                      href={record.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() =>
-                        trackAnalyticsEvent("player_source_clicked", {
-                          player_id: player.id,
-                          source_code: record.sourceCode,
-                        })
-                      }
-                    >
-                      {record.sourceName} 원문 <ExternalLink size={14} />
-                    </a>
+                    <RecordSources record={record} playerId={player.id} />
                   </article>
                 ))}
               </div>

@@ -44,6 +44,10 @@ describe("PlayerDetailPage metadata", () => {
     expect(screen.getAllByText("남자 단식")).not.toHaveLength(0);
     expect(screen.getAllByText("개인 단식")).not.toHaveLength(0);
     expect(screen.getAllByText("혼합 복식")).not.toHaveLength(0);
+    expect(screen.getAllByLabelText("출처 2곳")).not.toHaveLength(0);
+    expect(
+      screen.getAllByRole("link", { name: "가상 보조 출처" }),
+    ).not.toHaveLength(0);
     expect(
       screen.getAllByText(
         "(대한탁구협회 통합부수 시행 이전 · 시행일 2022.07.01)",

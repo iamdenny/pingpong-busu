@@ -41,6 +41,7 @@ const summarySchema = z.object({
         tournament: z.string().optional(),
         event: z.string().optional(),
         lastCheckedAt: z.string().optional(),
+        sourceCount: z.number().int().positive().optional(),
       }),
     )
     .optional(),
@@ -145,6 +146,7 @@ export class DevLivePlayerRepository implements PlayerRepository {
           ...(award.lastCheckedAt
             ? { lastCheckedAt: award.lastCheckedAt }
             : {}),
+          ...(award.sourceCount ? { sourceCount: award.sourceCount } : {}),
         }));
         return {
           id: row.id,

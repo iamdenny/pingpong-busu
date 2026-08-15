@@ -40,6 +40,8 @@ Primary button은 Rally Blue 표면과 12px radius, 최소 44~48px touch target�
 
 통합부수 요약은 일반 숫자·희망·새싹 관측을 첫째 줄, 여자 숫자·여자희망·여자새싹 관측을 둘째 줄로 분리한다. 두 줄은 같은 통합부수 행 머리글을 공유하고 각 줄만 독립적으로 가로 스크롤한다.
 
+동일한 대회 결과가 여러 출처에서 확인되면 상세 이력은 한 행으로 유지하고 출처 링크를 짧은 가로 목록으로 함께 배치한다. 검색 카드에는 `출처 N곳`을 보조 정보로 표시해 중복 제거와 근거 보존을 동시에 전달한다.
+
 ## 5. Layout Principles
 
 공통 footer의 `문의·제보하기`는 native modal dialog를 열며 desktop에서는 중앙 dialog, 700px 이하에서는 한 열 bottom sheet로 표시한다. 작성 내용과 함께 현재 URL, 앱 버전, 브라우저 User-Agent, 언어와 viewport가 공개 GitHub Issue에 포함된다는 확인을 제출 전에 명시한다. 연락처와 이미지 입력은 두지 않으며 성공 뒤 공개 Issue 링크를 제공한다.

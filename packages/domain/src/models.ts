@@ -33,6 +33,7 @@ export interface AwardResultSummary {
   tournament?: string;
   event?: string;
   lastCheckedAt?: string;
+  sourceCount?: number;
 }
 
 export interface DivisionObservationSummary {
@@ -112,10 +113,20 @@ export interface PlayerRecord {
   division?: string;
   divisionSystem?: DivisionSystem;
   rank?: string;
+  partner?: string;
   sourceCode: SourceCode;
   sourceName: string;
   sourceUrl: string;
   lastCheckedAt: string;
+  sources?: ResultSourceEvidence[];
+}
+
+export interface ResultSourceEvidence {
+  sourceCode: SourceCode;
+  sourceName: string;
+  sourceUrl: string;
+  lastCheckedAt: string;
+  originalRecordId: string;
 }
 
 export interface SourceComparison {
