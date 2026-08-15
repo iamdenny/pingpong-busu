@@ -5,6 +5,10 @@ import type {
 } from "./models";
 import { sortPlayerRecordsByLatest } from "./chronology";
 import { isPreIntegratedDivisionRecord } from "./division-overrides";
+import {
+  normalizePlayerRecordDivisionSystem,
+  prioritizeWomenDivisionSystem,
+} from "./division";
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -73,7 +77,7 @@ export function findRecentObservedDivisionRecord(
       (record) =>
         record.division !== undefined &&
         isCurrentDivisionSummaryRecord(record, today),
-    ),
+    ).map(normalizePlayerRecordDivisionSystem),
   );
   const latest = eligible[0];
   if (!latest) return undefined;
@@ -126,7 +130,12 @@ export function summarizeDivisionObservations(
     if (!isCurrentDivisionSummaryRecord(record, today)) continue;
     const division = record.division?.trim();
     if (!division) continue;
-    const system = record.divisionSystem ?? "unknown";
+    const system =
+      prioritizeWomenDivisionSystem(
+        record.divisionSystem,
+        record.event,
+        division,
+      ) ?? "unknown";
     const key = `${system}\u0000${division}`;
     const current = counts.get(key) ?? {
       system,

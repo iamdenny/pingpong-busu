@@ -2,6 +2,7 @@ import {
   compareNormalizedRecordsByLatest,
   findRecentObservedDivisionRecord,
   isAwardRank,
+  normalizePlayerRecordDivisionSystem,
   isCurrentSummaryRecord,
   normalizedRecordDate,
   normalizeSearchText,
@@ -49,7 +50,7 @@ export function recordsToPlayerDetails(
         .at(-1) ?? latest.observedAt;
     const playerRecords: PlayerRecord[] = sorted.map((record) => {
       const date = normalizedRecordDate(record);
-      return {
+      return normalizePlayerRecordDivisionSystem({
         id: record.naturalKeyHash,
         ...(date ? { date } : {}),
         ...(record.tournamentDate
@@ -74,7 +75,7 @@ export function recordsToPlayerDetails(
         sourceName,
         sourceUrl: record.sourceUrl,
         lastCheckedAt: record.observedAt,
-      };
+      });
     });
     const currentSummaryRecords = playerRecords.filter((record) =>
       isCurrentSummaryRecord(record),

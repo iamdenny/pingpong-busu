@@ -3,6 +3,7 @@ import {
   isAwardRank,
   isCurrentSummaryRecord,
   normalizeSearchText,
+  normalizePlayerRecordDivisionSystem,
   sortPlayerRecordsByLatest,
   summarizeDivisionObservations,
   type PlayerDetail,
@@ -193,7 +194,12 @@ export class DemoPlayerRepository implements PlayerRepository {
   async getPlayer(id: string) {
     const player = demoPlayers.find((candidate) => candidate.id === id);
     return player
-      ? { ...player, records: sortPlayerRecordsByLatest(player.records) }
+      ? {
+          ...player,
+          records: sortPlayerRecordsByLatest(
+            player.records.map(normalizePlayerRecordDivisionSystem),
+          ),
+        }
       : null;
   }
   async getIdentityCandidateEvidence(
@@ -207,7 +213,9 @@ export class DemoPlayerRepository implements PlayerRepository {
         candidateId,
         status: "loaded" as const,
         records: player
-          ? sortPlayerRecordsByLatest(player.records).slice(0, 2)
+          ? sortPlayerRecordsByLatest(
+              player.records.map(normalizePlayerRecordDivisionSystem),
+            ).slice(0, 2)
           : [],
       };
     });
