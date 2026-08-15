@@ -28,6 +28,7 @@ BUSU는 기록 근거를 빠르게 비교하는 차분하고 신뢰감 있는 �
 - **Line Silver (`#E2E8F0`)**: 구획선과 중립 border다.
 - **Verified Teal (`#0F766E`)**: 실제 공개 기록과 성공 상태다.
 - **Caution Amber (`#B45309`)**: 동명이인·출처 차이·운영 주의다.
+- 현재 추정 부수의 입상 건수는 0건일 때 Rally Blue를 유지하고, 1건 이상일 때만 Caution Amber로 강조한다. 참가 건수와 부수 값에는 이 조건부 강조를 적용하지 않는다.
 - **Error Red (`#B91C1C`)**: 입력 오류와 실패 상태에만 사용한다.
 
 ## 3. Typography Rules

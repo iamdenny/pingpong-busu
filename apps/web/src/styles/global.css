@@ -793,6 +793,10 @@ p {
   color: var(--primary);
   font-size: 0.78rem;
 }
+.division-overview__counts .division-overview__award-count--positive,
+.division-overview__counts .division-overview__award-count--positive b {
+  color: var(--warning);
+}
 .division-result-filter {
   display: flex;
   align-items: center;

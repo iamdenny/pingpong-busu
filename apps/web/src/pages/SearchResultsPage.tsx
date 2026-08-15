@@ -723,7 +723,13 @@ export function SearchResultsPage() {
                                       >
                                         <strong>{summary.division}</strong>
                                         <span className="division-overview__counts">
-                                          <span>
+                                          <span
+                                            className={
+                                              summary.awardCount > 0
+                                                ? "division-overview__award-count--positive"
+                                                : undefined
+                                            }
+                                          >
                                             입상 <b>{summary.awardCount}건</b>
                                           </span>
                                           <span>
