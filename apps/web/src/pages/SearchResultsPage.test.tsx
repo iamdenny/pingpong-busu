@@ -102,7 +102,7 @@ describe("SearchResultsPage", () => {
       document.head.querySelector('meta[property="og:url"]'),
     ).toHaveAttribute(
       "content",
-      "https://busu.iamdenny.com/#/search?q=%EA%B9%80%ED%83%81%EA%B5%AC",
+      "https://busu.iamdenny.com/search?q=%EA%B9%80%ED%83%81%EA%B5%AC",
     );
     expect(screen.getByText("2건")).toBeInTheDocument();
     const awardSummary = screen.getByText("우승").closest("dd");
