@@ -44,7 +44,8 @@ function upsertCanonical(href: string): void {
 
 export function buildCanonicalUrl(pathname: string, search: string): string {
   const url = new URL(siteMetadata.url);
-  if (pathname !== "/" || search) url.hash = `${pathname}${search}`;
+  url.pathname = pathname;
+  url.search = search;
   return url.href;
 }
 

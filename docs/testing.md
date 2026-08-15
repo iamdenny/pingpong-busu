@@ -34,6 +34,7 @@ title: "테스트 전략"
 - 성공 응답, 빈 결과, 구조 변경을 구분한다.
 - 빈 결과는 `[]`, 필수 식별자/열 누락은 schema 또는 parse error로 처리한다.
 - parser 동작이 바뀌면 fixture test와 parser version을 함께 올린다.
+- web 라우팅을 바꾸면 일반 path, 기존 hash URL 이관, canonical URL과 build 산출물의 `404.html` fallback을 함께 검증한다.
 - Edge generated bundle은 workspace parser test가 기준이다.
 - CP949/EUC-KR 출처는 검색어 인코딩과 응답 디코딩도 별도 unit test로 고정한다.
 

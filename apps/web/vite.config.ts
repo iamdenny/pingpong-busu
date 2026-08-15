@@ -1,3 +1,4 @@
+import { copyFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
@@ -12,6 +13,17 @@ export default defineConfig(({ mode }) => {
     base: env.VITE_APP_BASE_PATH || "/pingpong-busu/",
     plugins: [
       react(),
+      {
+        name: "github-pages-spa-fallback",
+        apply: "build",
+        async closeBundle() {
+          const outputDirectory = resolve(import.meta.dirname, "dist");
+          await copyFile(
+            resolve(outputDirectory, "index.html"),
+            resolve(outputDirectory, "404.html"),
+          );
+        },
+      },
       createDevLiveSearchPlugin({
         enabled:
           env.CRAWL_LIVE === "true" &&
