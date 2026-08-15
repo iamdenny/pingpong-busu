@@ -21,7 +21,7 @@ import { buildPlayerMetadata } from "../lib/pageMetadata";
 import { playerRepository } from "../lib/runtime";
 import { useCalmEntry } from "../lib/motion";
 
-type Tab = "history" | "awards" | "sources" | "rules";
+type Tab = "history" | "awards" | "sources";
 
 function RecordDate({ record }: { record: PlayerRecord }) {
   if (!record.date)
@@ -244,7 +244,6 @@ export function PlayerDetailPage() {
             ["awards", "입상 이력 (4강 이상)"],
             ["history", "전체 이력"],
             ["sources", "출처 비교"],
-            ["rules", "대회 부수검증"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -365,16 +364,6 @@ export function PlayerDetailPage() {
         <div key="sources" className="tab-panel-entry">
           <SourceComparison sources={player.sources} />
         </div>
-      )}
-      {tab === "rules" && (
-        <section key="rules" className="empty-state tab-panel-entry">
-          <span className="badge">준비 중</span>
-          <h2>대회 부수검증</h2>
-          <p>
-            대회별 규정을 적용한 최소 출전 가능 부수를 근거와 함께 보여줄
-            예정입니다. 자동 확정 판정이 아닙니다.
-          </p>
-        </section>
       )}
     </div>
   );
