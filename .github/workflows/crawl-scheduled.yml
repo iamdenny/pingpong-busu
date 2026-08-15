@@ -1,0 +1,38 @@
+name: Scheduled iPing refresh worker
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iping-refresh-worker
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+      REFRESH_WORKER_TOKEN: ${{ secrets.REFRESH_WORKER_TOKEN }}
+    steps:
+      - name: Validate worker configuration
+        run: |
+          test -n "$SUPABASE_PROJECT_ID"
+          test "${#REFRESH_WORKER_TOKEN}" -eq 64
+          case "$REFRESH_WORKER_TOKEN" in
+            *[!0-9a-fA-F]*) exit 1 ;;
+          esac
+      - name: Drain one iPing refresh job
+        run: >-
+          curl --fail --silent --show-error --max-time 60
+          --request POST
+          --header "authorization: Bearer $REFRESH_WORKER_TOKEN"
+          --header "content-type: application/json"
+          --data '{"mode":"drain-iping"}'
+          "https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/refresh-player"

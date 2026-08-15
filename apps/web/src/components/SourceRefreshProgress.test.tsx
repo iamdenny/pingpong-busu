@@ -88,6 +88,81 @@ describe("SourceRefreshProgress", () => {
     );
   });
 
+  it("shows a completed queued iPing state without a manual retry", () => {
+    render(
+      <SourceRefreshProgress
+        existingRecordCount={2}
+        onRetry={vi.fn()}
+        sources={[
+          {
+            sourceCode: "iping",
+            sourceName: "아이핑",
+            state: "queued",
+            reason: "queued",
+            message: "아이핑 최신 기록 수집을 예약했습니다.",
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "저장된 기록 표시 · 아이핑 수집 예약",
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "실시간 출처 조회 상세 보기" }),
+    );
+    expect(screen.getByText("아이핑").closest("li")).toHaveTextContent(
+      "수집 예약됨",
+    );
+    expect(screen.queryByRole("button", { name: /아이핑 재시도/u })).toBeNull();
+  });
+
+  it("describes a queued iPing collection without claiming records exist", () => {
+    render(
+      <SourceRefreshProgress
+        existingRecordCount={0}
+        sources={[
+          {
+            sourceCode: "iping",
+            sourceName: "아이핑",
+            state: "queued",
+            reason: "queued",
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "아이핑 수집 예약됨" }),
+    ).toBeInTheDocument();
+  });
+
+  it("prioritizes a failed source over a queued source in the summary", () => {
+    render(
+      <SourceRefreshProgress
+        existingRecordCount={1}
+        sources={[
+          {
+            sourceCode: "iping",
+            sourceName: "아이핑",
+            state: "queued",
+            reason: "queued",
+          },
+          {
+            sourceCode: "airping",
+            sourceName: "에어핑퐁",
+            state: "failed",
+            errorCode: "source_timeout",
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "2곳 조회 완료 · 1곳 확인 필요" }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps ongoing source details collapsed when stored records exist", () => {
     render(
       <SourceRefreshProgress
@@ -533,14 +608,14 @@ describe("SourceRefreshProgress", () => {
     expect(onRetry).toHaveBeenCalledWith("airping", Date.now());
   });
 
-  it("keeps an exhausted retry button visible with its reason", () => {
+  it("keeps a synchronous source's exhausted retry button visible", () => {
     render(
       <SourceRefreshProgress
         existingRecordCount={0}
         sources={[
           {
-            sourceCode: "iping",
-            sourceName: "아이핑",
+            sourceCode: "airping",
+            sourceName: "에어핑퐁",
             state: "failed",
             manualRetryAt: 0,
             manualRetriesRemaining: 0,
@@ -555,7 +630,32 @@ describe("SourceRefreshProgress", () => {
       }),
     );
     expect(
-      screen.getByRole("button", { name: "아이핑 재시도, 한도 도달" }),
+      screen.getByRole("button", { name: "에어핑퐁 재시도, 한도 도달" }),
     ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("never offers a manual retry for a failed queued iPing source", () => {
+    render(
+      <SourceRefreshProgress
+        existingRecordCount={0}
+        sources={[
+          {
+            sourceCode: "iping",
+            sourceName: "아이핑",
+            state: "failed",
+            errorCode: "source_auth_failed",
+            manualRetryAt: 0,
+            manualRetriesRemaining: 3,
+          },
+        ]}
+        onRetry={vi.fn()}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "실시간 출처 조회 상세 보기",
+      }),
+    );
+    expect(screen.queryByRole("button", { name: /아이핑 재시도/u })).toBeNull();
   });
 });

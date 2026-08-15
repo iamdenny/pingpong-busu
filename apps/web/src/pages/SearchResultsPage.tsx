@@ -367,13 +367,23 @@ export function SearchResultsPage() {
             state: "failed",
             errorCode: outcome?.errorCode ?? "source_refresh_failed",
             message: outcome?.message ?? "출처 응답을 확인하지 못했습니다.",
-            ...manualRetryView(
-              source.sourceCode,
-              sourceQuery.dataUpdatedAt,
-              outcome?.retryAfterMs !== undefined
-                ? sourceQuery.dataUpdatedAt + outcome.retryAfterMs
-                : undefined,
-            ),
+            ...(source.sourceCode === "iping"
+              ? {}
+              : manualRetryView(
+                  source.sourceCode,
+                  sourceQuery.dataUpdatedAt,
+                  outcome?.retryAfterMs !== undefined
+                    ? sourceQuery.dataUpdatedAt + outcome.retryAfterMs
+                    : undefined,
+                )),
+          };
+        if (outcome.status === "queued")
+          return {
+            sourceCode: source.sourceCode,
+            sourceName: source.displayName,
+            state: "queued",
+            ...(outcome.reason ? { reason: outcome.reason } : {}),
+            ...(outcome.message ? { message: outcome.message } : {}),
           };
         if (outcome.status === "skipped")
           return {
