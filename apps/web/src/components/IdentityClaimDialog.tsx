@@ -11,6 +11,7 @@ import {
   type PlayerSummary,
 } from "@busu/domain";
 import { getAnonymousEditorId } from "../lib/anonymousEditor";
+import { trackAnalyticsEvent } from "../lib/analytics";
 import { playerRepository } from "../lib/runtime";
 
 interface IdentityClaimDialogProps {
@@ -294,6 +295,10 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
           }),
         ]);
         setSubmissionState("success");
+        trackAnalyticsEvent("identity_edit_submitted", {
+          candidate_count: candidates.length,
+          group_count: response.groupCount,
+        });
       })
       .catch((error: unknown) => {
         setSubmissionState("error");

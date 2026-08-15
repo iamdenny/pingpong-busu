@@ -30,6 +30,7 @@ Korean table tennis player rank and tournament record search.
 - Supabase PostgreSQL migration, RLS, synthetic seed, Edge Functions
 - GitHub Actions CI, Pages 배포, 수동 crawler workflow
 - GitHub Pages 배포마다 자동 생성하는 `YYYY.WEEK.SEQ` 버전과 모든 페이지 하단 버전 표시
+- Cloudflare 기본 방문 통계와 셀프 호스트 Umami의 개인정보 최소화 제품 이벤트 분석
 - 로그인 없이 문의·제보 내용을 공개 GitHub Issue로 보내는 하단 폼과 현재 URL·브라우저 User-Agent 자동 첨부
 
 ## 실행
@@ -102,7 +103,7 @@ pnpm crawl:fixture --query 김탁구 --version 2
 
 ## GitHub Pages
 
-Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니다. 현재 커스텀 도메인 `https://busu.iamdenny.com/`은 asset base `/`로 배포하고 HTTP 요청은 HTTPS로 전환합니다. production repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. `http://iamdenny.com/pingpong-busu/`은 커스텀 도메인으로 이동하는 이전 진입점입니다. publishable key는 브라우저 공개용 값이며, service role/secret key는 Pages workflow에 넣지 않습니다.
+Repository Settings → Pages에서 Source를 **GitHub Actions**로 설정합니다. 현재 커스텀 도메인 `https://busu.iamdenny.com/`은 asset base `/`로 배포하고 HTTP 요청은 HTTPS로 전환합니다. production repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. 셀프 호스트 Umami를 사용할 때는 공개값인 `VITE_UMAMI_SCRIPT_URL`과 `VITE_UMAMI_WEBSITE_ID`도 추가합니다. `http://iamdenny.com/pingpong-busu/`은 커스텀 도메인으로 이동하는 이전 진입점입니다. publishable key와 Umami website 설정은 브라우저 공개용 값이며, service role/secret key, DB URL, Umami 관리자 자격 증명은 Pages workflow에 넣지 않습니다. 이벤트와 운영 절차는 [제품 분석 문서](./docs/analytics.md)를 따릅니다.
 
 제품 버전의 단일 기준은 루트 `package.json`의 `version`이며 `YYYY.WEEK.SEQ` 형식을 사용합니다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가하며, 배포 변경은 `pnpm release:bump`로 같은 주의 순번을 올리거나 새 주에는 `0`으로 초기화합니다. web 화면은 이 값을 직접 읽어 홈·검색 결과·선수 상세를 포함한 모든 페이지의 공통 footer에 표시합니다. Pages workflow는 빌드가 통과한 뒤 `v{version}` 태그와 GitHub Release 및 자동 릴리즈 노트를 먼저 만들고 정적 사이트를 게시합니다. 이미 다른 커밋이 같은 태그를 사용하면 배포를 중단하므로 모든 배포 PR은 버전 변경을 포함해야 합니다.
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageMetadata } from "../components/PageMetadata";
 import { SearchForm } from "../components/SearchForm";
+import { trackAnalyticsEvent } from "../lib/analytics";
 import {
   clearRecentSearches,
   loadRecentSearches,
@@ -135,6 +136,12 @@ export function HomePage() {
                       target="_blank"
                       rel="noreferrer"
                       aria-label={`${source.displayName} 사이트 열기`}
+                      onClick={() =>
+                        trackAnalyticsEvent("source_catalog_clicked", {
+                          source_code: source.sourceCode,
+                          source_enabled: source.enabled,
+                        })
+                      }
                     >
                       {source.baseUrl}
                     </a>

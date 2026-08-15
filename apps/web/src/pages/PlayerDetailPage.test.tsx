@@ -2,10 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as analytics from "../lib/analytics";
 import { PlayerDetailPage } from "./PlayerDetailPage";
 
 describe("PlayerDetailPage metadata", () => {
+  afterEach(() => vi.restoreAllMocks());
   it("uses loaded player identity and record summary", async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -74,5 +76,31 @@ describe("PlayerDetailPage metadata", () => {
     await user.click(screen.getByRole("tab", { name: "전체 이력" }));
 
     expect(screen.getAllByText("8강")).not.toHaveLength(0);
+  });
+
+  it("tracks only actual detail tab changes", async () => {
+    const user = userEvent.setup();
+    const track = vi.spyOn(analytics, "trackAnalyticsEvent");
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/players/kim-seoul"]}>
+          <Routes>
+            <Route path="/players/:id" element={<PlayerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByRole("heading", {
+      name: "김탁구 파워 드라이브 전문가",
+    });
+
+    await user.click(screen.getByRole("tab", { name: "입상 이력 (4강 이상)" }));
+    expect(track).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("tab", { name: "전체 이력" }));
+    expect(track).toHaveBeenCalledOnce();
+    expect(track).toHaveBeenCalledWith("player_detail_tab_selected", {
+      player_id: "kim-seoul",
+      detail_tab: "history",
+    });
   });
 });

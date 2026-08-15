@@ -10,7 +10,7 @@ title: "운영"
 
 ## 방문 통계
 
-운영 웹은 `busu.iamdenny.com`에 등록한 Cloudflare Web Analytics beacon을 `apps/web/index.html`에서 비차단 모듈 스크립트로 불러옵니다. 페이지 조회·방문과 웹 성능을 집계하는 용도이며 개별 방문자를 식별하거나 BUSU의 선수 검색어·문의 내용·참여 편집 값을 별도 이벤트로 전송하지 않습니다. 통계가 보이지 않으면 배포 HTML의 `data-cf-beacon` 토큰, 브라우저의 beacon 요청 차단 여부와 Cloudflare Dashboard의 호스트 이름을 확인합니다.
+운영 웹은 `busu.iamdenny.com`에 등록한 Cloudflare Web Analytics beacon을 `apps/web/index.html`에서 비차단 모듈 스크립트로 불러옵니다. 페이지 조회·방문과 웹 성능 집계는 Cloudflare를 사용하고, 검색·선수 상세·원문 이동 같은 제품 흐름은 Vercel + Neon에 셀프 호스트한 Umami로 분석합니다. Umami의 이벤트 사전, 개인정보 최소화, 배포·백업·이전 절차는 [제품 분석](./analytics.md)을 기준으로 합니다. 두 tracker가 차단되거나 실패해도 사용자 기능은 계속 동작해야 합니다.
 
 ## 출처 장애
 
@@ -143,7 +143,7 @@ token을 회전하거나 누락을 복구할 때는 GitHub `production` environm
 
 문의·제보 기능은 GitHub token 또는 허용 Origin 설정이 없으면 닫힌 상태로 실패합니다. 전체 요청이 10분당 10건 또는 하루 50건을 넘으면 429를 반환합니다. 성공 시 공개 Issue를 확인한 뒤 private outbox의 본문과 브라우저 문맥을 즉시 지웁니다. 공개되는 페이지 링크에서는 쿼리 문자열을 제거하고, hash route에도 붙은 쿼리를 제거합니다. `delivery_unknown`은 같은 submission ID로 재시도하면 GitHub marker를 먼저 조회해 중복 생성을 막습니다. migration이 매일 service role 전용 `redact_expired_feedback_internal()`을 예약해 30일이 지난 미전달 행을 삭제합니다. abuse 시 `submit-feedback` 배포를 중지하거나 token을 폐기하고 비민감 상태·오류 코드만 조사합니다.
 
-GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`를 설정합니다. 커스텀 도메인은 `https://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. 이 중 source refresh 값은 브라우저에서 갱신 UI를 켜는 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다.
+GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`, `VITE_UMAMI_SCRIPT_URL`, `VITE_UMAMI_WEBSITE_ID`를 설정합니다. 커스텀 도메인은 `https://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. source refresh와 Umami 두 값은 브라우저 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다. Umami DB 연결 문자열·관리자 비밀번호·API token은 Pages 환경에 두지 않습니다.
 
 제품 버전은 루트 `package.json`에서만 관리하며 `YYYY.WEEK.SEQ` 형식이다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가한다. 배포 변경을 준비할 때 `pnpm release:bump`를 실행하면 같은 ISO 주에는 순번을 하나 올리고 새 주에는 `0`으로 초기화한다. workspace package와 환경 변수에는 별도 제품 버전을 두지 않으며 web build도 루트 값을 직접 읽는다.
 

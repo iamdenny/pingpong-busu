@@ -25,6 +25,7 @@ import { IdentityClaimDialog } from "../components/IdentityClaimDialog";
 import { IdentityEditHistory } from "../components/IdentityEditHistory";
 import { PageMetadata } from "../components/PageMetadata";
 import { SearchForm } from "../components/SearchForm";
+import { trackAnalyticsEvent, trackSearchSubmitted } from "../lib/analytics";
 import {
   SourceRefreshProgress,
   type SourceRefreshView,
@@ -243,6 +244,7 @@ export function SearchResultsPage() {
   const [divisionSelection, setDivisionSelection] =
     useState<DivisionSelection | null>(null);
   const candidateListRef = useRef<HTMLElement>(null);
+  const trackedSearchRef = useRef<string | undefined>(undefined);
   const [manualRetryAttempts, setManualRetryAttempts] = useState<
     Readonly<Record<string, ManualRetryAttempt>>
   >({});
@@ -547,6 +549,12 @@ export function SearchResultsPage() {
         : "awards";
   const shownCandidates =
     activeResultTab === "awards" ? awardCandidates : entryCandidates;
+
+  useEffect(() => {
+    if (!result.isSuccess || trackedSearchRef.current === query) return;
+    trackedSearchRef.current = query;
+    trackSearchSubmitted(query, result.data.length);
+  }, [query, result.data, result.isSuccess]);
   const candidateListLabel = selectedDivision
     ? `${showsIdentityDivisionSections && selectedDivisionSection ? `${selectedDivisionSection.label} ` : ""}${selectedDivision.systemLabel} ${selectedDivision.division} ${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`
     : `${activeResultTab === "awards" ? "입상" : "출전"} 선수 검색 결과 목록`;
@@ -569,6 +577,12 @@ export function SearchResultsPage() {
     section: IdentityDivisionSummarySection,
     summary: DivisionSummaryItem,
   ) {
+    trackAnalyticsEvent("division_filter_selected", {
+      division_system: summary.system,
+      division: summary.division,
+      award_count: summary.awardCount,
+      participation_count: summary.participationCount,
+    });
     setResultTabDirection("none");
     setDivisionSelection({
       query,
@@ -591,6 +605,7 @@ export function SearchResultsPage() {
 
   function selectResultTab(nextTab: ResultTab) {
     if (nextTab === activeResultTab) return;
+    trackAnalyticsEvent("search_result_tab_selected", { result_tab: nextTab });
     setResultTabDirection(nextTab === "entries" ? "forward" : "backward");
     setResultTab(nextTab);
   }
@@ -708,7 +723,9 @@ export function SearchResultsPage() {
                                           </span>
                                           <span>
                                             참가{" "}
-                                            <b>{summary.participationCount}건</b>
+                                            <b>
+                                              {summary.participationCount}건
+                                            </b>
                                           </span>
                                         </span>
                                       </button>
@@ -763,6 +780,11 @@ export function SearchResultsPage() {
                 )}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() =>
+                  trackAnalyticsEvent("direct_source_search_clicked", {
+                    source_code: source.sourceCode,
+                  })
+                }
               >
                 {source.displayName}
                 {source.sourceCode === "iping" ? " (로그인)" : ""}
@@ -862,12 +884,19 @@ export function SearchResultsPage() {
             role="tabpanel"
             tabIndex={-1}
           >
-            {shownCandidates.map((player) => (
+            {shownCandidates.map((player, index) => (
               <Link
                 className="candidate-card candidate-card--link"
                 key={player.id}
                 to={`/players/${player.id}`}
                 state={{ searchQuery: query }}
+                onClick={() =>
+                  trackAnalyticsEvent("search_result_clicked", {
+                    player_id: player.id,
+                    position: index + 1,
+                    result_tab: activeResultTab,
+                  })
+                }
                 aria-label={`${player.name}${player.homonymNickname ? ` ${homonymNicknameLabel(player.homonymNickname)}` : ""}${player.region ? ` ${player.region}` : ""}${player.club ? ` ${player.club}` : ""} 상세 기록 보기`}
               >
                 <article>

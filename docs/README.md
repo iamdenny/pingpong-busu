@@ -9,6 +9,7 @@
 3. [데이터 모델](data-model.md)과 [부수 체계 전환 기준](division-transition-rules.md) — identity, result, 시간축, 지역별 역사 규칙
 4. [수집 정책](crawling-policy.md)과 [출처 메모](source-notes.md) — 실출처 활성화 조건
 5. [운영](operations.md) — GitHub Pages, Supabase 배포와 개인정보 없는 운영 오류 자동 Issue
+6. [제품 분석](analytics.md) — Cloudflare·셀프 호스트 Umami 이벤트와 데이터 이전
 
 ## 개발 문서
 
