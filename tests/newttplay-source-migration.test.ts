@@ -42,6 +42,7 @@ describe("NewTTPlay source migration", () => {
   });
 
   it("enables the catalog row after the operating approval", () => {
+    expect(enableMigration.trimStart()).toMatch(/^update public\.sources/u);
     expect(enableMigration).toMatch(
       /update public\.sources[\s\S]*enabled = true[\s\S]*where code = 'newttplay'/u,
     );
