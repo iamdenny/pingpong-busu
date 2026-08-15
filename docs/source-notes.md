@@ -13,7 +13,7 @@ title: "출처 메모"
 | mock        | `example.invalid`                                                     |      http | enabled               | mock-1/2      | 합성 fixture 전용                                                                                                                                                         |
 | airping     | <https://airping.co.kr/11player/01.php>                               |      http | production opt-in     | airping-3     | 공개 검색 parser와 합성 fixture 완료. 저장소 운영자가 2026-08-12 수집 승낙 완료를 확인해 운영 활성화                                                                      |
 | astree      | <https://astree.co.kr/bbs/board.php?bo_table=member_search>           |      http | production opt-in     | astree-6      | UTF-8 GET, 최대 2페이지, 결과 표 한정·동일 origin 링크 검증, 6시간 cooldown, 정규식 기반 도·시·군·구 및 지역별 부수 전환 기준 적용                                        |
-| newttplay   | <https://www.newttplay.co.kr/bbs/board.php?bo_table=member_search>    |      http | 구현 완료 / 비활성    | newttplay-2   | 비회원 UTF-8 GET, 최대 2페이지·2 MiB, redirect 차단, 출처 전체 분당 6회 claim. 결과 표만 처리하며 운영 허가 확인 전 환경 변수와 DB를 모두 비활성화                        |
+| newttplay   | <https://www.newttplay.co.kr/bbs/board.php?bo_table=member_search>    |      http | production opt-in     | newttplay-2   | 비회원 UTF-8 GET, 최대 2페이지·2 MiB, redirect 차단, 출처 전체 분당 6회 claim. 결과 표만 처리                                                                             |
 | ttadivision | <https://ttadivision.sports.or.kr/statistic/moveSearchOteamPlayer.do> |      http | production opt-in     | ttadivision-1 | 공개 이름 검색, T1~T7·소속팀·지역만 저장. 휴대폰과 RT점수는 저장하지 않음. 서버가 잘못 제공하는 중간 인증서 대신 leaf AIA의 공식 Sectigo DV R36 CA를 추가해 TLS 검증 유지 |
 | okpingpong  | <http://okpingpong.co.kr/04match/08.php>                              |      http | production opt-in     | okpingpong-4  | 공개 검색 parser와 합성 fixture 완료. 명시적 검색 결과 없음 행을 정상 0건으로 처리                                                                                        |
 | mytt        | <https://mytt.kr/main/player_list.xhtml>                              |      http | production opt-in     | mytt-3        | robots 전체 허용, 비회원 JSF GET/POST 공개 검색. 단기 JSESSIONID는 요청에만 사용하고 저장하지 않음                                                                        |
@@ -24,7 +24,7 @@ title: "출처 메모"
 
 2026-08-12 애즈트리 robots.txt, 공개 검색 form/result와 이용약관을 확인했습니다. 일반 user-agent에 공개 검색 경로가 금지되어 있지 않고 약관에서 자동 수집 금지 문구를 찾지 못했지만, 이는 영구적 재사용 허가를 뜻하지 않습니다. 실제 응답이나 정책을 확인하지 않은 나머지는 추정이며 사실로 단정하지 않습니다.
 
-2026-08-14 뉴티티플레이의 비회원 `member_search` form과 결과를 확인했습니다. 화면 form은 POST지만 동일한 `bo_table`, `sfl`, `stx`, `page`의 GET 요청도 서버 렌더링 결과를 반환합니다. 일반 user-agent의 `robots.txt`는 `/bbs/board.php`를 금지하지 않지만 특정 bot 차단과 이용약관의 사이트 정보 이용 제한이 있으므로 이를 운영 허가로 해석하지 않습니다. parser는 탁구인검색 결과 표만 읽고 페이지 운영자 연락처·주소, 세션 쿠키와 원문 HTML을 저장하지 않습니다. 서면 허가 또는 동등한 운영 확인 전에는 `CRAWLER_SOURCE_NEWTTPLAY_ENABLED=false`와 DB `sources.enabled=false`를 유지합니다.
+2026-08-14 뉴티티플레이의 비회원 `member_search` form과 결과를 확인했습니다. 화면 form은 POST지만 동일한 `bo_table`, `sfl`, `stx`, `page`의 GET 요청도 서버 렌더링 결과를 반환합니다. parser는 탁구인검색 결과 표만 읽고 페이지 운영자 연락처·주소, 세션 쿠키와 원문 HTML을 저장하지 않습니다. 2026-08-15 저장소 운영자가 운영 사용을 승인해 환경 변수와 DB 출처를 production opt-in으로 전환했습니다. 승인이 변경되거나 철회되면 두 스위치를 즉시 `false`로 전환합니다.
 
 2026-08-12 대한탁구협회 디비전 공개 선수조회는 로그인 없이 이름·T1~T7 등급·팀·지역을 조회할 수 있음을 확인했습니다. `robots.txt`는 별도 정책 대신 404를 반환했습니다. 요청은 6시간 cooldown과 출처별 최소 간격을 적용하며, 응답에 포함된 휴대폰 필드와 RT점수는 저장하지 않습니다.
 

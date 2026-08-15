@@ -464,7 +464,7 @@ p {
   margin: 0 0 1rem;
   overflow: clip;
 }
-.source-overview summary {
+.source-overview__toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -472,12 +472,19 @@ p {
   padding: 0.65rem 0.85rem;
   cursor: pointer;
   list-style: none;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
 }
-.source-overview summary::-webkit-details-marker {
-  display: none;
-}
-.source-overview summary:hover {
+.source-overview__toggle:hover {
   background: #e4edff;
+}
+.source-overview__toggle:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: -3px;
 }
 .source-overview__summary {
   display: flex;
@@ -497,12 +504,6 @@ p {
   font-size: 0.8rem;
   font-weight: 800;
   white-space: nowrap;
-}
-.source-overview__action::after {
-  content: " +";
-}
-.source-overview[open] .source-overview__action::after {
-  content: " −";
 }
 .source-overview__content {
   border-top: 1px solid #cddcff;
@@ -1827,7 +1828,7 @@ p {
   animation: source-progress-flow 1.6s linear infinite;
   transition: width 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.source-refresh-progress__details {
+.collapsible-content {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
@@ -1835,11 +1836,11 @@ p {
     grid-template-rows 240ms ease,
     opacity 160ms ease;
 }
-.source-refresh-progress__details[data-expanded="true"] {
+.collapsible-content[data-expanded="true"] {
   grid-template-rows: 1fr;
   opacity: 1;
 }
-.source-refresh-progress__details-inner {
+.collapsible-content__inner {
   min-block-size: 0;
   overflow: hidden;
 }

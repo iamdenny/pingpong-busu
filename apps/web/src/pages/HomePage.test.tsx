@@ -40,12 +40,19 @@ describe("HomePage", () => {
     expect(
       document.head.querySelector('link[rel="canonical"]'),
     ).toHaveAttribute("href", "https://busu.iamdenny.com/");
-    const summary = await screen.findByText("검색 출처");
-    const details = summary.closest("details");
-    expect(details).not.toHaveAttribute("open");
+    await screen.findByText("검색 출처");
+    const toggle = screen.getByRole("button", { name: /검색 출처/u });
+    const details = document.getElementById("home-source-overview-details");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(details).toHaveAttribute("data-expanded", "false");
+    expect(details).toHaveAttribute("aria-hidden", "true");
+    expect(details).toHaveAttribute("inert");
     expect(screen.getByText("4곳 검색 중 · 전체 9곳")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("상세"));
-    expect(details).toHaveAttribute("open");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(details).toHaveAttribute("data-expanded", "true");
+    expect(details).toHaveAttribute("aria-hidden", "false");
+    expect(details).not.toHaveAttribute("inert");
     expect(screen.getByText("뉴티티플레이")).toBeInTheDocument();
     expect(screen.getByText("애즈트리").closest("li")).toHaveTextContent(
       "검색 중",

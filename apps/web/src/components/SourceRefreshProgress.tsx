@@ -1,6 +1,7 @@
 import { ChevronDown, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { SourceCode } from "@busu/domain";
+import { CollapsibleContent } from "./CollapsibleContent";
 
 export interface SourceRefreshView {
   sourceCode: SourceCode;
@@ -152,14 +153,8 @@ function SourceRefreshDisclosure({
           />
         </div>
       )}
-      <div
-        id="source-refresh-details"
-        className="source-refresh-progress__details"
-        data-expanded={isExpanded}
-        aria-hidden={!isExpanded}
-        inert={!isExpanded}
-      >
-        <div className="source-refresh-progress__details-inner">
+      <CollapsibleContent id="source-refresh-details" expanded={isExpanded}>
+        <div>
           <ul role="list">
             {sources.map((source) => {
               const retrySeconds = Math.max(
@@ -206,7 +201,7 @@ function SourceRefreshDisclosure({
             })}
           </ul>
         </div>
-      </div>
+      </CollapsibleContent>
     </section>
   );
 }
