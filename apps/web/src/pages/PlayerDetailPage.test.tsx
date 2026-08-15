@@ -49,6 +49,9 @@ describe("PlayerDetailPage metadata", () => {
     expect(screen.getAllByText("혼합 복식")).not.toHaveLength(0);
     expect(screen.getAllByLabelText("출처 2곳")).not.toHaveLength(0);
     expect(
+      screen.getByText("통합부수 기록").nextElementSibling,
+    ).toHaveTextContent("통합부수 4부");
+    expect(
       screen.getAllByRole("link", { name: "가상 보조 출처" }),
     ).not.toHaveLength(0);
     expect(

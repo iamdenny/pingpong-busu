@@ -69,6 +69,7 @@ docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sq
 | 변경                  | 필요한 검증                                                                                                                                                            |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 부수·입상·지역 규칙   | domain unit + 영향을 받는 parser fixture                                                                                                                               |
+| 상세 통합부수 기록    | 미래·과거 지역·복식·단체·혼합·혼성 제외 + 서로 다른 출처의 최신 통합·여자 관측 선택 + 입력 순서 독립성 domain/component 회귀                                           |
 | 부수별 입상·참가 요약 | domain aggregation + public view migration contract + repository/component test                                                                                        |
 | 교차 출처 동일 결과   | domain fingerprint·fail-open unit + public grouped view contract + repository 다중 출처 보존 + 상세 UI 링크 확인                                                       |
 | 검색 결과/상세 UI     | component test + desktop/mobile 미리보기                                                                                                                               |
@@ -101,4 +102,4 @@ development 원격 검증은 production 데이터나 자격증명을 복사하�
 
 production 공개 조회 회귀는 `scripts/check-public-read-health.test.ts`와 `tests/production-deploy-order.test.ts`에서 검증한다. 전자는 SEO manifest·선수 검색·상세 API의 오류, 빈 응답, 시간 예산 초과를 fail-closed로 확인하고, 후자는 backend migration과 Pages 배포 순서 및 commit SHA 고정을 확인한다. 실제 backend 배포에서는 같은 스크립트를 migration 직후 production publishable key로 실행한다.
 
-별도 staging 환경이 없으므로 main CI는 backend 배포 전에, Pages build는 Release와 artifact 업로드 전에 각각 `pnpm test:e2e:production`을 실행한다. 이 테스트는 production publishable API가 연결된 새 정적 build를 로컬 preview로 띄우고 desktop Chromium에서 `임대현` 검색, 선수 상세 이동, 입상 이력, title·description·Open Graph type을 확인한다. 공개 조회만 수행하며 production 데이터를 변경하거나 live crawler를 실행하지 않는다. 전자는 현재 production과의 호환성을, 후자는 migration 적용 뒤의 호환성을 검증한다.
+별도 staging 환경이 없으므로 main CI는 backend 배포 전에, Pages build는 Release와 artifact 업로드 전에 각각 `pnpm test:e2e:production`을 실행한다. 이 테스트는 production publishable API가 연결된 새 정적 build를 로컬 preview로 띄우고 desktop Chromium에서 `임대현` 검색, 선수 상세 이동, 입상 이력, 최근 관측 오픈부수 7부, 최신 유효 통합부수 6부, title·description·Open Graph type을 확인한다. 공개 조회만 수행하며 production 데이터를 변경하거나 live crawler를 실행하지 않는다. 전자는 현재 production과의 호환성을, 후자는 migration 적용 뒤의 호환성을 검증한다.

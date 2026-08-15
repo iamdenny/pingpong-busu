@@ -15,6 +15,7 @@ import {
   inferEventDivisionSystem,
   inferRecordDivisionSystem,
   findRecentObservedDivisionRecord,
+  findRecentObservedDivisionRecordForSystems,
   formatPreIntegratedDivisionNotice,
   isPreIntegratedDivisionRecord,
   formatDivisionObservation,
@@ -183,6 +184,90 @@ describe("division presentation", () => {
         participationCount: 1,
       },
     ]);
+  });
+
+  it("selects the latest eligible integrated division across record sources", () => {
+    const common = {
+      tournamentRegion: "경기도 수원시",
+      scale: "district" as const,
+      club: "엘리트탁구클럽",
+      sourceName: "공개 출처",
+      sourceUrl: "https://example.invalid/record",
+      lastCheckedAt: "2026-08-15T00:00:00.000Z",
+      dateBasis: "tournament" as const,
+      eventType: "singles" as const,
+    };
+    const records: PlayerRecord[] = [
+      {
+        ...common,
+        id: "future-integrated-6",
+        sourceCode: "mytt",
+        date: "2026-09-12",
+        tournament: "미래 통합 대회",
+        event: "개인단식",
+        division: "6부",
+        divisionSystem: "integrated",
+      },
+      {
+        ...common,
+        id: "mixed-open-6",
+        sourceCode: "mytt",
+        date: "2026-06-27",
+        tournament: "혼성 대회",
+        event: "혼성 단체전",
+        division: "6부",
+        divisionSystem: "open",
+      },
+      {
+        ...common,
+        id: "latest-open-7",
+        sourceCode: "mytt",
+        date: "2026-02-28",
+        tournament: "오픈 대회",
+        event: "개인단식",
+        division: "7부",
+        divisionSystem: "open",
+      },
+      {
+        ...common,
+        id: "latest-integrated-6",
+        sourceCode: "astree",
+        date: "2025-11-08",
+        tournament: "통합 대회",
+        event: "개인단식",
+        division: "6부",
+        divisionSystem: "integrated",
+      },
+      {
+        ...common,
+        id: "older-integrated-7",
+        sourceCode: "mytt",
+        date: "2024-05-26",
+        tournament: "과거 통합 대회",
+        event: "개인단식",
+        division: "7부",
+        divisionSystem: "integrated",
+      },
+    ];
+
+    expect(
+      findRecentObservedDivisionRecordForSystems(
+        records,
+        ["integrated", "women"],
+        "2026-08-15",
+      ),
+    ).toMatchObject({
+      id: "latest-integrated-6",
+      division: "6부",
+      divisionSystem: "integrated",
+    });
+    expect(
+      findRecentObservedDivisionRecordForSystems(
+        [...records].reverse(),
+        ["integrated", "women"],
+        "2026-08-15",
+      ),
+    ).toMatchObject({ id: "latest-integrated-6" });
   });
 
   it("keeps pre-transition records visible but out of current division observations", () => {

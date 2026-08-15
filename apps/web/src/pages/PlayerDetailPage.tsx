@@ -7,6 +7,7 @@ import {
   divisionSystemLabels,
   formatPreIntegratedDivisionNotice,
   formatDivisionObservation,
+  findRecentObservedDivisionRecordForSystems,
   homonymNicknameLabel,
   isAwardRank,
   sortPlayerRecordsByLatest,
@@ -144,10 +145,9 @@ export function PlayerDetailPage() {
   const totalAwardCount = player.records.filter((record) =>
     isAwardRank(record.rank),
   ).length;
-  const integratedSource = player.sources.find(
-    (source) =>
-      source.recentObservedDivisionSystem === "integrated" ||
-      source.recentObservedDivisionSystem === "women",
+  const recentIntegratedDivision = findRecentObservedDivisionRecordForSystems(
+    player.records,
+    ["integrated", "women"],
   );
   const returnQuery = searchQueryFromState(location.state) ?? player.name;
   const nickname = homonymNicknameLabel(player.homonymNickname);
@@ -222,8 +222,8 @@ export function PlayerDetailPage() {
           <span>통합부수 기록</span>
           <strong>
             {formatDivisionObservation(
-              integratedSource?.recentObservedDivisionSystem,
-              integratedSource?.recentObservedDivision,
+              recentIntegratedDivision?.divisionSystem,
+              recentIntegratedDivision?.division,
             )}
           </strong>
           <small>일반 시·군·구 대회와 여자 종목 포함</small>
