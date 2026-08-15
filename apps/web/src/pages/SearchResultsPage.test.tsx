@@ -161,9 +161,10 @@ describe("SearchResultsPage", () => {
     ).toHaveAttribute("content", expect.stringContaining("4강 이상 입상 기록"));
     expect(
       document.head.querySelector('meta[property="og:url"]'),
-    ).toHaveAttribute(
+    ).toHaveAttribute("content", "https://busu.iamdenny.com/search/");
+    expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute(
       "content",
-      "https://busu.iamdenny.com/search?q=%EA%B9%80%ED%83%81%EA%B5%AC",
+      "noindex,follow",
     );
     expect(screen.getByText("2건")).toBeInTheDocument();
     const awardSummary = screen.getByText("우승").closest("dd");

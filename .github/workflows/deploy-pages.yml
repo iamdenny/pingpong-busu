@@ -36,6 +36,7 @@ jobs:
           VITE_SOURCE_REFRESH_ENABLED: ${{ vars.VITE_SOURCE_REFRESH_ENABLED || 'false' }}
           VITE_UMAMI_SCRIPT_URL: ${{ vars.VITE_UMAMI_SCRIPT_URL }}
           VITE_UMAMI_WEBSITE_ID: ${{ vars.VITE_UMAMI_WEBSITE_ID }}
+          SEO_MANIFEST_REQUIRED: "true"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: apps/web/dist }

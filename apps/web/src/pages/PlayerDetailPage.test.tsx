@@ -36,11 +36,14 @@ describe("PlayerDetailPage metadata", () => {
       document.head.querySelector('meta[property="og:description"]'),
     ).toHaveAttribute(
       "content",
-      "김탁구 선수 (파워 드라이브 전문가, 동명이인 기록 구분용 별칭) (서울 · 스핀탁구클럽)의 최근 관측 오픈부수 5부, 대회 출전 3건과 4강 이상 입상 3건의 원문 출처를 확인하세요.",
+      "김탁구 선수 (파워 드라이브 전문가, 동명이인 기록 구분용 별칭) (서울 · 스핀탁구클럽)의 4강 이상 입상 기록 3건과 공개 출처 3곳을 확인하세요.",
     );
     expect(
       document.head.querySelector('meta[property="og:url"]'),
-    ).toHaveAttribute("content", "https://busu.iamdenny.com/players/kim-seoul");
+    ).toHaveAttribute(
+      "content",
+      "https://busu.iamdenny.com/players/kim-seoul/",
+    );
     expect(screen.getAllByText("남자 단식")).not.toHaveLength(0);
     expect(screen.getAllByText("개인 단식")).not.toHaveLength(0);
     expect(screen.getAllByText("혼합 복식")).not.toHaveLength(0);
@@ -53,6 +56,29 @@ describe("PlayerDetailPage metadata", () => {
     expect(tabs[0]).toHaveTextContent("입상 이력 (4강 이상)");
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
     expect(tabs[1]).toHaveTextContent("전체 이력");
+  });
+
+  it("keeps an unknown player out of the search index", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/players/unknown-player"]}>
+          <Routes>
+            <Route path="/players/:id" element={<PlayerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "선수를 찾을 수 없습니다.",
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        document.head.querySelector('meta[name="robots"]'),
+      ).toHaveAttribute("content", "noindex,follow"),
+    );
   });
 
   it("shows an empty award state before the complete history", async () => {

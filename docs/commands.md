@@ -33,7 +33,7 @@ pnpm build
 pnpm docs-check:scan
 ```
 
-`pnpm build`는 Edge 공유 parser bundle을 먼저 동기화한 뒤 모든 workspace를 빌드한다. `supabase/functions/_shared/generated/astree-parser.js`는 직접 편집하지 않는다.
+`pnpm build`는 Edge 공유 parser bundle을 먼저 동기화한 뒤 모든 workspace를 빌드하고 web의 SEO 정적 파일을 생성한다. Supabase 공개 설정이 없으면 로컬 build는 빈 선수 목록으로 검색 문서·robots·sitemap을 만들며, 운영 workflow는 `SEO_MANIFEST_REQUIRED=true`라서 설정 누락·요청/검증 실패·빈 manifest가 있으면 실패한다. `supabase/functions/_shared/generated/astree-parser.js`와 `apps/web/dist`는 직접 편집하지 않는다.
 
 ## 브라우저 테스트
 

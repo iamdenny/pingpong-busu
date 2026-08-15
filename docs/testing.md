@@ -24,6 +24,7 @@ title: "테스트 전략"
 | SQL integration     | `tests/sql/*.sql`                           | 실제 DB 트랜잭션의 병합·원복과 충돌 방어             |
 | Release unit        | `tests/release-version.test.ts`             | package 버전 형식·ISO 주차·순번 증가                 |
 | Deployment contract | `tests/*-deployment.test.ts`                | environment 격리·수동 trigger·seed·crawler 안전장치  |
+| SEO generator       | `scripts/generate-seo-pages.test.ts`        | 공개 manifest 검증·escape·정적 HTML·robots/sitemap   |
 | Edge auth           | `tests/edge-auth.test.ts`                   | publishable key 경계                                 |
 | Browser smoke       | `tests/e2e`                                 | home → 검색 → 상세 흐름                              |
 | Live opt-in         | `tests/live-e2e`                            | 허용된 실제 출처 연결                                |
@@ -35,6 +36,7 @@ title: "테스트 전략"
 - 빈 결과는 `[]`, 필수 식별자/열 누락은 schema 또는 parse error로 처리한다.
 - parser 동작이 바뀌면 fixture test와 parser version을 함께 올린다.
 - web 라우팅을 바꾸면 일반 path, 기존 hash URL 이관, canonical URL과 build 산출물의 `404.html` fallback을 함께 검증한다.
+- SEO 출력을 바꾸면 player HTML의 초기 metadata, 검색 `noindex,follow`, sitemap의 홈·공개 선수 한정, robots의 sitemap 주소, UUID/schema/빈 결과 실패와 반복 build의 stale 선수 제거를 함께 검증한다.
 - Edge generated bundle은 workspace parser test가 기준이다.
 - CP949/EUC-KR 출처는 검색어 인코딩과 응답 디코딩도 별도 unit test로 고정한다.
 
@@ -51,6 +53,8 @@ pnpm docs-check:scan
 ```
 
 실패한 테스트를 삭제하거나 skip 처리해 통과시키지 않는다. build의 chunk-size 경고는 실패가 아니지만 증가 원인을 검토한다.
+
+로컬에서 Supabase 공개 설정 없이 실행한 build는 선수 페이지가 없는 기반 SEO 산출물을 만든다. 운영과 같은 검증은 공개 production용 URL/publishable key와 `SEO_MANIFEST_REQUIRED=true`를 설정한 격리 환경에서 수행하며, key나 응답 본문을 로그에 출력하지 않는다. 산출물을 정적 서버로 열어 `/`, `/search/`, 알려진 `/players/{id}/`, `/robots.txt`, `/sitemap.xml`의 HTTP 응답과 자바스크립트 실행 전 `<head>`를 검사한다.
 
 로컬 Supabase가 실행 중이면 병합·원복 SQL 통합 검증을 트랜잭션으로 실행하고 마지막에 롤백한다.
 
