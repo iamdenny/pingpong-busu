@@ -114,6 +114,15 @@ pnpm db:size
 
 PAT, service role key, DB password는 명령 문자열이나 문서에 기록하지 않는다. development에는 production 데이터, Kakao key 또는 iPing 계정을 복제하지 않는다.
 
+production 공개 조회 배포 게이트를 로컬에서 재현하려면 publishable 설정만 주입해 다음 명령을 실행한다. service role key는 사용하지 않는다.
+
+```bash
+PUBLIC_READ_SUPABASE_URL=<url> \
+PUBLIC_READ_PUBLISHABLE_KEY=<publishable-key> \
+PUBLIC_READ_MAX_MS=2500 \
+node --import tsx scripts/check-public-read-health.ts
+```
+
 ## 배포 버전 미리보기
 
 ```bash

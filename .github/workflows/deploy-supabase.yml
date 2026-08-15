@@ -39,6 +39,9 @@ jobs:
       GITHUB_ISSUES_REPOSITORY: ${{ vars.GITHUB_ISSUES_REPOSITORY || 'iamdenny/pingpong-busu' }}
       FEEDBACK_ALLOWED_ORIGINS: ${{ vars.FEEDBACK_ALLOWED_ORIGINS || 'https://busu.iamdenny.com' }}
       RUNTIME_INCIDENT_ALLOWED_ORIGINS: ${{ vars.RUNTIME_INCIDENT_ALLOWED_ORIGINS || 'https://busu.iamdenny.com' }}
+      PUBLIC_READ_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      PUBLIC_READ_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      PUBLIC_READ_MAX_MS: "2500"
       CRAWLER_SOURCE_MIN_INTERVAL_MS: ${{ vars.CRAWLER_SOURCE_MIN_INTERVAL_MS || '2000' }}
     steps:
       - uses: actions/checkout@v4
@@ -66,6 +69,8 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_PROJECT_ID"
           test -n "$FEEDBACK_GITHUB_TOKEN"
+          test -n "$PUBLIC_READ_SUPABASE_URL"
+          test -n "$PUBLIC_READ_PUBLISHABLE_KEY"
       - name: Prepare Edge Function shared modules
         run: pnpm edge:sync
       - name: Link production project
@@ -74,6 +79,8 @@ jobs:
         run: supabase db push --linked --dry-run
       - name: Apply database migrations
         run: supabase db push --linked
+      - name: Verify production public reads
+        run: node --import tsx scripts/check-public-read-health.ts
       - name: Configure Edge Function runtime
         run: >-
           supabase secrets set

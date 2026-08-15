@@ -96,3 +96,7 @@ development 원격 검증은 production 데이터나 자격증명을 복사하�
 - `별칭으로 기록 묶기` dialog의 각 후보에 최근 출전 대회명과 원문 종목명이 보이고, 단일 후보는 유일한 그룹에 기본 배정되며 복수 후보는 자동 배정되지 않는가. 사용자가 탁구 별칭을 직접 입력해 비밀번호 없이 기록을 배정할 수 있는가
 - 출처 조회 중·성공·실패 상태가 개별적으로 갱신되는가
 - 키보드 focus와 semantic heading/table 구조가 유지되는가
+
+## Production 공개 조회 게이트
+
+production 공개 조회 회귀는 `scripts/check-public-read-health.test.ts`와 `tests/production-deploy-order.test.ts`에서 검증한다. 전자는 SEO manifest·선수 검색·상세 API의 오류, 빈 응답, 시간 예산 초과를 fail-closed로 확인하고, 후자는 backend migration과 Pages 배포 순서 및 commit SHA 고정을 확인한다. 실제 backend 배포에서는 같은 스크립트를 migration 직후 production publishable key로 실행한다.
