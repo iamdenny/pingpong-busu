@@ -155,6 +155,8 @@ GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BA
 
 Pages build는 같은 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`로 경량 공개 `public_player_seo_manifest` view만 읽어 선수 SEO 스냅샷을 만든다. workflow의 `SEO_MANIFEST_REQUIRED=true`는 운영 전용 fail-closed 스위치이며 별도 secret이 아니다. 설정 누락, 공개 API 오류, 행 검증 실패, 빈 manifest면 build와 배포를 중단한다. service role/secret key 또는 private table 접근을 이 단계에 추가하지 않는다.
 
+운영 배포는 `CI → Deploy Supabase backend → production public read health → Deploy GitHub Pages` 순서로만 진행한다. backend workflow는 migration 직후 publishable key로 SEO manifest, 선수 검색, 선수 상세를 각각 조회하며 HTTP 오류·빈 결과·5초 timeout 또는 2.5초 성능 예산 초과가 하나라도 있으면 실패한다. Pages workflow는 성공한 backend workflow의 정확한 commit SHA만 checkout하고 같은 SHA로 tag와 Release를 생성한다. 이 게이트를 우회해 Pages를 먼저 수동 배포하지 않는다.
+
 제품 버전은 루트 `package.json`에서만 관리하며 `YYYY.WEEK.SEQ` 형식이다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가한다. 배포 변경을 준비할 때 `pnpm release:bump`를 실행하면 같은 ISO 주에는 순번을 하나 올리고 새 주에는 `0`으로 초기화한다. workspace package와 환경 변수에는 별도 제품 버전을 두지 않으며 web build도 루트 값을 직접 읽는다.
 
 Pages workflow는 lint·typecheck·test·build를 먼저 통과시킨 뒤 `v{version}` 태그와 GitHub Release를 만들고 GitHub 자동 릴리즈 노트를 작성한다. release job이 성공해야 deploy job이 시작된다. 동일 태그가 현재 커밋을 가리키고 Release도 존재하면 재실행을 허용하지만, 다른 커밋을 가리키면 버전 미증가로 판단해 배포를 중단한다. 따라서 모든 배포 PR은 루트 `package.json` 버전 변경을 포함해야 한다.
