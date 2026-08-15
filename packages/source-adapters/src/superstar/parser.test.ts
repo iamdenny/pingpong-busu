@@ -44,7 +44,7 @@ describe("parseSuperstarSearchHtml", () => {
       tournamentName:
         "제2회 두드림스포츠와 함께하는 우리가치 전국오픈 및 용인시관내 탁구대회",
       eventName: "남자단식 지역0~4부",
-      divisionSystem: "integrated",
+      divisionSystem: "regional",
       divisionValue: "3부",
       rankText: "8강",
     });

@@ -405,18 +405,18 @@ describe("division system inference", () => {
     ).toBe("division");
   });
 
-  it("treats local event categories inside an open tournament as integrated", () => {
+  it("treats explicit regional event categories as regional", () => {
     expect(inferEventDivisionSystem("지역", "전국오픈 탁구대회", "3부")).toBe(
-      "integrated",
+      "regional",
     );
     expect(inferEventDivisionSystem("지역남성 5부", "전국오픈 탁구대회")).toBe(
-      "integrated",
+      "regional",
     );
     expect(inferEventDivisionSystem("지역여성6부", "전국오픈 탁구대회")).toBe(
-      "women",
+      "regional",
     );
     expect(inferEventDivisionSystem("지역혼성3/4부", "전국오픈 탁구대회")).toBe(
-      "integrated",
+      "regional",
     );
     expect(
       inferEventDivisionSystem(
@@ -424,10 +424,22 @@ describe("division system inference", () => {
         "제2회 두드림스포츠와 함께하는 우리가치 전국오픈 및 용인시관내 탁구대회",
         "3부",
       ),
-    ).toBe("integrated");
+    ).toBe("regional");
     expect(
       inferEventDivisionSystem("지역0～4부", "전국오픈 탁구대회", "3부"),
-    ).toBe("integrated");
+    ).toBe("regional");
+    expect(
+      inferEventDivisionSystem("지역０～４부", "전국오픈 탁구대회", "3부"),
+    ).toBe("regional");
+    expect(inferEventDivisionSystem("지역a부", "전국오픈 탁구대회")).toBe(
+      "regional",
+    );
+    expect(inferEventDivisionSystem("지역예선", "전국오픈 탁구대회")).toBe(
+      "open",
+    );
+    expect(inferEventDivisionSystem("지역경제부", "전국오픈 탁구대회")).toBe(
+      "open",
+    );
     expect(
       inferEventDivisionSystem(
         "남자 단식",
@@ -438,6 +450,25 @@ describe("division system inference", () => {
     expect(inferEventDivisionSystem("지역혼성 T5", "디비전리그")).toBe(
       "division",
     );
+    expect(
+      inferEventDivisionSystem("지역혼성 T5", "제16회 분당구청장기 탁구대회"),
+    ).toBe("division");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "남자단식 지역0~4부",
+        tournamentName: "전국오픈 탁구대회",
+        tournamentDate: "2026-07-01",
+        tournamentRegion: "경기도 용인시",
+        additionalEvidence: ["3부"],
+      }),
+    ).toBe("regional");
+    expect(
+      inferRecordDivisionSystem({
+        eventName: "지역",
+        tournamentName: "전국오픈 탁구대회",
+        additionalEvidence: ["3부"],
+      }),
+    ).toBe("regional");
   });
 
   it("applies explicit tournament overrides before generic inference", () => {

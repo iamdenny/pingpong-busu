@@ -93,9 +93,9 @@ export function inferDivisionSystem(
     .filter((value): value is string => value !== undefined)
     .join(" ")
     .normalize("NFKC");
+  if (/디비전|(?:^|\s)T[1-7](?=\s|$)/iu.test(text)) return "division";
   const override = findTournamentDivisionOverride(...evidence);
   if (override) return override;
-  if (/디비전|(?:^|\s)T[1-7](?=\s|$)/iu.test(text)) return "division";
   if (/(?:여자|여성)/u.test(text)) return "women";
   if (/오픈/u.test(text)) return "open";
   if (/지역\s*부수/u.test(text)) return "regional";
@@ -104,7 +104,7 @@ export function inferDivisionSystem(
   return "unknown";
 }
 
-function isIntegratedLocalEvent(eventName: string | undefined): boolean {
+function isExplicitRegionalEvent(eventName: string | undefined): boolean {
   if (!eventName) return false;
   const normalized = eventName.normalize("NFKC");
   return /(?:^|[\s([/·,&+-])지역(?:\s*(?:남성|여성|혼성))?(?=\s*(?:(?:\d+(?:\s*[/／~～]\s*\d+)?|[A-Z])\s*부|[\s)\]/·,&+-]|$))/iu.test(
@@ -126,15 +126,19 @@ export function inferEventDivisionSystem(
   eventName: string | undefined,
   ...additionalEvidence: Array<string | undefined>
 ): DivisionSystem {
+  const text = [eventName, ...additionalEvidence]
+    .filter((value): value is string => value !== undefined)
+    .join(" ")
+    .normalize("NFKC");
+  if (/디비전|(?:^|\s)T[1-7](?=\s|$)/iu.test(text)) return "division";
   const override = findTournamentDivisionOverride(
     eventName,
     ...additionalEvidence,
   );
   if (override) return override;
   const inferred = inferDivisionSystem(eventName, ...additionalEvidence);
-  if (inferred === "division") return inferred;
+  if (isExplicitRegionalEvent(eventName)) return "regional";
   if (inferred === "women") return inferred;
-  if (isIntegratedLocalEvent(eventName)) return "integrated";
   return inferred;
 }
 
@@ -146,28 +150,24 @@ export function inferRecordDivisionSystem({
   additionalEvidence = [],
 }: RecordDivisionInference): DivisionSystem {
   const evidence = [eventName, tournamentName, ...additionalEvidence];
-  const override = findTournamentDivisionOverride(...evidence);
-  if (override) return override;
-
   const text = evidence
     .filter((value): value is string => value !== undefined)
     .join(" ")
     .normalize("NFKC");
   if (/디비전|(?:^|\s)T[1-7](?=\s|$)/iu.test(text)) return "division";
+  const override = findTournamentDivisionOverride(...evidence);
+  if (override) return override;
   if (/지역\s*부수/u.test(text)) return "regional";
+  if (isExplicitRegionalEvent(eventName)) return "regional";
 
   const inferred = inferEventDivisionSystem(
     eventName,
     tournamentName,
     ...additionalEvidence,
   );
-  const hasObservedDivision =
-    inferred === "integrated" ||
-    inferred === "women" ||
-    isIntegratedLocalEvent(eventName);
+  const hasObservedDivision = inferred === "integrated" || inferred === "women";
   const explicitlyIntegrated = /통합\s*(?:부수|\d+\s*부)/u.test(text);
-  const explicitlyOpen =
-    /오픈/u.test(text) && !isIntegratedLocalEvent(eventName);
+  const explicitlyOpen = /오픈/u.test(text);
 
   if (
     hasObservedDivision &&
