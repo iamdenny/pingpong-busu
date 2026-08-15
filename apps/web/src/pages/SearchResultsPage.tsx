@@ -664,49 +664,61 @@ export function SearchResultsPage() {
                         <col />
                       </colgroup>
                       <tbody>
-                        {section.groups.map((group) => (
-                          <tr key={group.system}>
-                            <th scope="row">{group.systemLabel}</th>
-                            <td>
-                              <ul className="division-overview__items">
-                                {group.items.map((summary) => (
-                                  <li
-                                    key={`${summary.system}-${summary.division}`}
-                                  >
-                                    <button
-                                      type="button"
-                                      className="division-overview__filter"
-                                      aria-controls="candidate-results"
-                                      aria-pressed={
-                                        selectedDivisionSection?.key ===
-                                          section.key &&
-                                        selectedDivision?.system ===
-                                          summary.system &&
-                                        selectedDivision.division ===
-                                          summary.division
-                                      }
-                                      aria-label={`${showsIdentityDivisionSections ? `${section.label}, ` : ""}${summary.systemLabel} ${summary.division} 입상 ${summary.awardCount}건 참가 ${summary.participationCount}건 결과 보기`}
-                                      onClick={() =>
-                                        selectDivision(section, summary)
-                                      }
+                        {section.groups.flatMap((group) =>
+                          group.rows.map((row, rowIndex) => (
+                            <tr
+                              key={`${group.system}-${row.kind}`}
+                              className={`division-overview__subrow division-overview__subrow--${row.kind}`}
+                            >
+                              {rowIndex === 0 && (
+                                <th scope="row" rowSpan={group.rows.length}>
+                                  {group.systemLabel}
+                                </th>
+                              )}
+                              <td>
+                                <span className="visually-hidden">
+                                  {group.systemLabel} {row.label}
+                                </span>
+                                <ul className="division-overview__items">
+                                  {row.items.map((summary) => (
+                                    <li
+                                      key={`${summary.system}-${summary.division}`}
                                     >
-                                      <strong>{summary.division}</strong>
-                                      <span className="division-overview__counts">
-                                        <span>
-                                          입상 <b>{summary.awardCount}건</b>
+                                      <button
+                                        type="button"
+                                        className="division-overview__filter"
+                                        aria-controls="candidate-results"
+                                        aria-pressed={
+                                          selectedDivisionSection?.key ===
+                                            section.key &&
+                                          selectedDivision?.system ===
+                                            summary.system &&
+                                          selectedDivision.division ===
+                                            summary.division
+                                        }
+                                        aria-label={`${showsIdentityDivisionSections ? `${section.label}, ` : ""}${summary.systemLabel} ${summary.division} 입상 ${summary.awardCount}건 참가 ${summary.participationCount}건 결과 보기`}
+                                        onClick={() =>
+                                          selectDivision(section, summary)
+                                        }
+                                      >
+                                        <strong>{summary.division}</strong>
+                                        <span className="division-overview__counts">
+                                          <span>
+                                            입상 <b>{summary.awardCount}건</b>
+                                          </span>
+                                          <span>
+                                            참가{" "}
+                                            <b>{summary.participationCount}건</b>
+                                          </span>
                                         </span>
-                                        <span>
-                                          참가{" "}
-                                          <b>{summary.participationCount}건</b>
-                                        </span>
-                                      </span>
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            </td>
-                          </tr>
-                        ))}
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </td>
+                            </tr>
+                          )),
+                        )}
                       </tbody>
                     </table>
                   </div>

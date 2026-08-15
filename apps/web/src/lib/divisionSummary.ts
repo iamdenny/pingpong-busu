@@ -18,6 +18,12 @@ export interface DivisionSummaryItem {
 export interface DivisionSummaryGroup {
   system: Exclude<DivisionSystem, "women">;
   systemLabel: string;
+  rows: DivisionSummaryRow[];
+}
+
+export interface DivisionSummaryRow {
+  kind: "general" | "women";
+  label: string;
   items: DivisionSummaryItem[];
 }
 
@@ -230,21 +236,43 @@ export function groupDivisionSummaries(
     const current = groups.get(system);
 
     if (current) {
-      current.items.push(summary);
+      const rowKind = summary.system === "women" ? "women" : "general";
+      const row = current.rows.find((candidate) => candidate.kind === rowKind);
+      if (row) {
+        row.items.push(summary);
+      } else {
+        current.rows.push({
+          kind: rowKind,
+          label: rowKind === "women" ? "여자부수" : "일반부수",
+          items: [summary],
+        });
+      }
       continue;
     }
 
+    const rowKind = summary.system === "women" ? "women" : "general";
     groups.set(system, {
       system,
       systemLabel: divisionSystemLabels[system],
-      items: [summary],
+      rows: [
+        {
+          kind: rowKind,
+          label: rowKind === "women" ? "여자부수" : "일반부수",
+          items: [summary],
+        },
+      ],
     });
   }
 
   for (const group of groups.values()) {
-    group.items.sort((left, right) =>
-      compareDivisions(left.division, right.division),
+    group.rows.sort((left, right) =>
+      left.kind === right.kind ? 0 : left.kind === "general" ? -1 : 1,
     );
+    for (const row of group.rows) {
+      row.items.sort((left, right) =>
+        compareDivisions(left.division, right.division),
+      );
+    }
   }
 
   return [...groups.values()];

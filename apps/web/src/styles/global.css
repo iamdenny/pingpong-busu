@@ -715,6 +715,9 @@ p {
 .division-overview tr + tr > * {
   border-block-start: 1px solid #e5ebf5;
 }
+.division-overview__subrow--women td {
+  background: #fbfdff;
+}
 .division-overview th {
   border-inline-end: 1px solid #e5ebf5;
   background: #f8faff;
