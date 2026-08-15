@@ -19,7 +19,7 @@ const budgetMigration = readFileSync(
 const enableMigration = readFileSync(
   resolve(
     import.meta.dirname,
-    "../supabase/migrations/202608150002_enable_newttplay_source.sql",
+    "../supabase/migrations/202608150004_enable_newttplay_source.sql",
   ),
   "utf8",
 );
