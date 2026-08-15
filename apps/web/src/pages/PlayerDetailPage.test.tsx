@@ -60,9 +60,14 @@ describe("PlayerDetailPage metadata", () => {
       ),
     ).not.toHaveLength(0);
     const tabs = screen.getAllByRole("tab");
+    expect(tabs).toHaveLength(3);
     expect(tabs[0]).toHaveTextContent("입상 이력 (4강 이상)");
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
     expect(tabs[1]).toHaveTextContent("전체 이력");
+    expect(tabs[2]).toHaveTextContent("출처 비교");
+    expect(
+      screen.queryByRole("tab", { name: "대회 부수검증" }),
+    ).not.toBeInTheDocument();
 
     const sourceStatusToggle = screen.getByRole("button", {
       name: "상세 보기",
