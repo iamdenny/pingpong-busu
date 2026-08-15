@@ -100,6 +100,7 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 28. `202608150005_cross_source_result_groups.sql`: 원본 결과를 보존한 교차 출처 동일 결과 표시 그룹과 검색 요약 적용
 29. `202608150006_result_group_query_indexes.sql`: 표시 그룹의 선수 identity·결과 join을 위한 조회 index
 30. `202608150007_restore_result_view_availability.sql`: 전체 window 계산으로 인한 운영 조회 timeout을 막기 위해 결과 그룹을 일시적으로 원본 결과별 단일 그룹으로 복원
+31. `202608150008_public_player_seo_manifest.sql`: Pages 빌드가 필요한 공개 메타데이터만 읽도록 경량 SEO manifest view 제공
 
 배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 전체 migration 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports`, `source_request_diagnostics`, `operational_incident*` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request_with_policy`, `record_source_request_outcome`, `delete_expired_source_request_diagnostics`와 출처 상태 기록 및 참여 편집·문의·운영 오류 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
@@ -152,7 +153,7 @@ token을 회전하거나 누락을 복구할 때는 GitHub `production` environm
 
 GitHub Pages repository variables에는 `VITE_APP_MODE=production`, `VITE_APP_BASE_PATH=/`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SOURCE_REFRESH_ENABLED=true`, `VITE_UMAMI_SCRIPT_URL`, `VITE_UMAMI_WEBSITE_ID`를 설정합니다. 커스텀 도메인은 `https://busu.iamdenny.com/` 루트에서 서비스하므로 asset base도 `/`여야 합니다. source refresh와 Umami 두 값은 브라우저 공개 설정일 뿐이며, 실제 외부 요청 허용 여부는 위의 서버 변수와 DB `sources.enabled`가 함께 결정합니다. Umami DB 연결 문자열·관리자 비밀번호·API token은 Pages 환경에 두지 않습니다.
 
-Pages build는 같은 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`로 공개 `public_player_search` view만 읽어 선수 SEO 스냅샷을 만든다. workflow의 `SEO_MANIFEST_REQUIRED=true`는 운영 전용 fail-closed 스위치이며 별도 secret이 아니다. 설정 누락, 공개 API 오류, 행 검증 실패, 빈 manifest면 build와 배포를 중단한다. service role/secret key 또는 private table 접근을 이 단계에 추가하지 않는다.
+Pages build는 같은 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`로 경량 공개 `public_player_seo_manifest` view만 읽어 선수 SEO 스냅샷을 만든다. workflow의 `SEO_MANIFEST_REQUIRED=true`는 운영 전용 fail-closed 스위치이며 별도 secret이 아니다. 설정 누락, 공개 API 오류, 행 검증 실패, 빈 manifest면 build와 배포를 중단한다. service role/secret key 또는 private table 접근을 이 단계에 추가하지 않는다.
 
 제품 버전은 루트 `package.json`에서만 관리하며 `YYYY.WEEK.SEQ` 형식이다. `SEQ`는 같은 ISO 주 안에서 `0`부터 순서대로 증가한다. 배포 변경을 준비할 때 `pnpm release:bump`를 실행하면 같은 ISO 주에는 순번을 하나 올리고 새 주에는 `0`으로 초기화한다. workspace package와 환경 변수에는 별도 제품 버전을 두지 않으며 web build도 루트 값을 직접 읽는다.
 

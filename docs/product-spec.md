@@ -226,7 +226,7 @@ title: "BUSU 제품 스펙"
 
 hosted production에서 실시간 갱신 UI는 `VITE_SOURCE_REFRESH_ENABLED=true`일 때만 켜진다. hosted development는 별도 Supabase 프로젝트와 합성 seed를 사용하고 실출처 갱신을 켜지 않는다.
 
-production의 검색엔진 공개 목록은 배포 시 `public_player_search`를 publishable key로 끝까지 페이지 조회한 스냅샷이다. 활성 공개 출처가 하나 이상인 유효 선수만 정적 상세 HTML과 sitemap에 포함하며, 새 선수와 변경된 메타데이터는 다음 배포에서 반영한다. 검색 결과 URL은 검색어와 관계없이 canonical `/search`를 사용하고 색인하지 않는다.
+production의 검색엔진 공개 목록은 배포 시 경량 `public_player_seo_manifest`를 publishable key로 끝까지 페이지 조회한 스냅샷이다. 활성 공개 출처가 하나 이상인 유효 선수만 정적 상세 HTML과 sitemap에 포함하며, 새 선수와 변경된 메타데이터는 다음 배포에서 반영한다. 검색 결과 URL은 검색어와 관계없이 canonical `/search`를 사용하고 색인하지 않는다.
 
 운영 제품 분석은 `VITE_UMAMI_SCRIPT_URL`과 `VITE_UMAMI_WEBSITE_ID`가 모두 유효할 때만 셀프 호스트 Umami tracker를 불러온다. 페이지 조회에서는 query string을 제외하고, 검증된 검색어와 최소한의 클릭·완료 이벤트만 [제품 분석 이벤트 사전](./analytics.md)에 따라 전송한다. 설정 누락이나 전송 실패는 사용자 흐름을 중단하지 않는다.
 
