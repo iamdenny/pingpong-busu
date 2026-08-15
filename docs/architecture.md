@@ -109,7 +109,7 @@ Deno Edge 환경은 workspace import를 그대로 배포하지 않는다. `pnpm 
 
 로컬 개발의 기본 asset base는 `/pingpong-busu/`이고, GitHub Pages 커스텀 도메인 `https://busu.iamdenny.com/`의 production build는 `VITE_APP_BASE_PATH=/`를 사용한다. `BrowserRouter`가 `/search`와 `/players/:id` 실제 경로를 처리하고, build가 복사한 일반 `404.html`이 생성되지 않은 경로의 SPA fallback을 맡는다. 이전 `/#/...` URL은 앱 부팅 전에 `history.replaceState`로 실제 경로에 이관한다. desktop과 mobile은 같은 semantic DOM을 유지하되 상세 기록 표현만 table/card로 바꾼다.
 
-정적 `index.html`은 홈 메타데이터를 제공한다. build의 SEO generator는 기존 공개 `public_player_search` view를 publishable key로 페이지 단위 조회하고, 활성 공개 출처가 있는 유효 선수마다 `players/{uuid}/index.html`을 만든다. 각 문서는 초기 HTML부터 선수별 title, description, canonical, Open Graph와 Twitter large image 메타데이터를 가지며 React가 부팅된 뒤에도 공유 metadata builder로 같은 정책을 유지한다. 검색 직접 접근 문서 `search/index.html`과 client metadata는 `noindex,follow`이고 query를 canonical에서 제외한다. `sitemap.xml`에는 홈과 생성된 선수만 들어가며 `robots.txt`가 이를 가리킨다.
+정적 `index.html`은 홈 메타데이터를 제공한다. build의 SEO generator는 검색용 집계와 분리된 경량 공개 `public_player_seo_manifest` view를 publishable key로 페이지 단위 조회하고, 활성 공개 출처가 있는 유효 선수마다 `players/{uuid}/index.html`을 만든다. 각 문서는 초기 HTML부터 선수별 title, description, canonical, Open Graph와 Twitter large image 메타데이터를 가지며 React가 부팅된 뒤에도 공유 metadata builder로 같은 정책을 유지한다. 검색 직접 접근 문서 `search/index.html`과 client metadata는 `noindex,follow`이고 query를 canonical에서 제외한다. `sitemap.xml`에는 홈과 생성된 선수만 들어가며 `robots.txt`가 이를 가리킨다.
 
 이 구조는 상시 SSR이 아니라 배포 스냅샷이다. 새 공개 선수와 변경된 요약은 다음 배포에서 반영된다. 로컬·demo처럼 공개 설정이 없는 선택적 build는 빈 선수 목록으로 기반 산출물을 만들 수 있지만, Pages workflow는 `SEO_MANIFEST_REQUIRED=true`로 설정해 URL/key 누락, HTTP 오류, schema 오류, 빈 manifest를 모두 build 실패로 처리한다. generator는 service role이나 private table을 사용하지 않는다.
 

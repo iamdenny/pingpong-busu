@@ -83,6 +83,9 @@ describe("SEO page generation", () => {
       }),
     ).resolves.toEqual([player]);
     expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(String(fetcher.mock.calls[0]?.[0])).toContain(
+      "/rest/v1/public_player_seo_manifest",
+    );
     expect(String(fetcher.mock.calls[1]?.[0])).toContain(`id=gt.${id}`);
     const invalidFetch = vi
       .fn()

@@ -102,7 +102,7 @@ export async function fetchPublicPlayerManifest(options: {
     if (remainingMs <= 0)
       throw new Error("Public SEO manifest exceeded its time budget.");
     const endpoint = new URL(
-      "/rest/v1/public_player_search",
+      "/rest/v1/public_player_seo_manifest",
       options.supabaseUrl,
     );
     endpoint.searchParams.set(
