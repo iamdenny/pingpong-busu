@@ -3,10 +3,15 @@ import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./app/App";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
+import { initUmamiAnalytics } from "./lib/analytics";
 import { appVersion } from "./lib/appVersion";
 import { runtimeIncidentRepository } from "./lib/runtime";
 import { installRuntimeIncidentListeners } from "./lib/runtime-incident-repository";
 import "./styles/global.css";
+initUmamiAnalytics({
+  scriptUrl: import.meta.env.VITE_UMAMI_SCRIPT_URL,
+  websiteId: import.meta.env.VITE_UMAMI_WEBSITE_ID,
+});
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 60_000, retry: 1 } },
 });

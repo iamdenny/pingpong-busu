@@ -1,5 +1,6 @@
 import { ExternalLink, MessageCircle, X } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
+import { trackAnalyticsEvent } from "../lib/analytics";
 import type {
   FeedbackCategory,
   FeedbackRepository,
@@ -141,6 +142,7 @@ export function FeedbackDialog({
       if (requestGeneration !== requestGenerationRef.current) return;
       setIssueUrl(result.issueUrl);
       setState("success");
+      trackAnalyticsEvent("feedback_submitted", { category });
       resetSubmissionId();
     } catch (error) {
       if (requestGeneration !== requestGenerationRef.current) return;

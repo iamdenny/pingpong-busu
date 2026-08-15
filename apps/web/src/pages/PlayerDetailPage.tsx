@@ -15,6 +15,7 @@ import {
 import { PageMetadata } from "../components/PageMetadata";
 import { RefreshStatus } from "../components/RefreshStatus";
 import { SourceComparison } from "../components/SourceComparison";
+import { trackAnalyticsEvent } from "../lib/analytics";
 import { playerRepository } from "../lib/runtime";
 import { useCalmEntry } from "../lib/motion";
 
@@ -208,7 +209,14 @@ export function PlayerDetailPage() {
             key={key}
             aria-selected={tab === key}
             role="tab"
-            onClick={() => setTab(key)}
+            onClick={() => {
+              if (key === tab) return;
+              setTab(key);
+              trackAnalyticsEvent("player_detail_tab_selected", {
+                player_id: player.id,
+                detail_tab: key,
+              });
+            }}
           >
             {label}
           </button>
@@ -275,6 +283,12 @@ export function PlayerDetailPage() {
                             href={record.sourceUrl}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={() =>
+                              trackAnalyticsEvent("player_source_clicked", {
+                                player_id: player.id,
+                                source_code: record.sourceCode,
+                              })
+                            }
                           >
                             {record.sourceName}
                             <ExternalLink size={14} />
@@ -310,7 +324,17 @@ export function PlayerDetailPage() {
                         <dd>{record.rank ?? "-"}</dd>
                       </div>
                     </dl>
-                    <a href={record.sourceUrl} target="_blank" rel="noreferrer">
+                    <a
+                      href={record.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() =>
+                        trackAnalyticsEvent("player_source_clicked", {
+                          player_id: player.id,
+                          source_code: record.sourceCode,
+                        })
+                      }
+                    >
                       {record.sourceName} 원문 <ExternalLink size={14} />
                     </a>
                   </article>
