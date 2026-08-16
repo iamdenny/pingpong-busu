@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  formatIpingBrowserWorkerFailure,
   IpingBrowserWorkerError,
   resolveIpingBrowserExecutable,
   runIpingBrowserWorker,
@@ -21,6 +22,22 @@ describe("iPing browser executable", () => {
     expect(
       resolveIpingBrowserExecutable({ IPING_BROWSER_EXECUTABLE: "   " }),
     ).toBeUndefined();
+  });
+});
+
+describe("iPing browser failure diagnostics", () => {
+  it("logs only allowlisted failure code and phase", () => {
+    expect(
+      formatIpingBrowserWorkerFailure(
+        new IpingBrowserWorkerError({
+          code: "source_request_failed",
+          phase: "entry_search",
+        }),
+      ),
+    ).toBe("source_request_failed:entry_search");
+    expect(formatIpingBrowserWorkerFailure(new Error("credential=value"))).toBe(
+      "worker_failed",
+    );
   });
 });
 
