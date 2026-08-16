@@ -3,13 +3,22 @@ import { pathToFileURL } from "node:url";
 import { chromium, type Browser } from "@playwright/test";
 
 import { encodeIpingForm } from "../packages/source-adapters/src/iping/encoding";
-import { classifyIpingSessionHtml } from "../packages/source-adapters/src/iping/session";
+import {
+  classifyIpingSessionHtml,
+  IPING_BROWSER_USER_AGENT,
+} from "../packages/source-adapters/src/iping/session";
 
 const ipingBaseUrl = "https://www.iping.club/";
 const ipingOrigin = new URL(ipingBaseUrl).origin;
 const navigationTimeoutMs = 20_000;
 const maximumHtmlBytes = 1_500_000;
 const maximumPayloadBytes = 4_000_000;
+
+export const ipingBrowserContextOptions = {
+  locale: "ko-KR",
+  timezoneId: "Asia/Seoul",
+  userAgent: IPING_BROWSER_USER_AGENT,
+} as const;
 
 export type IpingBrowserWorkerMode = "drain-iping" | "recover-iping";
 
@@ -390,10 +399,7 @@ class PlaywrightIpingBrowserCollector implements IpingBrowserCollector {
   ): Promise<IpingBrowserPages> {
     const browser = await launchChrome();
     try {
-      const context = await browser.newContext({
-        locale: "ko-KR",
-        timezoneId: "Asia/Seoul",
-      });
+      const context = await browser.newContext(ipingBrowserContextOptions);
       const page = await context.newPage();
       page.setDefaultNavigationTimeout(navigationTimeoutMs);
 

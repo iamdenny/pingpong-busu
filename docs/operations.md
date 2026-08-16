@@ -139,6 +139,8 @@ GitHub의 `production` environment에 아래 값을 설정합니다.
 
 token을 회전하거나 누락을 복구할 때는 GitHub `production` environment의 `FEEDBACK_GITHUB_TOKEN`을 새 최소권한 값으로 갱신한 뒤 실패한 [Deploy Supabase backend](../.github/workflows/deploy-supabase.yml)를 다시 실행합니다. 검증과 token 설정 단계가 성공하고 Edge Function 배포까지 완료됐는지 확인합니다. 실제 문의 제출 검증은 자격증명 등록과 배포가 확인된 뒤 별도 승인된 합성 요청으로 수행하며, 그 전에는 production 복구를 완료로 판단하지 않습니다.
 
+아이핑 production worker는 system Chromium의 `HeadlessChrome` 기본 식별자를 그대로 보내지 않고 source adapter와 동일한 iPing 전용 일반 Chrome user-agent를 Playwright context에 설정합니다. 이는 로컬 Chrome과 production Chromium의 요청 프로필을 일치시키기 위한 설정이며, CAPTCHA·MFA·사람 확인 화면은 계속 `source_blocked` terminal 실패로 처리하고 우회하지 않습니다. 로그인 실패 시 자격증명, 쿠키, HTML, user-agent 원문을 로그에 출력하지 않고 allowlist된 오류 코드와 단계만 확인합니다.
+
 `submit-feedback`이 `503 server_not_configured`를 반환하면 Edge 런타임의 GitHub token 또는 대상 저장소 설정이 누락된 상태입니다. GitHub `production` environment에 `FEEDBACK_GITHUB_TOKEN`과 `GITHUB_ISSUES_REPOSITORY`가 설정됐는지 확인하고 workflow를 다시 실행합니다. token 원문을 출력하거나 브라우저에서 확인하지 말고 Actions 단계 성공 여부와 비민감 오류 코드만 조사합니다.
 
 ## 운영 오류 자동 Issue
