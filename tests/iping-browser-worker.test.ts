@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   formatIpingBrowserWorkerFailure,
   IpingBrowserWorkerError,
+  readIpingPageContent,
   resolveIpingBrowserExecutable,
   runIpingBrowserWorker,
   type ClaimedIpingBrowserJob,
@@ -38,6 +39,38 @@ describe("iPing browser failure diagnostics", () => {
     expect(formatIpingBrowserWorkerFailure(new Error("credential=value"))).toBe(
       "worker_failed",
     );
+  });
+});
+
+describe("iPing login verification", () => {
+  it("retries the HTML read once after a navigation race settles", async () => {
+    const content = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new Error("page is navigating"))
+      .mockResolvedValueOnce('<a href="/?pg=logout">로그아웃</a>');
+    const waitForLoadState = vi.fn(async () => undefined);
+
+    await expect(
+      readIpingPageContent({ content, waitForLoadState }),
+    ).resolves.toContain("로그아웃");
+
+    expect(waitForLoadState).toHaveBeenCalledOnce();
+    expect(waitForLoadState).toHaveBeenCalledWith("domcontentloaded");
+    expect(content).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not keep retrying when the settled page is still unreadable", async () => {
+    const content = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValue(new Error("page closed"));
+
+    await expect(
+      readIpingPageContent({
+        content,
+        waitForLoadState: vi.fn(async () => undefined),
+      }),
+    ).rejects.toThrow("page closed");
+    expect(content).toHaveBeenCalledTimes(2);
   });
 });
 

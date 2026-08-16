@@ -469,7 +469,7 @@ class PlaywrightIpingBrowserCollector implements IpingBrowserCollector {
         );
 
         phase = "login_verify";
-        const verificationHtml = await page.content();
+        const verificationHtml = await readIpingPageContent(page);
         assertHtmlSize(verificationHtml, phase);
         assertSession(verificationHtml, phase, true);
 
@@ -530,6 +530,22 @@ class PlaywrightIpingBrowserCollector implements IpingBrowserCollector {
     } finally {
       await browser.close();
     }
+  }
+}
+
+interface IpingHtmlPage {
+  content(): Promise<string>;
+  waitForLoadState(state: "domcontentloaded"): Promise<void>;
+}
+
+export async function readIpingPageContent(
+  page: IpingHtmlPage,
+): Promise<string> {
+  try {
+    return await page.content();
+  } catch {
+    await page.waitForLoadState("domcontentloaded");
+    return page.content();
   }
 }
 
