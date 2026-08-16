@@ -26,9 +26,15 @@ describe("scheduled iPing worker workflow", () => {
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("actions/checkout@v4");
     expect(workflow).toContain("pnpm install --frozen-lockfile");
-    expect(workflow).toContain("command -v google-chrome");
+    expect(workflow).toContain("runs-on: [self-hosted, Linux, ARM64, iping]");
+    expect(workflow).toContain("IPING_BROWSER_EXECUTABLE: /usr/bin/chromium");
+    expect(workflow).toContain('test "$RUNNER_OS" = "Linux"');
+    expect(workflow).toContain('test -x "$IPING_BROWSER_EXECUTABLE"');
     expect(workflow).toContain("pnpm iping:worker --mode drain-iping");
     expect(workflow).not.toContain("curl");
+
+    const workerJob = workflow.slice(workflow.indexOf("  drain:"));
+    expect(workerJob).not.toContain("runs-on: ubuntu-latest");
   });
 
   it("allows an explicit manual recovery without changing the scheduled drain", () => {

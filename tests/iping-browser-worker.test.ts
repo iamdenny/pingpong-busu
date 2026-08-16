@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   IpingBrowserWorkerError,
+  resolveIpingBrowserExecutable,
   runIpingBrowserWorker,
   type ClaimedIpingBrowserJob,
   type IpingBrowserCollector,
@@ -9,6 +10,19 @@ import {
   type IpingBrowserPages,
   type IpingBrowserWorkerApi,
 } from "../scripts/iping-browser-worker";
+
+describe("iPing browser executable", () => {
+  it("uses an explicitly configured system browser without accepting blanks", () => {
+    expect(
+      resolveIpingBrowserExecutable({
+        IPING_BROWSER_EXECUTABLE: " /usr/bin/chromium ",
+      }),
+    ).toBe("/usr/bin/chromium");
+    expect(
+      resolveIpingBrowserExecutable({ IPING_BROWSER_EXECUTABLE: "   " }),
+    ).toBeUndefined();
+  });
+});
 
 const job: ClaimedIpingBrowserJob = {
   id: 104,

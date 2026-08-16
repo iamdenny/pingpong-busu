@@ -56,7 +56,7 @@ pnpm test:e2e
 
 `VITE_SUPABASE_URL` 또는 `VITE_SUPABASE_PUBLISHABLE_KEY`가 없거나 `VITE_APP_MODE=demo`이면 자동으로 demo repository를 사용합니다. 기존 프로젝트의 `VITE_SUPABASE_ANON_KEY`도 호환합니다. 화면 상단에 가상 데이터임을 표시합니다. 모든 인물과 대회는 합성 데이터입니다.
 
-로컬 전용 middleware를 사용할 때는 `.env.local`에서 `VITE_DEV_LIVE_SEARCH=true`, `CRAWL_LIVE=true`, `CRAWLER_SOURCE_ASTREE_ENABLED=true`를 함께 설정합니다. 배포된 Supabase Edge Function에서 활성 출처를 조회할 때는 `VITE_DEV_LIVE_SEARCH=false`, `VITE_SOURCE_REFRESH_ENABLED=true`로 설정하고 서버에 출처별 플래그를 둡니다. 용인탁구협회 다음 카페는 서버의 `KAKAO_REST_API_KEY`가 필요합니다. 운영 아이핑의 `IPING_USERNAME`과 `IPING_PASSWORD`는 GitHub `production` environment에서 main 예약 Playwright worker에만 주입합니다. 사용자 브라우저가 외부 출처를 직접 호출하지 않으며 service key, 외부 API key, 로그인 자격증명도 받지 않습니다. 동일 이름은 소속별 후보로 분리하고 자동 병합하지 않습니다. `.env.local`은 배포에 포함되지 않습니다.
+로컬 전용 middleware를 사용할 때는 `.env.local`에서 `VITE_DEV_LIVE_SEARCH=true`, `CRAWL_LIVE=true`, `CRAWLER_SOURCE_ASTREE_ENABLED=true`를 함께 설정합니다. 배포된 Supabase Edge Function에서 활성 출처를 조회할 때는 `VITE_DEV_LIVE_SEARCH=false`, `VITE_SOURCE_REFRESH_ENABLED=true`로 설정하고 서버에 출처별 플래그를 둡니다. 용인탁구협회 다음 카페는 서버의 `KAKAO_REST_API_KEY`가 필요합니다. 운영 아이핑의 `IPING_USERNAME`과 `IPING_PASSWORD`는 GitHub `production` environment에서 main 예약 Playwright worker에만 주입합니다. iPing이 GitHub 데이터센터 로그인을 거부하므로 이 worker만 `self-hosted`, `Linux`, `ARM64`, `iping` 라벨의 저장소 전용 격리 Docker 러너에서 system Chromium으로 실행하며 일반 CI와 배포는 GitHub-hosted 러너를 유지합니다. 컨테이너에는 host directory나 Docker socket을 mount하지 않습니다. 사용자 브라우저가 외부 출처를 직접 호출하지 않으며 service key, 외부 API key, 로그인 자격증명도 받지 않습니다. 동일 이름은 소속별 후보로 분리하고 자동 병합하지 않습니다. `.env.local`은 배포에 포함되지 않습니다.
 
 ## Supabase 설정
 
