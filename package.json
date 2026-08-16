@@ -1,6 +1,6 @@
 {
   "name": "pingpong-busu",
-  "version": "2026.33.74",
+  "version": "2026.33.75",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.17.0",

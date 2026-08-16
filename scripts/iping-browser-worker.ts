@@ -346,7 +346,29 @@ function assertHtmlSize(html: string, phase: IpingBrowserPhase): void {
   }
 }
 
+export function resolveIpingBrowserExecutable(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): string | undefined {
+  const executablePath = environment.IPING_BROWSER_EXECUTABLE?.trim();
+  return executablePath || undefined;
+}
+
 async function launchChrome(): Promise<Browser> {
+  const executablePath = resolveIpingBrowserExecutable();
+  if (executablePath) {
+    try {
+      return await chromium.launch({
+        executablePath,
+        headless: true,
+        chromiumSandbox: false,
+      });
+    } catch {
+      throw new IpingBrowserWorkerError({
+        code: "source_not_configured",
+        phase: "login_page",
+      });
+    }
+  }
   try {
     return await chromium.launch({ channel: "chrome", headless: true });
   } catch {

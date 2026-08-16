@@ -38,7 +38,7 @@ jobs:
   drain:
     needs: branch-guard
     if: needs.branch-guard.result == 'success' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, iping]
     timeout-minutes: 8
     environment: production
     env:
@@ -46,6 +46,7 @@ jobs:
       REFRESH_WORKER_TOKEN: ${{ secrets.REFRESH_WORKER_TOKEN }}
       IPING_USERNAME: ${{ secrets.IPING_USERNAME }}
       IPING_PASSWORD: ${{ secrets.IPING_PASSWORD }}
+      IPING_BROWSER_EXECUTABLE: /usr/bin/chromium
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,7 +69,8 @@ jobs:
           case "$REFRESH_WORKER_TOKEN" in
             *[!0-9a-fA-F]*) exit 1 ;;
           esac
-          command -v google-chrome
+          test "$RUNNER_OS" = "Linux"
+          test -x "$IPING_BROWSER_EXECUTABLE"
       - name: Drain one scheduled iPing refresh job
         if: github.event_name == 'schedule'
         run: pnpm iping:worker --mode drain-iping
