@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   formatIpingBrowserWorkerFailure,
+  ipingBrowserContextOptions,
   IpingBrowserWorkerError,
   readIpingPageContent,
   resolveIpingBrowserExecutable,
@@ -12,6 +13,7 @@ import {
   type IpingBrowserPages,
   type IpingBrowserWorkerApi,
 } from "../scripts/iping-browser-worker";
+import { IPING_BROWSER_USER_AGENT } from "../packages/source-adapters/src/iping/session";
 
 describe("iPing browser executable", () => {
   it("uses an explicitly configured system browser without accepting blanks", () => {
@@ -23,6 +25,17 @@ describe("iPing browser executable", () => {
     expect(
       resolveIpingBrowserExecutable({ IPING_BROWSER_EXECUTABLE: "   " }),
     ).toBeUndefined();
+  });
+
+  it("uses the browser-compatible iPing profile in production Chromium", () => {
+    expect(ipingBrowserContextOptions).toEqual({
+      locale: "ko-KR",
+      timezoneId: "Asia/Seoul",
+      userAgent: IPING_BROWSER_USER_AGENT,
+    });
+    expect(ipingBrowserContextOptions.userAgent).not.toContain(
+      "HeadlessChrome",
+    );
   });
 });
 
