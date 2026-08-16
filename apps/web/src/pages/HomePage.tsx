@@ -14,9 +14,9 @@ import {
 import { playerRepository } from "../lib/runtime";
 import { useCalmEntry } from "../lib/motion";
 
-const homeTitle = "BUSU · 탁구 선수 부수·입상 기록 통합검색";
+const homeTitle = "탁구 부수 검색·대회 기록 조회 | BUSU";
 const homeDescription =
-  "여러 탁구 대회 사이트의 선수 부수, 출전·입상 기록과 원문 출처를 한곳에서 검색하고 비교하세요.";
+  "탁구 부수 검색과 선수별 대회 기록 조회를 한곳에서. BUSU에서 공개 대회의 관측 부수, 소속, 출전·입상 기록과 원문 출처를 확인하세요.";
 const exampleQueries = ["김탁구", "이라켓", "김탁구 용인"] as const;
 
 const statusText = (
@@ -60,15 +60,15 @@ export function HomePage() {
     <div className="home-page">
       <PageMetadata title={homeTitle} description={homeDescription} />
       <section className="hero" ref={heroRef}>
-        <p className="eyebrow motion-entry">탁구 기록, 근거부터 확인하세요</p>
+        <p className="eyebrow motion-entry">BUSU 탁구 부수 검색</p>
         <h1 className="motion-entry">
           전국 탁구 선수
           <br />
           <span>부수·입상 통합조회</span>
         </h1>
         <p className="hero__description motion-entry">
-          여러 대회 사이트의 저장된 기록을 먼저 보고, 출처별 차이와 마지막 확인
-          시각을 함께 비교합니다.
+          탁구부수와 선수별 대회 기록을 검색하세요. 여러 대회 사이트의 저장된
+          기록을 먼저 보고, 출처별 차이와 마지막 확인 시각을 함께 비교합니다.
         </p>
         <div className="motion-entry">
           <SearchForm

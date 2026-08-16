@@ -19,6 +19,24 @@ function SearchQueryProbe() {
 }
 
 describe("HomePage", () => {
+  it("presents the primary table-tennis division search terms", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <HomePage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByText("BUSU 탁구 부수 검색")).toBeInTheDocument();
+    expect(
+      screen.getByText(/탁구부수와 선수별 대회 기록/u),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.title).toBe("탁구 부수 검색·대회 기록 조회 | BUSU"),
+    );
+  });
+
   beforeEach(() => {
     window.localStorage.clear();
   });
@@ -32,11 +50,11 @@ describe("HomePage", () => {
       </QueryClientProvider>,
     );
     await waitFor(() =>
-      expect(document.title).toBe("BUSU · 탁구 선수 부수·입상 기록 통합검색"),
+      expect(document.title).toBe("탁구 부수 검색·대회 기록 조회 | BUSU"),
     );
     expect(
       document.head.querySelector('meta[property="og:title"]'),
-    ).toHaveAttribute("content", "BUSU · 탁구 선수 부수·입상 기록 통합검색");
+    ).toHaveAttribute("content", "탁구 부수 검색·대회 기록 조회 | BUSU");
     expect(
       document.head.querySelector('link[rel="canonical"]'),
     ).toHaveAttribute("href", "https://busu.iamdenny.com/");

@@ -216,4 +216,22 @@ describe("SEO page generation", () => {
     );
     expect(html.match(/name="description"/gu)).toHaveLength(1);
   });
+
+  it("preserves the site structured data in generated route documents", async () => {
+    const directory = join(tmpdir(), `busu-seo-${crypto.randomUUID()}`);
+    await mkdir(directory, { recursive: true });
+    await writeFile(
+      join(directory, "index.html"),
+      `${template.replace("</head>", '<script type="application/ld+json">{"@type":"WebSite"}</script></head>')}`,
+    );
+
+    await generateSeoPages({ outputDirectory: directory, players: [player] });
+
+    const html = await readFile(
+      join(directory, "players", id, "index.html"),
+      "utf8",
+    );
+    expect(html).toContain('type="application/ld+json"');
+    expect(html).toContain('{"@type":"WebSite"}');
+  });
 });
