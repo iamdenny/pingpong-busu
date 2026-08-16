@@ -3,6 +3,7 @@ import { Database, ScanSearch, Users } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CollapsibleContent } from "../components/CollapsibleContent";
+import { HeroRallyScene } from "../components/HeroRallyScene";
 import { PageMetadata } from "../components/PageMetadata";
 import { SearchForm } from "../components/SearchForm";
 import { trackAnalyticsEvent } from "../lib/analytics";
@@ -60,56 +61,58 @@ export function HomePage() {
     <div className="home-page">
       <PageMetadata title={homeTitle} description={homeDescription} />
       <section className="hero" ref={heroRef}>
-        <p className="eyebrow motion-entry">BUSU 탁구 부수 검색</p>
-        <h1 className="motion-entry">
-          전국 탁구 선수
-          <br />
-          <span>부수·입상 통합조회</span>
-        </h1>
-        <p className="hero__description motion-entry">
-          탁구부수와 선수별 대회 기록을 검색하세요. 여러 대회 사이트의 저장된
-          기록을 먼저 보고, 출처별 차이와 마지막 확인 시각을 함께 비교합니다.
-        </p>
-        <div className="motion-entry">
-          <SearchForm
-            onSearch={(query) =>
-              navigate(`/search?q=${encodeURIComponent(query)}`, {
-                viewTransition: true,
-              })
-            }
-          />
+        <div className="hero__content">
+          <h1 className="motion-entry">
+            전국 탁구 선수 <span>부수·입상 통합조회</span>
+          </h1>
         </div>
-        <div className="examples">
-          예시 검색어:{" "}
-          {exampleQueries.map((query) => (
-            <button key={query} type="button" onClick={() => openSearch(query)}>
-              {query}
-            </button>
-          ))}
-        </div>
-        {recentSearches.length > 0 && (
-          <section
-            className="recent-searches"
-            aria-labelledby="recent-searches-title"
-          >
-            <div className="recent-searches__header">
-              <h2 id="recent-searches-title">최근 검색어</h2>
-              <button type="button" onClick={clearSearchHistory}>
-                전체 삭제
+        <HeroRallyScene />
+        <div className="hero__actions">
+          <div className="motion-entry">
+            <SearchForm
+              onSearch={(query) =>
+                navigate(`/search?q=${encodeURIComponent(query)}`, {
+                  viewTransition: true,
+                })
+              }
+            />
+          </div>
+          <div className="examples">
+            예시 검색어:{" "}
+            {exampleQueries.map((query) => (
+              <button
+                key={query}
+                type="button"
+                onClick={() => openSearch(query)}
+              >
+                {query}
               </button>
-            </div>
-            <ul role="list">
-              {recentSearches.map((query) => (
-                <li key={query}>
-                  <button type="button" onClick={() => openSearch(query)}>
-                    {query}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <p>최근 10개를 이 브라우저에만 저장합니다.</p>
-          </section>
-        )}
+            ))}
+          </div>
+          {recentSearches.length > 0 && (
+            <section
+              className="recent-searches"
+              aria-labelledby="recent-searches-title"
+            >
+              <div className="recent-searches__header">
+                <h2 id="recent-searches-title">최근 검색어</h2>
+                <button type="button" onClick={clearSearchHistory}>
+                  전체 삭제
+                </button>
+              </div>
+              <ul role="list">
+                {recentSearches.map((query) => (
+                  <li key={query}>
+                    <button type="button" onClick={() => openSearch(query)}>
+                      {query}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p>최근 10개를 이 브라우저에만 저장합니다.</p>
+            </section>
+          )}
+        </div>
       </section>
       {sources.data && (
         <section className="source-overview">
@@ -174,6 +177,10 @@ export function HomePage() {
           </CollapsibleContent>
         </section>
       )}
+      <p className="home-intro">
+        탁구부수와 선수별 대회 기록을 검색하세요. 여러 대회 사이트의 저장된
+        기록을 먼저 보고, 출처별 차이와 마지막 확인 시각을 함께 비교합니다.
+      </p>
       <section className="benefits" aria-label="서비스 특징">
         <article>
           <Database />

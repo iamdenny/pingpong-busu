@@ -10,6 +10,7 @@ BUSU는 기록 근거를 빠르게 비교하는 차분하고 신뢰감 있는 �
 - 진입 효과는 opacity와 최대 8px 수직 이동만 사용한다. 후보·탭 전환은 240ms 안에 끝내고 후보 stagger는 여섯 번째 항목에서 상한을 둔다.
 - 라우트 이동은 React Router view transition을 점진적 향상으로 사용하고 root crossfade만 허용한다. 비동기 상세 데이터와 카드 사이의 가짜 shared-element morph는 만들지 않는다.
 - `prefers-reduced-motion: reduce`에서는 transform, stagger, source pulse, smooth scroll, view-transition animation을 제거한다.
+- 홈의 Three.js 탁구 랠리는 한 줄 제목과 검색 영역 사이의 독립된 히어로 비주얼 스테이지로 사용하고 접근성 트리에서는 제외한다. 라켓면 각도는 임팩트 기준 드라이브 +20도(닫힘), 커트 −20도(열림)이며 백스윙에서는 55%까지 세워졌다가 임팩트에서 목표 각도에 도달한다. 두 선수의 리그는 Y축 90도로 이미 미러링되어 있으므로 각도 부호는 좌우 공통으로 둔다. 마우스 드래그와 한 손가락 터치는 가상 트랙볼로 라켓·공·네트를 포함한 랠리 월드만 3축 회전하고 바닥과 조명은 고정한다. 상판 법선이 카메라 반대편으로 넘어가는 회전은 막아 테이블 밑면을 노출하지 않는다. 포인터가 움직이는 중에 놓으면 마지막 회전축과 각속도를 이어받아 지수 감쇠(friction 2.4/s, 상한 7.5rad/s)로 관성 회전하고, 놓기 전 90ms 이상 멈춰 있었으면 관성을 주지 않는다. 관성 회전도 같은 밑면 노출 제한을 적용해 걸리면 즉시 멈춘다. 회전이 멎은 뒤 5초가 지나면 1.1초 easing으로 기본 쿼터니언에 복귀한다. 드래그하지 않을 때의 포인터 시차는 지연 보간하며 터치에서는 적용하지 않고, 모션 줄이기 환경에서는 자동 랠리를 멈추되 사용자가 직접 회전한 정지 장면은 즉시 렌더링하고 복귀는 즉시 적용한다. WebGL을 사용할 수 없거나 장면 로드가 실패해도 제목과 검색 기능은 그대로 제공한다.
 - `별칭으로 기록 묶기` dialog는 검색 후보가 한 건 이상이면 제공하고, desktop에서 중앙 리프트(18px, scale 0.96), 700px 이하에서 bottom sheet로 연다. 닫기 효과가 끝날 때까지 native dialog top layer를 유지하고 reduced motion에서는 즉시 닫는다.
 - 접기·펼치기 영역은 `CollapsibleContent`를 재사용한다. 트리거는 native `button`과 `aria-controls`·`aria-expanded`를 사용하고, 내용은 `grid-template-rows: 0fr → 1fr`와 opacity를 240ms 이내에 전환한다. 닫힌 내용에는 `aria-hidden`과 `inert`를 함께 적용하며 `prefers-reduced-motion: reduce`에서는 즉시 전환한다. 페이지별 `details` 또는 임의의 `max-height` 효과를 새로 만들지 않는다.
 
