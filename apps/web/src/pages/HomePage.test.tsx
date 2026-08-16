@@ -28,10 +28,23 @@ describe("HomePage", () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByText("BUSU 탁구 부수 검색")).toBeInTheDocument();
+    expect(document.querySelector(".hero .eyebrow")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1 }).querySelector("br"),
+    ).toBeNull();
     expect(
       screen.getByText(/탁구부수와 선수별 대회 기록/u),
     ).toBeInTheDocument();
+    expect(
+      document.querySelector(".hero .hero__description"),
+    ).not.toBeInTheDocument();
+    expect(document.querySelector(".home-intro")).toHaveTextContent(
+      /탁구부수와 선수별 대회 기록/u,
+    );
+    expect(document.querySelector(".hero-rally-scene")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
     await waitFor(() =>
       expect(document.title).toBe("탁구 부수 검색·대회 기록 조회 | BUSU"),
     );

@@ -5,7 +5,15 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/coverage/**', 'supabase/functions/**', 'eslint.config.js'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      'supabase/functions/**',
+      '.claude/worktrees/**',
+      'eslint.config.js',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {

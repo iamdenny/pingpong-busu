@@ -308,9 +308,47 @@ footer strong {
   padding: 1.5rem 1.25rem;
 }
 .hero {
-  max-width: 800px;
-  margin: 3.5rem auto 5rem;
+  position: relative;
+  isolation: isolate;
+  max-width: 1120px;
+  margin: -1.25rem auto 4rem;
+  padding: 0 0 1.5rem;
   text-align: center;
+}
+.hero__content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  margin: auto;
+}
+.hero-rally-scene {
+  position: relative;
+  width: min(960px, 100%);
+  height: 300px;
+  margin: 0.35rem auto 0;
+  overflow: hidden;
+  border-radius: 28px;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  opacity: 0;
+  filter: saturate(0.96) contrast(0.98);
+  transition: opacity 360ms ease;
+}
+.hero-rally-scene[data-ready="true"] {
+  opacity: 0.96;
+}
+.hero-rally-scene[data-unavailable="true"] {
+  display: none;
+}
+.hero-rally-scene[data-dragging="true"] {
+  cursor: grabbing;
+}
+.hero-rally-scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .eyebrow {
   color: var(--primary);
@@ -327,19 +365,20 @@ p {
   overflow-wrap: break-word;
 }
 .hero h1 {
-  font-size: clamp(2.35rem, 8vw, 4.5rem);
-  letter-spacing: -0.055em;
+  font-size: clamp(1.55rem, 5vw, 3.8rem);
+  letter-spacing: -0.065em;
   line-height: 1.08;
-  margin: 0.5rem 0 1.25rem;
+  margin: 0.25rem 0 0;
+  white-space: nowrap;
 }
 .hero h1 span {
   color: var(--primary);
 }
-.hero__description {
-  color: var(--muted);
-  font-size: clamp(1rem, 2vw, 1.15rem);
-  max-width: 650px;
-  margin: 0 auto 2.2rem;
+.hero__actions {
+  position: relative;
+  z-index: 1;
+  width: min(800px, 100%);
+  margin: 0.75rem auto 0;
 }
 .search-form {
   max-width: 760px;
@@ -563,6 +602,15 @@ p {
 .source-state--manual {
   border-radius: 3px;
   background: var(--warning);
+}
+.home-intro {
+  max-width: 760px;
+  margin: 1.4rem auto 1.8rem;
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.7;
+  text-align: center;
+  text-wrap: balance;
 }
 .benefits {
   display: grid;
@@ -2353,10 +2401,32 @@ p {
     padding: 1rem;
   }
   .hero {
-    margin: 2.3rem auto 3.5rem;
+    margin: -1.75rem auto 3rem;
+    padding: 0 0 1.25rem;
+  }
+  .hero-rally-scene[data-ready="true"] {
+    opacity: 1;
+  }
+  .hero-rally-scene {
+    width: calc(100% + 0.5rem);
+    height: 200px;
+    margin: 0.25rem -0.25rem 0;
+    border-radius: 20px;
   }
   .hero h1 {
-    font-size: 2.55rem;
+    font-size: clamp(1.18rem, 5.35vw, 1.55rem);
+    letter-spacing: -0.07em;
+  }
+  .hero__actions {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  .home-intro {
+    margin: 1.25rem 0.25rem 1.5rem;
+    font-size: 0.9rem;
+    line-height: 1.65;
+    text-align: start;
+    text-wrap: pretty;
   }
   .search-form__row {
     padding-left: 0.8rem;
@@ -2627,6 +2697,9 @@ p {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .hero-rally-scene[data-ready="true"] {
+    opacity: 0.9;
+  }
   .source-refresh-progress[data-refreshing="true"]::before,
   .source-refresh-progress__meter-fill {
     animation: none !important;
