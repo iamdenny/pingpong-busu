@@ -12,22 +12,23 @@ const deploymentWorkflow = readFileSync(
 );
 
 describe("scheduled iPing worker workflow", () => {
-  it("runs only the bounded main-branch drain request every ten minutes", () => {
+  it("runs one bounded browser worker on main every ten minutes", () => {
     const workflow = readFileSync(scheduledWorkflowPath, "utf8");
 
     expect(workflow).toContain('cron: "*/10 * * * *"');
-    expect(workflow).toContain(
-      'run: test "$GITHUB_REF" = "refs/heads/main"',
-    );
+    expect(workflow).toContain('run: test "$GITHUB_REF" = "refs/heads/main"');
     expect(workflow).toContain("needs: branch-guard");
     expect(workflow).toContain(
       "if: needs.branch-guard.result == 'success' && github.ref == 'refs/heads/main'",
     );
     expect(workflow).toContain("group: iping-refresh-worker");
     expect(workflow).toContain("cancel-in-progress: false");
-    expect(workflow).toContain("--max-time 60");
-    expect(workflow).toContain("--fail");
-    expect(workflow).toContain(`--data '{"mode":"drain-iping"}'`);
+    expect(workflow).toContain("environment: production");
+    expect(workflow).toContain("actions/checkout@v4");
+    expect(workflow).toContain("pnpm install --frozen-lockfile");
+    expect(workflow).toContain("command -v google-chrome");
+    expect(workflow).toContain("pnpm iping:worker --mode drain-iping");
+    expect(workflow).not.toContain("curl");
   });
 
   it("allows an explicit manual recovery without changing the scheduled drain", () => {
@@ -39,11 +40,11 @@ describe("scheduled iPing worker workflow", () => {
     expect(workflow).toContain("github.event_name == 'schedule'");
     expect(workflow).toContain("inputs.mode == 'drain-iping'");
     expect(workflow).toContain("inputs.mode == 'recover-iping'");
-    expect(workflow).toContain(`--data '{"mode":"recover-iping"}'`);
-    expect(workflow).not.toMatch(/--data[^\n]*inputs\.mode/u);
+    expect(workflow).toContain("pnpm iping:worker --mode recover-iping");
+    expect(workflow).not.toMatch(/iping:worker[^\n]*inputs\.mode/u);
   });
 
-  it("uses only the worker token and public project locator", () => {
+  it("keeps credentials in the protected worker job only", () => {
     const workflow = readFileSync(scheduledWorkflowPath, "utf8");
 
     expect(workflow).toContain(
@@ -52,14 +53,12 @@ describe("scheduled iPing worker workflow", () => {
     expect(workflow).toContain(
       "SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}",
     );
-    expect(workflow).toContain("authorization: Bearer $REFRESH_WORKER_TOKEN");
     expect(workflow).toContain('test "${#REFRESH_WORKER_TOKEN}" -eq 64');
     expect(workflow).toContain("*[!0-9a-fA-F]*) exit 1");
-    expect(workflow).not.toContain("IPING_USERNAME");
-    expect(workflow).not.toContain("IPING_PASSWORD");
+    expect(workflow).toContain("IPING_USERNAME: ${{ secrets.IPING_USERNAME }}");
+    expect(workflow).toContain("IPING_PASSWORD: ${{ secrets.IPING_PASSWORD }}");
     expect(workflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
-    expect(workflow).not.toContain("actions/checkout");
-    expect(workflow).not.toContain("pnpm install");
+    expect(workflow).not.toMatch(/echo[^\n]*IPING_(?:USERNAME|PASSWORD)/u);
 
     const guardJob = workflow.slice(
       workflow.indexOf("  branch-guard:"),
@@ -67,6 +66,8 @@ describe("scheduled iPing worker workflow", () => {
     );
     expect(guardJob).not.toContain("REFRESH_WORKER_TOKEN");
     expect(guardJob).not.toContain("SUPABASE_PROJECT_ID");
+    expect(guardJob).not.toContain("IPING_USERNAME");
+    expect(guardJob).not.toContain("IPING_PASSWORD");
   });
 });
 
@@ -81,6 +82,11 @@ describe("iPing worker deployment", () => {
     expect(deploymentWorkflow).toContain("*[!0-9a-fA-F]*) exit 1");
     expect(deploymentWorkflow).toMatch(
       /Configure refresh worker token[\s\S]+?REFRESH_WORKER_TOKEN="\$REFRESH_WORKER_TOKEN"/u,
+    );
+    expect(deploymentWorkflow).not.toContain("IPING_USERNAME");
+    expect(deploymentWorkflow).not.toContain("IPING_PASSWORD");
+    expect(deploymentWorkflow).not.toContain(
+      "Recover iPing after credential rotation",
     );
   });
 });

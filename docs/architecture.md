@@ -66,11 +66,11 @@ flowchart LR
 
 현재 production refresh는 아이핑을 제외한 출처만 동기 Edge 요청으로 처리한다. UI는 활성 출처별 상태를 분리해 표현하고, 서버의 안전한 오류 코드로 시간 초과·접근 차단·구조 변경·인증 실패를 구분한다. 동기 출처의 `출처 + 정규화 검색어` 단위 호출 제한은 5~60초 범위의 설정값과 1분당 4회 상한을 적용한다. 클라이언트는 호출 제한과 에어핑퐁의 명시적 `source_timeout`만 최대 2회 자동 재시도하며, 그 밖의 동기 출처 실패에는 5초 간격·최대 3회 수동 재시도를 제공한다. `refresh-status`는 저장된 refresh ID 상태를 공개 응답으로 변환한다.
 
-아이핑은 브라우저 요청에서 외부 사이트에 접속하지 않는다. 선수 이름 형태만 허용하는 service-role 전용 `enqueue_iping_refresh_job`이 6시간 내 성공 캐시와 활성 중복 작업을 검사하고, 분당 신규 4건·활성 12건의 전역 admission budget 안에서 `refresh_jobs`에 넣는다. main 전용 GitHub Actions가 10분마다 64자리 hex shared token으로 `refresh-player`의 정확한 `{"mode":"drain-iping"}` 모드를 호출하고, worker는 가장 오래된 작업 하나를 4분 lease로 claim한다. 일시적 timeout·5xx는 15~60분 backoff와 최대 3회 시도 후 종료한다. 인증·구조 변경·접근 차단은 enqueue와 공유하는 잠금 안에서 terminal 처리하고 backlog를 멈추며 회로를 6시간 연다. 계정이나 설정을 고친 뒤에는 같은 worker token으로 인증된 수동 `{"mode":"recover-iping"}`만 service-role 복구 RPC를 호출할 수 있다. RPC는 같은 advisory lock 아래 running 작업을 보존하고, pending 작업을 재사용하거나 최근 24시간의 결정적 실패 한 건만 초기화해 즉시 기존 drain 경로로 넘긴다. 일반 배포와 schedule은 회로를 자동 해제하지 않으며, 재검증 실패는 기존 terminal 전이로 회로를 다시 연다. 대기 작업은 24시간 뒤 만료하고 terminal 메타데이터는 7일 뒤 삭제한다.
+아이핑은 사용자 브라우저 요청에서 외부 사이트에 접속하지 않는다. 선수 이름 형태만 허용하는 service-role 전용 `enqueue_iping_refresh_job`이 6시간 내 성공 캐시와 활성 중복 작업을 검사하고, 분당 신규 4건·활성 12건의 전역 admission budget 안에서 `refresh_jobs`에 넣는다. main 전용 GitHub Actions는 10분마다 `production` 환경의 실제 Google Chrome을 Playwright로 실행한다. Edge의 `claim-iping-browser`가 가장 오래된 작업 하나를 4분 lease로 반환하면 Actions가 브라우저의 새 PHP 세션에서 참가·전국 입상·지역 입상 세 화면을 순차 조회하고, 메모리의 HTML과 lease token을 `complete-iping-browser`로 보낸다. Edge는 실행 중 job·lease 만료를 다시 확인한 뒤 기존 parser와 upsert RPC를 실행하며 HTML·쿠키는 저장하지 않는다. 브라우저 오류는 허용된 코드·단계만 `fail-iping-browser`로 전달한다. 일시적 timeout·5xx는 15~60분 backoff와 최대 3회 시도 후 종료하고, 인증·구조 변경·접근 차단은 terminal 처리해 backlog를 멈추며 회로를 6시간 연다. 계정이나 설정을 고친 뒤에는 Actions의 수동 `recover-iping`만 service-role 복구 RPC를 거쳐 한 작업을 다시 브라우저로 검증한다. 일반 배포와 schedule은 회로를 자동 해제하지 않으며, 대기 작업은 24시간 뒤 만료하고 terminal 메타데이터는 7일 뒤 삭제한다.
 
-Supabase Edge의 에어핑퐁 요청은 5초 제한의 단일 서버 시도만 수행하고 `source_timeout`과 `retryAfterMs=5000`을 반환한다. 브라우저가 이 메타데이터에 따라 최대 2회 다시 Edge를 호출하므로 한 번의 Edge 실행에서 장시간 대기하거나 서버 내부 재시도를 겹치지 않는다. workspace live CLI adapter의 `fetchWithRetry`는 별도 진단 경로로, 호출자 취소를 보존하면서 네트워크·시간 초과와 HTTP 408·500·502·503·504만 최대 2회 시도한다. 이 경로에서는 에어핑퐁 16초, 오케이핑퐁 10초, 아이핑 12초 이상의 제한과 250ms 선형 지연 뒤 1회 재시도를 유지한다. 408을 제외한 4xx처럼 결정적인 응답과 아이핑 로그인 POST는 자동 재시도하지 않는다.
+Supabase Edge의 에어핑퐁 요청은 5초 제한의 단일 서버 시도만 수행하고 `source_timeout`과 `retryAfterMs=5000`을 반환한다. 브라우저가 이 메타데이터에 따라 최대 2회 다시 Edge를 호출하므로 한 번의 Edge 실행에서 장시간 대기하거나 서버 내부 재시도를 겹치지 않는다. workspace live CLI adapter의 `fetchWithRetry`는 별도 진단 경로로, 호출자 취소를 보존하면서 네트워크·시간 초과와 HTTP 408·500·502·503·504만 최대 2회 시도한다. 이 CLI 경로에서는 에어핑퐁 16초, 오케이핑퐁 10초, 아이핑 12초 제한과 250ms 선형 지연 뒤 1회 재시도를 유지한다. 운영 아이핑은 Edge HTTP fetch를 사용하지 않고 Actions의 실제 Chrome navigation을 화면별 20초로 제한한다. 408을 제외한 4xx처럼 결정적인 응답과 아이핑 로그인 submit은 자동 재시도하지 않는다.
 
-아이핑은 로그인 GET의 `Set-Cookie`에 담긴 PHP 세션을 HTTP Cookie로, HTML hidden `PHPSESSID`를 POST form token으로 별도 검증한다. `Set-Cookie`가 없을 때만 검증된 form token을 Cookie 값으로 대체하고, 로그인 응답이 Cookie를 회전하면 이후 확인·검색 요청은 새 값을 사용한다. 조회마다 임시 세션을 만들고 참가·전국 입상·지역 입상 세 요청을 순차 실행하되 쿠키를 저장소나 응답에 남기지 않는다. 세션 만료는 인증 실패, 사람 확인은 접근 차단, 알 수 없는 성공 화면은 구조 변경으로 분류한다.
+운영 아이핑은 Chrome이 로그인 form과 `Set-Cookie`를 직접 처리하므로 브라우저와 서버의 실제 세션 동작을 유지한다. workspace CLI adapter는 진단용 HTTP 구현에서 Cookie와 hidden `PHPSESSID`를 계속 분리 검증한다. 두 경로 모두 조회마다 임시 세션을 만들고 참가·전국 입상·지역 입상 세 화면을 순차 확인하며, 세션 만료는 인증 실패, 사람 확인은 접근 차단, 알 수 없는 성공 화면은 구조 변경으로 분류한다.
 
 아이핑 요청 원점은 원본 주소를 저장하지 않고 service-role HMAC으로만 구분하며, 해시별 10분 4건 예산을 전역 admission budget 앞에서 적용한다. 원점 예산은 하루 뒤 삭제한다.
 
@@ -90,8 +90,8 @@ Supabase Edge의 에어핑퐁 요청은 5초 제한의 단일 서버 시도만 �
 - 검색·상세 읽기는 RLS가 적용된 `public_player_search`, `public_results`, `public_source_status` view를 사용한다. `public_player_search.division_observations`는 체계·부수별 4강 이상 입상과 나머지 참가 건수를 집계한 공개 요약이다.
 - 브라우저는 publishable key만 가진다.
 - `refresh-player`의 브라우저 mode는 publishable key를 검증한다. worker mode는 별도 `REFRESH_WORKER_TOKEN`을 digest 후 상수시간 비교하고 service role로 private queue와 upsert RPC에 접근한다.
-- 외부 HTTP는 Edge Function이 수행하고 브라우저는 출처에 직접 연결하지 않는다.
-- 아이핑 자격증명은 Edge Secret에만 두고 요청마다 생성한 세션 쿠키는 조회가 끝나면 폐기한다.
+- 일반 외부 HTTP는 Edge Function이 수행하고 사용자 브라우저는 출처에 직접 연결하지 않는다. 아이핑만 main 전용 Actions의 격리된 Playwright Chrome이 처리한다.
+- 아이핑 자격증명은 GitHub `production` environment Secret에서 예약 worker step에만 주입한다. 쿠키와 원문 HTML은 메모리에만 두고 job 완료 즉시 폐기하며 Actions 로그·artifact·DB에 남기지 않는다.
 - 출처 실패는 허용 목록의 `last_error_code`만 저장하고 검색어·원문 오류·쿠키·HTML은 실패 상태 RPC에 전달하지 않는다. 성공 상태는 record upsert 트랜잭션이 원자적으로 갱신하며 이전 오류 코드를 지운다.
 - PAT, DB password, service role key는 프런트 build 환경에 전달하지 않는다.
 - `submit-feedback`은 요청 Origin을 서버 허용 목록과 대조하고 현재 URL이 같은 Origin인지 확인한다. GitHub token은 Edge Secret에만 두고 실제 HTTP `User-Agent`를 포함한 Issue 제목·본문을 서버가 생성한다.

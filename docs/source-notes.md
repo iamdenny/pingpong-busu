@@ -34,7 +34,7 @@ title: "출처 메모"
 
 2026-08-12 슈퍼스타탁구 `robots.txt`는 `Form.jsp`, `Manager.jsp`, `/ok/`, `Upload.jsp`를 제외하고 공개 `open/Do.jsp?urlSeq=302&userNm=...` 개인별 결과 경로를 막지 않습니다. 비회원 GET 검색에서 고유번호·대회일·대회명·부수·결과를 확인했습니다. parser는 이 결과 표만 읽고 별도 레이팅 표와 화면의 연락처를 수집하지 않습니다.
 
-2026-08-12 확인 결과 아이핑 메인과 대회 목록은 비회원에게 공개되지만 `pg=Search&SchVal=...` 선수 검색은 로그인 화면으로 전환됩니다. 로그인 후 검색 화면은 전국오픈 입상(`Ctype=A`), 시군구 입상(`Ctype=B`), 출전 이력(`B=Y`)을 분리하고 선수명·관측 부수·소속·대회명·대회일·종목·순위를 표로 제공합니다. 사이트는 CP949/EUC-KR 쿼리와 응답을 사용합니다. BUSU는 전용 최소권한 계정으로 조회마다 새 PHP 세션을 만들고 이 세 화면만 파싱하며 자격증명·쿠키·원문 HTML은 보관하지 않습니다. 자격증명은 브라우저나 `VITE_`에 두지 않고 Supabase Edge Secrets에 보관하며, GitHub Actions secret은 배포 시 런타임 secret을 설정하는 전달 수단으로만 사용합니다. CAPTCHA/MFA 또는 사람 확인 절차가 나타나면 우회하지 않습니다.
+2026-08-12 확인 결과 아이핑 메인과 대회 목록은 비회원에게 공개되지만 `pg=Search&SchVal=...` 선수 검색은 로그인 화면으로 전환됩니다. 로그인 후 검색 화면은 전국오픈 입상(`Ctype=A`), 시군구 입상(`Ctype=B`), 출전 이력(`B=Y`)을 분리하고 선수명·관측 부수·소속·대회명·대회일·종목·순위를 표로 제공합니다. 사이트는 CP949/EUC-KR 쿼리와 응답을 사용합니다. 2026-08-16 운영 점검에서 같은 계정과 form body를 사용한 Edge HTTP 요청은 인증에 실패하고 로컬 실제 Chromium은 성공해, production 수집도 main 전용 GitHub Actions의 Playwright Chrome으로 전환했습니다. BUSU는 전용 최소권한 계정으로 조회마다 새 PHP 세션을 만들고 이 세 화면만 순차 조회합니다. 자격증명은 `production` environment Secret에, 쿠키와 원문 HTML은 worker 메모리에만 두며 로그·artifact·DB에 보관하지 않습니다. Edge는 worker token과 4분 job lease를 다시 검증한 뒤 기존 parser와 upsert RPC만 실행합니다. CAPTCHA/MFA 또는 사람 확인 절차가 나타나면 우회하지 않습니다.
 
 2026-08-15 운영 진단에서 로그인 GET의 HTTP `Set-Cookie`와 hidden `PHPSESSID`가 서로 다른 값임을 확인했습니다. parser `iping-4`는 전자를 Cookie, 후자를 로그인 POST form token으로 분리하고 로그인 뒤 회전된 Cookie를 사용합니다. 사용자 검색은 외부 아이핑 응답을 기다리지 않고 6시간 dedupe 큐에 등록하며, main 예약 worker가 10분마다 한 작업을 처리합니다. 인증·구조·접근 차단은 자동 반복하지 않고 기존 저장 기록을 유지합니다.
 

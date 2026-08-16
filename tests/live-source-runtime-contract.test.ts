@@ -20,6 +20,10 @@ const refreshPlayer = readFileSync(
   resolve(process.cwd(), "supabase/functions/refresh-player/index.ts"),
   "utf8",
 );
+const ipingBrowserWorker = readFileSync(
+  resolve(process.cwd(), "scripts/iping-browser-worker.ts"),
+  "utf8",
+);
 const workerAuth = readFileSync(
   resolve(process.cwd(), "supabase/functions/_shared/worker-auth.ts"),
   "utf8",
@@ -76,8 +80,10 @@ describe("live source database contract", () => {
 
 describe("refresh-player live source contract", () => {
   it("separates browser queueing from a strongly authenticated worker drain", () => {
-    expect(refreshPlayer).toContain('mode === "drain-iping"');
-    expect(refreshPlayer).toContain('mode === "recover-iping"');
+    expect(refreshPlayer).toContain('mode === "claim-iping-browser"');
+    expect(refreshPlayer).toContain('mode === "recover-iping-browser"');
+    expect(refreshPlayer).toContain('mode: "complete-iping-browser"');
+    expect(refreshPlayer).toContain('mode: "fail-iping-browser"');
     expect(refreshPlayer).toContain("REFRESH_WORKER_TOKEN");
     expect(refreshPlayer).toContain("hasValidWorkerAuthorization");
     expect(refreshPlayer).toMatch(
@@ -96,9 +102,8 @@ describe("refresh-player live source contract", () => {
     expect(refreshPlayer).toContain('status: "queued"');
     expect(refreshPlayer).toContain("아이핑 최신 기록 수집을 예약했습니다.");
     expect(refreshPlayer).toContain('iping: "iping-4"');
-    expect(refreshPlayer).toMatch(
-      /resolution\.status === "retry_scheduled"[\s\S]+?status: 200[\s\S]+?counters\.failed = 1;[\s\S]+?status: 500/u,
-    );
+    expect(refreshPlayer).toContain("loadIpingJobLease");
+    expect(refreshPlayer).toContain("normalizeIpingBrowserRecords");
     expect(workerAuth).toContain("crypto.subtle.digest");
     expect(workerAuth).toContain("difference |=");
     expect(workerAuth).toContain("^[a-f0-9]{64}$");
@@ -109,54 +114,45 @@ describe("refresh-player live source contract", () => {
     expect(refreshPlayer).toContain('reason: "source_cooldown"');
   });
 
-  it("checks the iPing runtime before mutating recovery state and drains only after recovery", () => {
+  it("checks the iPing runtime before mutating recovery state and claims only after recovery", () => {
     expect(refreshPlayer).toMatch(
-      /function hasIpingRecoveryRuntime[\s\S]+?CRAWL_LIVE[\s\S]+?CRAWLER_SOURCE_IPING_ENABLED[\s\S]+?IPING_USERNAME[\s\S]+?IPING_PASSWORD/u,
+      /function hasIpingBrowserWorkerRuntime[\s\S]+?CRAWL_LIVE[\s\S]+?CRAWLER_SOURCE_IPING_ENABLED/u,
     );
     expect(refreshPlayer).toMatch(
-      /requestBody\.mode === "recover-iping"[\s\S]+?hasIpingRecoveryRuntime[\s\S]+?select\("enabled"\)[\s\S]+?recover_iping_refresh_job[\s\S]+?drainOneIpingJob/u,
+      /claimIpingBrowserJob[\s\S]+?hasIpingBrowserWorkerRuntime[\s\S]+?select\("enabled"\)[\s\S]+?recover_iping_refresh_job[\s\S]+?claim_iping_refresh_job/u,
     );
-    expect(refreshPlayer).toMatch(
-      /Object\.keys\(value\)\.length === 1[\s\S]+?recover-iping/u,
-    );
+    expect(refreshPlayer).not.toContain("IPING_USERNAME");
+    expect(refreshPlayer).not.toContain("IPING_PASSWORD");
     expect(refreshPlayer).toMatch(
       /recovery\.status === "busy" \|\| recovery\.status === "reset_only"[\s\S]+?409/u,
-    );
-    expect(refreshPlayer).toMatch(
-      /requestBody\.mode === "recover-iping"[\s\S]+?outcome\.counters\.succeeded !== 1[\s\S]+?503/u,
     );
   });
 
   it("preserves deterministic iPing errors when diagnostics fail", () => {
     expect(refreshPlayer).toMatch(
-      /outcomeError && !isIpingKillSwitchError\(safe\.code\)[\s\S]+?resolutionErrorCode = "source_refresh_failed"/u,
+      /outcomeError && !isIpingKillSwitchError\(failure\.code\)[\s\S]+?resolutionErrorCode = "source_refresh_failed"/u,
     );
     expect(refreshPlayer).toMatch(
-      /catch \{[\s\S]+?if \(!isIpingKillSwitchError\(safe\.code\)\)[\s\S]+?resolutionErrorCode = "source_refresh_failed"/u,
+      /catch \{[\s\S]+?if \(!isIpingKillSwitchError\(failure\.code\)\)[\s\S]+?resolutionErrorCode = "source_refresh_failed"/u,
     );
   });
 
-  it("keeps iPing HTTP cookies separate from the mandatory form token", () => {
+  it("validates bounded browser HTML only under the active queue lease", () => {
+    expect(refreshPlayer).toContain("ipingBrowserHtmlByteLimit = 1_500_000");
+    expect(refreshPlayer).toContain("ipingBrowserPayloadByteLimit = 4_000_000");
     expect(refreshPlayer).toMatch(
-      /const headerCookie = ipingCookie\(loginPage\);[\s\S]+?const formSessionId = extractIpingSessionId\(loginPageHtml\);/u,
+      /loadIpingJobLease[\s\S]+?eq\("status", "running"\)[\s\S]+?eq\("lease_token", leaseToken\)[\s\S]+?gt\("lease_expires_at"/u,
     );
-    expect(refreshPlayer).toMatch(
-      /const initialCookie =[\s\S]+?headerCookie \?\?[\s\S]+?extractIpingSessionCookie\(loginPageHtml\)/u,
-    );
-    expect(refreshPlayer).toContain("PHPSESSID: formSessionId");
-    expect(refreshPlayer).not.toContain(
-      "extractIpingSessionIdFromCookie(initialCookie) ??",
-    );
+    expect(refreshPlayer).not.toContain("fetchIpingRecords");
+    expect(refreshPlayer).not.toContain("p_raw_response");
   });
 
-  it("treats only timeout, rate limits, network failures, and 5xx as retryable iPing work", () => {
-    expect(refreshPlayer).toContain(
-      "response.status === 408 || response.status >= 500",
-    );
+  it("accepts only bounded, allow-listed browser failure reports", () => {
+    expect(refreshPlayer).toContain('"source_timeout"');
+    expect(refreshPlayer).toContain('"source_rate_limited"');
     expect(refreshPlayer).toContain('"source_request_failed"');
-    expect(refreshPlayer).toMatch(
-      /if \(!response\.ok\)[\s\S]+?"source_schema_changed"/u,
-    );
+    expect(refreshPlayer).toContain("value.retryAfterMs > 3_600_000");
+    expect(refreshPlayer).not.toContain("p_error_message");
   });
 
   it("never performs an iPing network fetch from a browser refresh", () => {
@@ -180,14 +176,13 @@ describe("refresh-player live source contract", () => {
   });
 
   it("serializes authenticated iPing searches and records safe phases", () => {
-    expect(refreshPlayer).not.toContain(
-      'Promise.all([search("&B=Y"), search("&Ctype=A"), search("&Ctype=B")])',
+    expect(ipingBrowserWorker).toContain(
+      'entriesHtml: await search("&B=Y", "entry_search")',
     );
-    expect(refreshPlayer).toContain('search("&B=Y", "entry_search")');
-    expect(refreshPlayer).toMatch(
+    expect(ipingBrowserWorker).toMatch(
       /search\(\s*"&Ctype=A",\s*"nationwide_awards_search",?\s*\)/u,
     );
-    expect(refreshPlayer).toMatch(
+    expect(ipingBrowserWorker).toMatch(
       /search\(\s*"&Ctype=B",\s*"district_awards_search",?\s*\)/u,
     );
     expect(refreshPlayer).toContain("record_source_request_outcome");
