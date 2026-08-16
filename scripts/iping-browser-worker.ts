@@ -610,6 +610,11 @@ function requiredEnvironment(name: string): string {
   return value;
 }
 
+export function formatIpingBrowserWorkerFailure(error: unknown): string {
+  if (!(error instanceof IpingBrowserWorkerError)) return "worker_failed";
+  return `${error.failure.code}:${error.failure.phase}`;
+}
+
 async function main(): Promise<void> {
   const mode = parseMode(process.argv.slice(2));
   const projectId = requiredEnvironment("SUPABASE_PROJECT_ID");
@@ -636,11 +641,9 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   main().catch((error: unknown) => {
-    const safeCode =
-      error instanceof IpingBrowserWorkerError
-        ? error.failure.code
-        : "worker_failed";
-    process.stderr.write(`iPing browser worker failed: ${safeCode}\n`);
+    process.stderr.write(
+      `iPing browser worker failed: ${formatIpingBrowserWorkerFailure(error)}\n`,
+    );
     process.exitCode = 1;
   });
 }
