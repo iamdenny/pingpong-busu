@@ -3,6 +3,9 @@ name: Scheduled iPing refresh worker
 on:
   schedule:
     - cron: "*/10 * * * *"
+  workflow_run:
+    workflows: [Deploy Supabase backend]
+    types: [completed]
   workflow_dispatch:
     inputs:
       mode:
@@ -23,6 +26,9 @@ concurrency:
 
 jobs:
   branch-guard:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
@@ -43,6 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -70,4 +77,7 @@ jobs:
         run: pnpm iping:worker --mode drain-iping
       - name: Recover and verify one iPing refresh job
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'recover-iping'
+        run: pnpm iping:worker --mode recover-iping
+      - name: Recover iPing after a successful backend deployment
+        if: github.event_name == 'workflow_run'
         run: pnpm iping:worker --mode recover-iping

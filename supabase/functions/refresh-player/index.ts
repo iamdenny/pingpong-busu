@@ -792,7 +792,7 @@ async function claimIpingBrowserJob(
     if (recoveryError || !isRecord(recovery))
       return { body: { error: "worker_recovery_failed" }, status: 500 };
     if (recovery.status === "busy" || recovery.status === "reset_only")
-      return { body: { status: recovery.status }, status: 409 };
+      return { body: { status: recovery.status }, status: 200 };
     if (recovery.status !== "requeued" && recovery.status !== "already_pending")
       return { body: { error: "worker_recovery_failed" }, status: 500 };
   }

@@ -44,6 +44,26 @@ describe("scheduled iPing worker workflow", () => {
     expect(workflow).not.toMatch(/iping:worker[^\n]*inputs\.mode/u);
   });
 
+  it("recovers once after a successful main Supabase deployment", () => {
+    const workflow = readFileSync(scheduledWorkflowPath, "utf8");
+
+    expect(workflow).toContain("workflow_run:");
+    expect(workflow).toContain("workflows: [Deploy Supabase backend]");
+    expect(workflow).toContain(
+      "github.event.workflow_run.conclusion == 'success'",
+    );
+    expect(workflow).toContain(
+      "github.event.workflow_run.head_branch == 'main'",
+    );
+    expect(workflow).toContain("github.event.workflow_run.head_sha");
+    expect(workflow).toContain(
+      "Recover iPing after a successful backend deployment",
+    );
+    expect(workflow).toMatch(
+      /Recover iPing after a successful backend deployment[\s\S]+?github\.event_name == 'workflow_run'[\s\S]+?iping:worker --mode recover-iping/u,
+    );
+  });
+
   it("keeps credentials in the protected worker job only", () => {
     const workflow = readFileSync(scheduledWorkflowPath, "utf8");
 

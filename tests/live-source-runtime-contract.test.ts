@@ -124,7 +124,7 @@ describe("refresh-player live source contract", () => {
     expect(refreshPlayer).not.toContain("IPING_USERNAME");
     expect(refreshPlayer).not.toContain("IPING_PASSWORD");
     expect(refreshPlayer).toMatch(
-      /recovery\.status === "busy" \|\| recovery\.status === "reset_only"[\s\S]+?409/u,
+      /recovery\.status === "busy" \|\| recovery\.status === "reset_only"[\s\S]+?200/u,
     );
   });
 

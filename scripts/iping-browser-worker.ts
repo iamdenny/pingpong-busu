@@ -50,7 +50,13 @@ export interface ClaimedIpingBrowserJob {
 export type IpingBrowserClaim =
   | { status: "claimed"; job: ClaimedIpingBrowserJob }
   | {
-      status: "empty" | "skipped" | "source_disabled" | "source_unavailable";
+      status:
+        | "busy"
+        | "empty"
+        | "reset_only"
+        | "skipped"
+        | "source_disabled"
+        | "source_unavailable";
     };
 
 export interface IpingBrowserWorkerApi {
@@ -82,7 +88,9 @@ export interface IpingBrowserFailure {
 
 export interface IpingBrowserWorkerResult {
   status:
+    | "busy"
     | "empty"
+    | "reset_only"
     | "skipped"
     | "source_disabled"
     | "source_unavailable"
@@ -132,7 +140,9 @@ function asClaim(value: unknown): IpingBrowserClaim {
     });
   }
   if (
+    value.status === "busy" ||
     value.status === "empty" ||
+    value.status === "reset_only" ||
     value.status === "skipped" ||
     value.status === "source_disabled" ||
     value.status === "source_unavailable"

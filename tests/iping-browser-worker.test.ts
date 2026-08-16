@@ -62,6 +62,24 @@ describe("production iPing browser worker", () => {
     expect(collect).not.toHaveBeenCalled();
   });
 
+  it.each(["busy", "reset_only"] as const)(
+    "treats deployment recovery status %s as a successful no-op",
+    async (status) => {
+      const collect = vi.fn<IpingBrowserCollector["collect"]>();
+      const dependencies = api({
+        claim: vi.fn(async () => ({ status })),
+      });
+
+      await expect(
+        runIpingBrowserWorker("recover-iping", credentials, {
+          api: dependencies.client,
+          collector: { collect },
+        }),
+      ).resolves.toEqual({ status });
+      expect(collect).not.toHaveBeenCalled();
+    },
+  );
+
   it("submits only in-memory pages under the claimed lease", async () => {
     const collect = vi.fn(async () => pages);
     const dependencies = api();

@@ -68,7 +68,7 @@ pnpm crawl:live --query 김탁구 --source okpingpong
 pnpm crawl:live --query 임대현 --source iping
 ```
 
-`CRAWL_LIVE=true`와 해당 출처별 환경 변수가 없으면 실행하지 않는다. `newttplay` production은 `CRAWLER_SOURCE_NEWTTPLAY_ENABLED=true`와 DB `sources.enabled=true`를 함께 사용한다. `yongintt`는 trusted 환경의 `KAKAO_REST_API_KEY`, 로컬 `iping` CLI는 `IPING_USERNAME`과 `IPING_PASSWORD`도 필요하다. production은 같은 두 Secret을 main 예약 Playwright worker에만 주입하며 `pnpm iping:worker --mode drain-iping` 또는 승인된 `recover-iping` 모드로 한 queue job을 처리한다. 아이핑 계정·세션·검색 HTML은 브라우저 번들·DB·로그에 저장하지 않는다.
+`CRAWL_LIVE=true`와 해당 출처별 환경 변수가 없으면 실행하지 않는다. `newttplay` production은 `CRAWLER_SOURCE_NEWTTPLAY_ENABLED=true`와 DB `sources.enabled=true`를 함께 사용한다. `yongintt`는 trusted 환경의 `KAKAO_REST_API_KEY`, 로컬 `iping` CLI는 `IPING_USERNAME`과 `IPING_PASSWORD`도 필요하다. production은 같은 두 Secret을 main 예약 Playwright worker에만 주입하며 `pnpm iping:worker --mode drain-iping` 또는 승인된 `recover-iping` 모드로 한 queue job을 처리한다. Supabase backend의 성공적인 main 배포 뒤에는 `recover-iping`이 자동으로 한 번 실행되고, `busy`와 `reset_only`는 정상 no-op이다. 아이핑 계정·세션·검색 HTML은 브라우저 번들·DB·로그에 저장하지 않는다.
 
 ## Supabase
 
