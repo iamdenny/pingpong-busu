@@ -1,3 +1,4 @@
+import { Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   bladePitch,
@@ -1273,8 +1274,14 @@ export function HeroRallyScene() {
         className="hero-rally-sound"
         onClick={toggleSound}
         aria-pressed={soundOn}
+        aria-label={soundOn ? "타구음 끄기" : "타구음 켜기"}
+        title={soundOn ? "타구음 끄기" : "타구음 켜기"}
       >
-        {soundOn ? "타구음 끄기" : "타구음 켜기"}
+        {soundOn ? (
+          <Volume2 aria-hidden="true" size={16} />
+        ) : (
+          <VolumeX aria-hidden="true" size={16} />
+        )}
       </button>
     </div>
   );

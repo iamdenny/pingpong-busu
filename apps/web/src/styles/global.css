@@ -331,17 +331,26 @@ footer strong {
   right: 0.75rem;
   bottom: 0.75rem;
   z-index: 3;
-  padding: 0.32rem 0.7rem;
+  display: grid;
+  place-items: center;
+  inline-size: 38px;
+  block-size: 38px;
+  padding: 0;
   border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.82);
   color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 700;
   cursor: pointer;
   transition:
-    opacity 200ms ease,
-    color 200ms ease;
+    color 200ms ease,
+    border-color 200ms ease;
+}
+/* The dial stays small, but the tap target meets the 44px touch minimum. */
+.hero-rally-sound::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
 }
 .hero-rally-sound:hover {
   color: var(--primary);
@@ -349,6 +358,10 @@ footer strong {
 .hero-rally-sound[aria-pressed="true"] {
   color: var(--primary);
   border-color: var(--primary);
+}
+.hero-rally-sound:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
 }
 /* No scene, no control: the button follows whatever the canvas is doing. */
 .hero-rally-scene:not([data-ready="true"]) + .hero-rally-sound {
