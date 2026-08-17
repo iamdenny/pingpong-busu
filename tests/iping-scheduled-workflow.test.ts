@@ -50,6 +50,18 @@ describe("scheduled iPing worker workflow", () => {
     expect(workflow).not.toMatch(/iping:worker[^\n]*inputs\.mode/u);
   });
 
+  it("retries iPing protection hourly instead of waiting for a deployment", () => {
+    const workflow = readFileSync(scheduledWorkflowPath, "utf8");
+
+    expect(workflow).toContain('cron: "5 * * * *"');
+    expect(workflow).toContain(
+      "if: github.event_name == 'schedule' && github.event.schedule == '*/10 * * * *'",
+    );
+    expect(workflow).toMatch(
+      /Recover iPing protection once an hour[\s\S]+?github\.event\.schedule == '5 \* \* \* \*'[\s\S]+?iping:worker --mode recover-iping/u,
+    );
+  });
+
   it("recovers once after a successful main Supabase deployment", () => {
     const workflow = readFileSync(scheduledWorkflowPath, "utf8");
 

@@ -81,7 +81,7 @@ const parserVersions: Record<LiveSourceCode, string> = {
   mytt: "mytt-3",
   superstar: "superstar-2",
   yongintt: "yongintt-4",
-  iping: "iping-4",
+  iping: "iping-5",
 };
 
 const airpingRetryAfterMs = 5_000;

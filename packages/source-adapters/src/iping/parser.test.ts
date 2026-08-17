@@ -16,6 +16,14 @@ const entriesFixture = readFileSync(
   resolve(fixtureDirectory, "entries.html"),
   "utf8",
 );
+const entriesWithSpacerFixture = readFileSync(
+  resolve(fixtureDirectory, "entries-spacer.html"),
+  "utf8",
+);
+const emptyEntriesFixture = readFileSync(
+  resolve(fixtureDirectory, "entries-empty.html"),
+  "utf8",
+);
 
 describe("parseIpingSearchHtml", () => {
   it("normalizes nationwide and district awards from the authenticated result table", () => {
@@ -75,6 +83,45 @@ describe("parseIpingSearchHtml", () => {
       divisionValue: "6부",
     });
     expect(records[0]?.rankText).toBeUndefined();
+  });
+
+  it("keeps parsing results when the table ends with a layout spacer row", () => {
+    const records = parseIpingSearchHtml(
+      entriesWithSpacerFixture,
+      "홍라켓",
+      "2026-08-12T00:00:00.000Z",
+      "entry",
+    );
+
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ tournamentDate: "2026-07-18" });
+  });
+
+  it("reports an empty result table as no records instead of a schema change", () => {
+    expect(
+      parseIpingSearchHtml(
+        emptyEntriesFixture,
+        "홍라켓",
+        "2026-08-12T00:00:00.000Z",
+        "entry",
+      ),
+    ).toEqual([]);
+  });
+
+  it("still reports an unexpected result column count as a schema change", () => {
+    const changedColumns = entriesWithSpacerFixture.replace(
+      '<tr style="background: #ffffff">',
+      '<tr style="background: #ffffff"><td align="center">1</td>',
+    );
+
+    expect(() =>
+      parseIpingSearchHtml(
+        changedColumns,
+        "홍라켓",
+        "2026-08-12T00:00:00.000Z",
+        "entry",
+      ),
+    ).toThrow(SourceSchemaChangedError);
   });
 
   it("rejects a login page instead of treating it as an empty result", () => {

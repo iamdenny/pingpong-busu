@@ -79,6 +79,9 @@ function parseResultRow(
     rowText.includes(resultKind === "award" ? "입상이력" : "출전이력")
   )
     return undefined;
+  // 결과 표에는 간격 조절용 빈 행이 섞여 들어온다.
+  if (cells.every((cell) => stripHtml(cell).trim().length === 0))
+    return undefined;
   if (cells.length !== 2)
     throw new SourceSchemaChangedError(
       "아이핑 선수 결과 열 개수가 변경되었습니다.",

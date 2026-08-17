@@ -201,7 +201,7 @@ async function fetchSearchHtml(
 export class IpingSourceAdapter implements SourceAdapter {
   readonly sourceCode = "iping";
   readonly mode = "http";
-  readonly parserVersion = "iping-4";
+  readonly parserVersion = "iping-5";
 
   constructor(
     readonly enabled = false,
