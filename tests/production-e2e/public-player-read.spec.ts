@@ -36,14 +36,17 @@ test("production-backed build supports search and player detail", async ({
   const divisionSummary = page.locator(".division-summary");
   await expect(
     divisionSummary
-      .locator("article", { hasText: "최근 관측 부수" })
-      .locator("strong"),
+      .locator(".division-summary__stats > div", { hasText: "최근 관측 부수" })
+      .locator("dd"),
   ).toHaveText("오픈부수 7부");
   await expect(
     divisionSummary
-      .locator("article", { hasText: "통합부수 기록" })
-      .locator("strong"),
+      .locator(".division-summary__stats > div", { hasText: "통합부수 기록" })
+      .locator("dd"),
   ).toHaveText("통합부수 6부");
+  await expect(
+    divisionSummary.getByRole("table", { name: "개인전" }),
+  ).toBeVisible();
   await expect(page).toHaveTitle(/임대현.*BUSU/u);
   await expect(page.locator('meta[property="og:type"]')).toHaveAttribute(
     "content",
