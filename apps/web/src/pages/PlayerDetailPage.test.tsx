@@ -114,6 +114,50 @@ describe("PlayerDetailPage metadata", () => {
     );
   });
 
+  it("replaces the award total with the per-division award and entry counts", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/players/kim-seoul"]}>
+          <Routes>
+            <Route path="/players/:id" element={<PlayerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const overview = await screen.findByRole("region", {
+      name: "부수별 입상·참가 기록",
+    });
+    expect(screen.queryByText("과거 입상 기록")).not.toBeInTheDocument();
+    expect(overview).toHaveTextContent("통합부수");
+    expect(overview).toHaveTextContent("입상");
+    expect(overview).toHaveTextContent("참가");
+  });
+
+  it("marks records the division summary leaves out", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/players/kim-seoul"]}>
+          <Routes>
+            <Route path="/players/:id" element={<PlayerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole("tab", { name: "전체 이력" }));
+
+    const doublesRecord = screen.getAllByText("혼합 복식")[0]?.closest("td, dd");
+    expect(doublesRecord).toHaveTextContent("복식");
+    expect(
+      screen.getAllByTitle(
+        "단체·복식·혼성 입상은 현재 추정 부수 집계에서 제외합니다.",
+      ).length,
+    ).toBeGreaterThan(0);
+  });
+
   it("shows an empty award state before the complete history", async () => {
     const user = userEvent.setup();
 
