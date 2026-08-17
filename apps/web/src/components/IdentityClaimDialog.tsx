@@ -108,9 +108,16 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
   const evidenceByCandidate = new Map(
     evidence.data?.map((item) => [item.candidateId, item] as const),
   );
+  const assignedGroupIds = new Set(
+    Object.values(assignmentByCandidate).filter(Boolean),
+  );
   const assignedCount = Object.values(assignmentByCandidate).filter(
     Boolean,
   ).length;
+  const mergesEveryCandidate =
+    dialogCandidates.length > 1 &&
+    assignedCount === dialogCandidates.length &&
+    assignedGroupIds.size === 1;
 
   const open = () => {
     const restoredFormState = identityFormState(candidates);
@@ -196,6 +203,23 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
       }
       return { ...current, assignments };
     });
+    setErrorMessage(undefined);
+  };
+
+  const assignEveryCandidate = () => {
+    const targetGroupId = groups[0]?.id;
+    if (!targetGroupId) return;
+    setFormState((current) => ({
+      ...current,
+      assignments: Object.fromEntries(
+        candidateIds.map((candidateId) => [candidateId, targetGroupId]),
+      ),
+    }));
+    setErrorMessage(undefined);
+  };
+
+  const clearAssignments = () => {
+    setFormState((current) => ({ ...current, assignments: {} }));
     setErrorMessage(undefined);
   };
 
@@ -453,12 +477,37 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                   ? "별칭에 연결할 기록"
                   : "기록을 사람별로 나누기"}
               </legend>
-              <p id="identity-candidate-hint">
-                {isSingleCandidate
-                  ? "표시된 공개 기록이 내 기록이 아니라면 모름을 선택할 수 있습니다. "
-                  : "후보 수 제한은 없습니다. 확실하지 않은 기록은 미분류로 남겨도 됩니다. "}
-                분류 {assignedCount}건 · 전체 {candidates.length}건
-              </p>
+              {isSingleCandidate ? (
+                <p id="identity-candidate-hint">
+                  표시된 공개 기록이 내 기록이 아니라면 모름을 선택할 수
+                  있습니다. 분류 {assignedCount}건 · 전체{" "}
+                  {dialogCandidates.length}건
+                </p>
+              ) : (
+                <div className="identity-candidate-toolbar">
+                  <p id="identity-candidate-hint">
+                    후보 수 제한은 없습니다. 확실하지 않은 기록은 미분류로 남겨도
+                    됩니다. 분류 {assignedCount}건 · 전체{" "}
+                    {dialogCandidates.length}건
+                  </p>
+                  <span>
+                    <button
+                      type="button"
+                      onClick={assignEveryCandidate}
+                      disabled={mergesEveryCandidate}
+                    >
+                      전체 {dialogCandidates.length}건 한 사람으로
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAssignments}
+                      disabled={assignedCount === 0}
+                    >
+                      전체 해제
+                    </button>
+                  </span>
+                </div>
+              )}
               {dialogCandidates.map((candidate) => {
                 const evidenceId =
                   "identity-candidate-evidence-" + candidate.id;
@@ -615,8 +664,9 @@ export function IdentityClaimDialog({ candidates }: IdentityClaimDialogProps) {
                 }}
               />
               <span>
-                선택한 별칭과 기록 구분이 바로 반영되며, 잘못된 경우 다른
-                참여자가 이 편집 전체를 되돌릴 수 있음을 확인했습니다.
+                {mergesEveryCandidate
+                  ? `같은 이름 기록 ${dialogCandidates.length}건을 모두 한 사람으로 묶습니다. 서로 다른 사람의 기록이 섞였다면 다른 참여자가 이 편집 전체를 되돌릴 수 있음을 확인했습니다.`
+                  : "선택한 별칭과 기록 구분이 바로 반영되며, 잘못된 경우 다른 참여자가 이 편집 전체를 되돌릴 수 있음을 확인했습니다."}
               </span>
             </label>
 
