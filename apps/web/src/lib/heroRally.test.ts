@@ -15,6 +15,7 @@ import {
   verticalSwingOffset,
   blockedCourseSide,
   blockedStroke,
+  shotLine,
   clampZoom,
   pinchZoomFactor,
   touchSpan,
@@ -272,6 +273,46 @@ describe("hero rally model", () => {
     expect(pinchZoomFactor(120, 0)).toBe(1);
   });
 
+  it("reads a shot that keeps its lane as straight and the rest as diagonal", () => {
+    expect(shotLine(0.7, 0.6)).toBe("straight");
+    expect(shotLine(-0.7, -0.6)).toBe("straight");
+    expect(shotLine(0.7, -0.6)).toBe("diagonal");
+    expect(shotLine(-0.7, 0.6)).toBe("diagonal");
+  });
+
+  it("plays down the line as well as across the table", () => {
+    // Below the straight share the ball stays in the lane it arrived in.
+    const straight = createRallyShot(0.7, "left", () => 0.1);
+    expect(shotLine(straight.startZ, straight.targetZ)).toBe("straight");
+    expect(straight.targetZ).toBeGreaterThan(0);
+
+    // Above it the ball crosses to the far side.
+    const diagonal = createRallyShot(0.7, "left", () => 0.9);
+    expect(shotLine(diagonal.startZ, diagonal.targetZ)).toBe("diagonal");
+    expect(diagonal.targetZ).toBeLessThan(0);
+  });
+
+  it("mixes both lines across a long rally instead of only crossing", () => {
+    let seed = 20260817;
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+
+    const lines: string[] = [];
+    let startZ = 0.72;
+    for (let index = 0; index < 200; index += 1) {
+      const shot = createRallyShot(startZ, "left", random);
+      lines.push(shotLine(shot.startZ, shot.targetZ));
+      startZ = shot.targetZ;
+    }
+
+    expect(new Set(lines).size).toBe(2);
+    expect(lines.filter((line) => line === "straight").length).toBeGreaterThan(
+      20,
+    );
+  });
+
   it("only blocks a course once the run reaches the limit", () => {
     expect(blockedCourseSide([])).toBeUndefined();
     expect(blockedCourseSide([shotFixture(0.8)])).toBeUndefined();
@@ -347,7 +388,13 @@ describe("hero rally model", () => {
 
     const courses = plan.map((shot) => (shot.targetZ >= 0 ? "right" : "left"));
     const kinds = plan.map((shot) => shot.kind);
+    const lines = plan.map((shot) => shotLine(shot.startZ, shot.targetZ));
     for (let index = 2; index < plan.length; index += 1) {
+      // Two straights in a row already put the ball on one side twice, so a
+      // third is blocked by the course rule and never needs its own guard.
+      expect(
+        lines.slice(index - 2, index + 1).every((line) => line === "straight"),
+      ).toBe(false);
       expect(new Set(courses.slice(index - 2, index + 1)).size).toBeGreaterThan(
         1,
       );

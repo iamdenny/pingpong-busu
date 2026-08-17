@@ -39,8 +39,24 @@ export const handForLane = (laneZ: number, side: RallySide): RallyHand =>
  */
 export const MAX_REPEATED_SHOTS = 2;
 
+/** Whether a shot is played down the line or across the table. */
+export type RallyLine = "straight" | "diagonal";
+
+/**
+ * Share of unforced shots played down the line. Cross-court is the natural
+ * majority in a rally, so straight shots stay the accent rather than the rule.
+ */
+export const STRAIGHT_SHARE = 0.4;
+
 /** Which half of the table a shot is aimed at. */
 const courseSide = (targetZ: number): number => (targetZ >= 0 ? 1 : -1);
+
+/**
+ * The line a shot travelled. A ball aimed at the side it arrived from stays in
+ * its lane and goes straight; anything else crosses the table.
+ */
+export const shotLine = (startZ: number, targetZ: number): RallyLine =>
+  courseSide(startZ) === courseSide(targetZ) ? "straight" : "diagonal";
 
 const runTail = (recent: readonly RallyShot[]): readonly RallyShot[] => {
   const tail = recent.slice(-MAX_REPEATED_SHOTS);
@@ -81,15 +97,17 @@ export const createRallyShot = (
   random: () => number = Math.random,
   recent: readonly RallyShot[] = [],
 ): RallyShot => {
-  let targetZ = (random() < 0.5 ? -1 : 1) * (0.48 + random() * 0.88);
-  if (Math.abs(targetZ - startZ) < 0.38) targetZ *= -1;
-  // Flipping the course here cannot break the clearance above: the blocked
-  // side is the side the ball is arriving from, so the flip only widens the
-  // gap between startZ and targetZ.
+  // The course side is the whole shape of the shot: aiming at the side the
+  // ball came from plays it down the line, the far side plays it across.
+  const arrivingSide = courseSide(startZ);
   const avoidCourse = blockedCourseSide(recent);
-  if (avoidCourse !== undefined && courseSide(targetZ) === avoidCourse) {
-    targetZ *= -1;
-  }
+  const targetSide =
+    avoidCourse !== undefined
+      ? -avoidCourse
+      : random() < STRAIGHT_SHARE
+        ? arrivingSide
+        : -arrivingSide;
+  const targetZ = targetSide * (0.48 + random() * 0.88);
   const avoidStroke = blockedStroke(recent);
   const kind: RallyStroke =
     avoidStroke === "drive"
