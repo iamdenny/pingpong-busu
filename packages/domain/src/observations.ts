@@ -122,20 +122,20 @@ export function isAwardRank(rankText?: string): boolean {
   );
 }
 
-export function summarizeDivisionObservations(
-  records: ReadonlyArray<
-    Pick<
-      PlayerRecord,
-      | "date"
-      | "dateBasis"
-      | "tournamentRegion"
-      | "division"
-      | "divisionSystem"
-      | "rank"
-    > &
-      Partial<Pick<PlayerRecord, "tournament" | "event" | "eventType">>
-  >,
-  today = todayIsoDate(),
+type SummarizableRecord = Pick<
+  PlayerRecord,
+  | "date"
+  | "dateBasis"
+  | "tournamentRegion"
+  | "division"
+  | "divisionSystem"
+  | "rank"
+> &
+  Partial<Pick<PlayerRecord, "tournament" | "event" | "eventType">>;
+
+function summarizeObservations(
+  records: ReadonlyArray<SummarizableRecord>,
+  includes: (record: SummarizableRecord) => boolean,
 ): DivisionObservationSummary[] {
   const counts = new Map<
     string,
@@ -147,7 +147,7 @@ export function summarizeDivisionObservations(
     }
   >();
   for (const record of records) {
-    if (!isCurrentDivisionSummaryRecord(record, today)) continue;
+    if (!includes(record)) continue;
     const division = record.division?.trim();
     if (!division) continue;
     const system =
@@ -168,4 +168,27 @@ export function summarizeDivisionObservations(
     counts.set(key, current);
   }
   return [...counts.values()];
+}
+
+/** 현재 추정 부수와 같은 기준의 개인전 관측만 집계한다. */
+export function summarizeDivisionObservations(
+  records: ReadonlyArray<SummarizableRecord>,
+  today = todayIsoDate(),
+): DivisionObservationSummary[] {
+  return summarizeObservations(records, (record) =>
+    isCurrentDivisionSummaryRecord(record, today),
+  );
+}
+
+/** 부수 집계에서 제외하는 단체·복식·혼성 관측만 따로 집계한다. */
+export function summarizeNonIndividualDivisionObservations(
+  records: ReadonlyArray<SummarizableRecord>,
+  today = todayIsoDate(),
+): DivisionObservationSummary[] {
+  return summarizeObservations(
+    records,
+    (record) =>
+      isCurrentSummaryRecord(record, today) &&
+      !isIndividualDivisionRecord(record),
+  );
 }

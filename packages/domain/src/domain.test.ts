@@ -24,6 +24,7 @@ import {
   parsePlayerSearchQuery,
   sortPlayerRecordsByLatest,
   summarizeDivisionObservations,
+  summarizeNonIndividualDivisionObservations,
   type PlayerRecord,
   type RecordHashInput,
 } from "./index";
@@ -754,6 +755,53 @@ describe("record chronology", () => {
       "new-post",
       "old-event-new-crawl",
       "unknown-date",
+    ]);
+  });
+});
+
+describe("summarizeNonIndividualDivisionObservations", () => {
+  const records = [
+    {
+      date: "2026-07-18",
+      dateBasis: "tournament" as const,
+      tournament: "가상 전국오픈",
+      event: "[여자단식] 여자 4~6부",
+      division: "5부",
+      divisionSystem: "integrated" as const,
+      rank: "본선 8강",
+    },
+    {
+      date: "2026-07-18",
+      dateBasis: "tournament" as const,
+      tournament: "가상 전국오픈",
+      event: "[여자단체] 여자 4~6부",
+      division: "5부",
+      divisionSystem: "integrated" as const,
+      rank: "준우승",
+    },
+  ];
+
+  it("counts only the records the division summary leaves out", () => {
+    expect(
+      summarizeNonIndividualDivisionObservations(records, "2026-08-17"),
+    ).toEqual([
+      {
+        system: "women",
+        division: "5부",
+        awardCount: 1,
+        participationCount: 0,
+      },
+    ]);
+  });
+
+  it("keeps the individual summary unchanged", () => {
+    expect(summarizeDivisionObservations(records, "2026-08-17")).toEqual([
+      {
+        system: "women",
+        division: "5부",
+        awardCount: 0,
+        participationCount: 1,
+      },
     ]);
   });
 });

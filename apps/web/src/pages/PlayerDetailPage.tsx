@@ -11,6 +11,8 @@ import {
   homonymNicknameLabel,
   isAwardRank,
   sortPlayerRecordsByLatest,
+  summarizeDivisionObservations,
+  summarizeNonIndividualDivisionObservations,
   type PlayerRecord,
 } from "@busu/domain";
 import { DivisionOverview } from "../components/DivisionOverview";
@@ -21,7 +23,7 @@ import { SourceComparison } from "../components/SourceComparison";
 import { trackAnalyticsEvent } from "../lib/analytics";
 import {
   groupDivisionSummaries,
-  summarizeObservedDivisions,
+  summarizeDivisionObservationItems,
 } from "../lib/divisionSummary";
 import { buildPlayerMetadata } from "../lib/pageMetadata";
 import { playerRepository } from "../lib/runtime";
@@ -150,12 +152,26 @@ export function PlayerDetailPage() {
   const historyTitle = isAwardsTab ? "입상 이력 (4강 이상)" : "전체 이력";
   const divisionOverviewSections = [
     {
-      key: "player",
-      label: player.name,
-      isAssigned: false,
-      groups: groupDivisionSummaries(summarizeObservedDivisions([player])),
+      key: "individual",
+      label: "개인전",
+      note: "현재 추정 부수와 같은 기준",
+      groups: groupDivisionSummaries(
+        summarizeDivisionObservationItems(
+          summarizeDivisionObservations(player.records),
+        ),
+      ),
     },
-  ];
+    {
+      key: "team",
+      label: "단체전",
+      note: "복식·혼성 포함 · 부수 집계 제외",
+      groups: groupDivisionSummaries(
+        summarizeDivisionObservationItems(
+          summarizeNonIndividualDivisionObservations(player.records),
+        ),
+      ),
+    },
+  ].filter((section) => section.groups.length > 0);
   const recentIntegratedDivision = findRecentObservedDivisionRecordForSystems(
     player.records,
     ["integrated", "women"],
@@ -212,40 +228,44 @@ export function PlayerDetailPage() {
             · {player.club ?? "소속 미상"}
           </p>
         </div>
-        <span className="identity identity--likely">
-          {player.identityStatus === "verified"
-            ? "참여 편집으로 연결됨"
-            : "소속·지역 확인 필요"}
-        </span>
+        {player.identityStatus === "verified" && (
+          <span className="identity identity--likely">
+            참여 편집으로 연결됨
+          </span>
+        )}
       </header>
       <section className="division-summary motion-entry">
-        <article>
-          <span>최근 관측 부수</span>
-          <strong>
-            {formatDivisionObservation(
-              player.recentObservedDivisionSystem,
-              player.recentObservedDivision,
-            )}
-          </strong>
-          <small>해당 대회 기록 기준</small>
-        </article>
-        <article>
-          <span>통합부수 기록</span>
-          <strong>
-            {formatDivisionObservation(
-              recentIntegratedDivision?.divisionSystem,
-              recentIntegratedDivision?.division,
-            )}
-          </strong>
-          <small>일반 시·군·구 대회와 여자 종목 포함</small>
-        </article>
+        <dl className="division-summary__stats">
+          <div>
+            <dt>최근 관측 부수</dt>
+            <dd>
+              {formatDivisionObservation(
+                player.recentObservedDivisionSystem,
+                player.recentObservedDivision,
+              )}
+            </dd>
+            <small>해당 대회 기록 기준</small>
+          </div>
+          <div>
+            <dt>통합부수 기록</dt>
+            <dd>
+              {formatDivisionObservation(
+                recentIntegratedDivision?.divisionSystem,
+                recentIntegratedDivision?.division,
+              )}
+            </dd>
+            <small>일반 시·군·구 대회와 여자 종목 포함</small>
+          </div>
+        </dl>
+        <DivisionOverview
+          titleId="player-division-overview-title"
+          title="부수별 입상·참가 기록"
+          description="개인전과 단체전을 나눠 표시"
+          sections={divisionOverviewSections}
+          showsSectionHeadings
+          embedded
+        />
       </section>
-      <DivisionOverview
-        titleId="player-division-overview-title"
-        title="부수별 입상·참가 기록"
-        description="최근 개인전 기록 기준"
-        sections={divisionOverviewSections}
-      />
       <RefreshStatus sources={player.sources} />
       <nav className="tabs" aria-label="선수 상세 항목">
         {(

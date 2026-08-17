@@ -134,6 +134,41 @@ describe("PlayerDetailPage metadata", () => {
     expect(overview).toHaveTextContent("참가");
   });
 
+  it("separates individual and team division records", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/players/kim-seoul"]}>
+          <Routes>
+            <Route path="/players/:id" element={<PlayerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const individual = await screen.findByRole("table", { name: "개인전" });
+    const team = screen.getByRole("table", { name: "단체전" });
+    expect(individual).toHaveTextContent("오픈부수");
+    expect(team).toHaveTextContent("통합부수");
+    expect(
+      screen.getByText("복식·혼성 포함 · 부수 집계 제외"),
+    ).toBeInTheDocument();
+  });
+
+  it("drops the identity badge that never changes", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/players/kim-seoul"]}>
+          <Routes>
+            <Route path="/players/:id" element={<PlayerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await screen.findByRole("heading", { name: "김탁구 파워 드라이브 전문가" });
+    expect(screen.queryByText("소속·지역 확인 필요")).not.toBeInTheDocument();
+  });
+
   it("marks records the division summary leaves out", async () => {
     const user = userEvent.setup();
 
