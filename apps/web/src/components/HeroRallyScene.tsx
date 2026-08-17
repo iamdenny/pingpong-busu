@@ -12,6 +12,7 @@ import {
   swingRollOffset,
   verticalSwingOffset,
   clampZoom,
+  pinchCenter,
   pinchZoomFactor,
   touchSpan,
   wheelReleasesToPage,
@@ -783,114 +784,30 @@ export function HeroRallyScene() {
         const candidateTableNormal = new THREE.Vector3();
         const viewerDirection = new THREE.Vector3();
 
-        const updateArcballPoint = (
+        const setArcballPoint = (
           target: InstanceType<typeof THREE.Vector3>,
-          event: PointerEvent,
+          clientX: number,
+          clientY: number,
         ) => {
           const bounds = root.getBoundingClientRect();
           const normalizedX =
-            ((event.clientX - bounds.left) / Math.max(1, bounds.width)) * 2 - 1;
+            ((clientX - bounds.left) / Math.max(1, bounds.width)) * 2 - 1;
           const normalizedY =
-            1 - ((event.clientY - bounds.top) / Math.max(1, bounds.height)) * 2;
+            1 - ((clientY - bounds.top) / Math.max(1, bounds.height)) * 2;
           const point = projectArcballPoint(normalizedX, normalizedY);
           target.set(point.x, point.y, point.z);
         };
         /**
-         * Touch points currently on the scene. Two of them make a pinch, which
-         * takes the gesture over from the one-finger arcball drag until a
-         * finger lifts.
+         * Turn the world toward a screen point, tracking how fast the step was
+         * so a release can carry it on. Shared by the one-finger drag and the
+         * two-finger gesture, which steers by the midpoint between the fingers.
          */
-        const activeTouches = new Map<number, { x: number; y: number }>();
-        let pinchSpan = 0;
-        let pinching = false;
-
-        const currentPinchSpan = () => {
-          const [first, second] = [...activeTouches.values()];
-          return first && second ? touchSpan(first, second) : 0;
-        };
-        /**
-         * Drop the arcball drag without settling it, so the finger that was
-         * rotating cannot fling the table as the pinch begins.
-         */
-        const abandonDragForPinch = () => {
-          if (dragPointerId === undefined) return;
-          if (root.hasPointerCapture(dragPointerId)) {
-            root.releasePointerCapture(dragPointerId);
-          }
-          dragPointerId = undefined;
-          lastDragMoveAt = 0;
-          spinVelocity = 0;
-          spinningWorld = false;
-          delete root.dataset.dragging;
-        };
-        const applyZoom = (factor: number) => {
-          const next = clampZoom(zoomLevel * factor);
-          if (next === zoomLevel) return;
-          zoomLevel = next;
-          if (!running) renderScene();
-        };
-        const handleWheel = (event: WheelEvent) => {
-          const factor = wheelZoomFactor(event.deltaY, event.deltaMode);
-          // At either limit the scene has nothing left to give, so the wheel
-          // goes back to the page instead of trapping the reader in the hero.
-          if (wheelReleasesToPage(zoomLevel, factor)) return;
-          event.preventDefault();
-          cancelWorldReset();
-          applyZoom(factor);
-          queueWorldReset();
-        };
-
-        const handleWorldPointerDown = (event: PointerEvent) => {
-          if (event.pointerType === "touch") {
-            activeTouches.set(event.pointerId, {
-              x: event.clientX,
-              y: event.clientY,
-            });
-            if (activeTouches.size === 2) {
-              abandonDragForPinch();
-              cancelWorldReset();
-              pinchSpan = currentPinchSpan();
-              pinching = true;
-              root.dataset.resetState = "dragging";
-              event.preventDefault();
-              return;
-            }
-            if (activeTouches.size > 2) return;
-          }
-          if (!event.isPrimary || dragPointerId !== undefined) return;
-          cancelWorldReset();
-          dragPointerId = event.pointerId;
-          root.setPointerCapture(event.pointerId);
-          updateArcballPoint(arcballPrevious, event);
-          cameraTarget.set(0, 0);
-          lastDragMoveAt = 0;
-          root.dataset.dragging = "true";
-          root.dataset.resetState = "dragging";
-          event.preventDefault();
-        };
-        const handleWorldPointerMove = (event: PointerEvent) => {
-          if (
-            event.pointerType === "touch" &&
-            activeTouches.has(event.pointerId)
-          ) {
-            activeTouches.set(event.pointerId, {
-              x: event.clientX,
-              y: event.clientY,
-            });
-            if (pinching) {
-              const span = currentPinchSpan();
-              if (span > 0) {
-                cancelWorldReset();
-                applyZoom(pinchZoomFactor(pinchSpan, span));
-                pinchSpan = span;
-              }
-              event.preventDefault();
-              return;
-            }
-          }
-          if (event.pointerId !== dragPointerId) return;
-          cancelWorldReset();
-          updateArcballPoint(arcballCurrent, event);
+        const rotateWorldToward = (
+          clientX: number,
+          clientY: number,
+          timeStamp: number,
+        ) => {
+          setArcballPoint(arcballCurrent, clientX, clientY);
           arcballRotation.setFromUnitVectors(arcballPrevious, arcballCurrent);
           candidateWorldQuaternion
             .copy(rallyWorld.quaternion)
@@ -906,8 +823,7 @@ export function HeroRallyScene() {
           if (keepsTableTopVisible(candidateTableNormal, viewerDirection)) {
             rallyWorld.quaternion.copy(candidateWorldQuaternion);
 
-            // Remember how fast this step was so the release can carry it on.
-            const now = event.timeStamp || window.performance.now();
+            const now = timeStamp || window.performance.now();
             const stepSeconds = lastDragMoveAt
               ? (now - lastDragMoveAt) / 1000
               : 0;
@@ -930,6 +846,143 @@ export function HeroRallyScene() {
             }
           }
           arcballPrevious.copy(arcballCurrent);
+        };
+        /**
+         * Touch points currently on the scene. Two of them make a pinch, which
+         * takes the gesture over from the one-finger arcball drag until a
+         * finger lifts.
+         */
+        const activeTouches = new Map<number, { x: number; y: number }>();
+        /**
+         * Pinch zoom is anchored to the span and zoom the gesture started
+         * with, not accumulated per event. Pointer moves arrive one finger at
+         * a time, so an incremental span ratio wobbles on every event and
+         * drifts for good once a wobble is swallowed by the zoom limit.
+         */
+        let pinchStartSpan = 0;
+        let pinchStartZoom = ZOOM_DEFAULT;
+        let pinching = false;
+
+        const currentPinchSpan = () => {
+          const [first, second] = [...activeTouches.values()];
+          return first && second ? touchSpan(first, second) : 0;
+        };
+        const currentPinchCenter = () => {
+          const [first, second] = [...activeTouches.values()];
+          return first && second ? pinchCenter(first, second) : undefined;
+        };
+        /** Take the capture off a pointer that is no longer steering. */
+        const releaseDragPointer = () => {
+          if (dragPointerId === undefined) return;
+          if (root.hasPointerCapture(dragPointerId)) {
+            root.releasePointerCapture(dragPointerId);
+          }
+          dragPointerId = undefined;
+        };
+        /**
+         * Hand the gesture to a screen point without letting the change of
+         * steer register as motion: re-seeding the arcball and clearing the
+         * step clock is what stops the table snapping as fingers come and go.
+         */
+        const reseedGesture = (clientX: number, clientY: number) => {
+          setArcballPoint(arcballPrevious, clientX, clientY);
+          lastDragMoveAt = 0;
+          spinVelocity = 0;
+          spinningWorld = false;
+        };
+        const setZoom = (value: number) => {
+          const next = clampZoom(value);
+          if (next === zoomLevel) return;
+          zoomLevel = next;
+          if (!running) renderScene();
+        };
+        const applyZoom = (factor: number) => setZoom(zoomLevel * factor);
+        const handleWheel = (event: WheelEvent) => {
+          // A trackpad pinch arrives as a ctrl-held wheel. It must always be
+          // consumed: handing it back does not scroll the page, it zooms the
+          // whole browser, which is worse than trapping the gesture.
+          const trackpadPinch = event.ctrlKey;
+          const factor = wheelZoomFactor(
+            event.deltaY,
+            event.deltaMode,
+            trackpadPinch,
+          );
+          const spent = wheelReleasesToPage(zoomLevel, factor);
+          // At either limit a plain wheel has nothing left to give, so it goes
+          // back to the page instead of trapping the reader in the hero.
+          if (spent && !trackpadPinch) return;
+          event.preventDefault();
+          if (spent) return;
+          cancelWorldReset();
+          applyZoom(factor);
+          queueWorldReset();
+        };
+
+        const handleWorldPointerDown = (event: PointerEvent) => {
+          if (event.pointerType === "touch") {
+            activeTouches.set(event.pointerId, {
+              x: event.clientX,
+              y: event.clientY,
+            });
+            if (activeTouches.size === 2) {
+              cancelWorldReset();
+              // The two fingers steer together from here: their midpoint
+              // rotates and their span zooms, so the gesture takes over from
+              // whichever finger was dragging alone.
+              releaseDragPointer();
+              const center = currentPinchCenter();
+              if (center) reseedGesture(center.x, center.y);
+              pinchStartSpan = currentPinchSpan();
+              pinchStartZoom = zoomLevel;
+              pinching = true;
+              cameraTarget.set(0, 0);
+              root.dataset.dragging = "true";
+              root.dataset.resetState = "dragging";
+              event.preventDefault();
+              return;
+            }
+            if (activeTouches.size > 2) return;
+          }
+          if (!event.isPrimary || dragPointerId !== undefined) return;
+          cancelWorldReset();
+          dragPointerId = event.pointerId;
+          root.setPointerCapture(event.pointerId);
+          setArcballPoint(arcballPrevious, event.clientX, event.clientY);
+          cameraTarget.set(0, 0);
+          lastDragMoveAt = 0;
+          root.dataset.dragging = "true";
+          root.dataset.resetState = "dragging";
+          event.preventDefault();
+        };
+        const handleWorldPointerMove = (event: PointerEvent) => {
+          if (
+            event.pointerType === "touch" &&
+            activeTouches.has(event.pointerId)
+          ) {
+            activeTouches.set(event.pointerId, {
+              x: event.clientX,
+              y: event.clientY,
+            });
+            if (pinching) {
+              cancelWorldReset();
+              const span = currentPinchSpan();
+              if (span > 0 && pinchStartSpan > 0) {
+                setZoom(pinchStartZoom * pinchZoomFactor(pinchStartSpan, span));
+              }
+              // Zoom and rotation come from the same gesture: the span drives
+              // one, the midpoint the other, and both land on this frame.
+              const center = currentPinchCenter();
+              if (center) {
+                rotateWorldToward(center.x, center.y, event.timeStamp);
+              }
+              if (!running) renderScene();
+              event.preventDefault();
+              return;
+            }
+          }
+          if (event.pointerId !== dragPointerId) return;
+          cancelWorldReset();
+          rotateWorldToward(event.clientX, event.clientY, event.timeStamp);
           if (!running) renderScene();
           event.preventDefault();
         };
@@ -960,12 +1013,23 @@ export function HeroRallyScene() {
         const handleWorldPointerEnd = (event: PointerEvent) => {
           if (event.pointerType === "touch") {
             activeTouches.delete(event.pointerId);
-            // The finger still down does not resume rotating: picking the
-            // arcball back up mid-pinch would snap the table sideways.
             if (pinching && activeTouches.size < 2) {
               pinching = false;
-              pinchSpan = 0;
-              queueWorldReset();
+              pinchStartSpan = 0;
+              const [remaining] = [...activeTouches.entries()];
+              if (remaining) {
+                // One finger is still down, so the gesture continues as a
+                // plain drag. Re-seeding from that finger is what keeps the
+                // steer change from reading as a jump.
+                const [remainingId, point] = remaining;
+                dragPointerId = remainingId;
+                reseedGesture(point.x, point.y);
+                root.dataset.dragging = "true";
+                root.dataset.resetState = "dragging";
+              } else {
+                delete root.dataset.dragging;
+                settleWorldDrag();
+              }
               event.preventDefault();
               return;
             }

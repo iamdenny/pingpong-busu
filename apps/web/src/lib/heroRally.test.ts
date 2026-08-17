@@ -17,8 +17,10 @@ import {
   blockedStroke,
   shotLine,
   clampZoom,
+  pinchCenter,
   pinchZoomFactor,
   touchSpan,
+  TRACKPAD_PINCH_GAIN,
   wheelReleasesToPage,
   wheelZoomFactor,
   MAX_REPEATED_SHOTS,
@@ -410,5 +412,38 @@ describe("hero rally model", () => {
     expect(touchSpan({ x: 0, y: 0 }, { x: 3, y: 4 })).toBeCloseTo(5);
     expect(touchSpan({ x: 3, y: 4 }, { x: 0, y: 0 })).toBeCloseTo(5);
     expect(touchSpan({ x: 2, y: 2 }, { x: 2, y: 2 })).toBe(0);
+  });
+
+  it("steers a two-finger gesture from the midpoint between the touches", () => {
+    expect(pinchCenter({ x: 0, y: 0 }, { x: 10, y: 20 })).toEqual({
+      x: 5,
+      y: 10,
+    });
+    // Order must not matter, or the steer would jump as fingers are reported.
+    expect(pinchCenter({ x: 10, y: 20 }, { x: 0, y: 0 })).toEqual({
+      x: 5,
+      y: 10,
+    });
+    // Moving both fingers together translates the midpoint, which is what
+    // lets the same gesture rotate while the span zooms.
+    expect(pinchCenter({ x: 4, y: 4 }, { x: 8, y: 8 })).toEqual({ x: 6, y: 6 });
+    expect(pinchCenter({ x: 14, y: 4 }, { x: 18, y: 8 })).toEqual({
+      x: 16,
+      y: 6,
+    });
+  });
+
+  it("gives a trackpad pinch more gain than the same wheel delta", () => {
+    // A trackpad pinch reports far smaller deltas than a mouse notch.
+    const wheel = wheelZoomFactor(-10);
+    const trackpad = wheelZoomFactor(-10, 0, true);
+
+    expect(trackpad).toBeGreaterThan(wheel);
+    expect(Math.log(trackpad)).toBeCloseTo(
+      Math.log(wheel) * TRACKPAD_PINCH_GAIN,
+      10,
+    );
+    // Direction is unchanged: spreading still zooms in, pinching still out.
+    expect(wheelZoomFactor(10, 0, true)).toBeLessThan(1);
   });
 });

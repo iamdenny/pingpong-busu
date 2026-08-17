@@ -293,7 +293,18 @@ const WHEEL_SENSITIVITY = 0.0015;
  * zooming in and back out by the same travel lands on the original level
  * regardless of how the travel was split across events.
  */
-export const wheelZoomFactor = (deltaY: number, deltaMode = 0): number => {
+/**
+ * A trackpad pinch reaches the page as a ctrl-held wheel whose deltas are far
+ * smaller than a mouse notch, so it needs its own gain to feel like a pinch
+ * rather than a crawl.
+ */
+export const TRACKPAD_PINCH_GAIN = 3;
+
+export const wheelZoomFactor = (
+  deltaY: number,
+  deltaMode = 0,
+  trackpadPinch = false,
+): number => {
   if (!Number.isFinite(deltaY) || deltaY === 0) return 1;
   const scale =
     deltaMode === 1
@@ -305,7 +316,8 @@ export const wheelZoomFactor = (deltaY: number, deltaMode = 0): number => {
     -WHEEL_MAX_PIXELS,
     Math.min(WHEEL_MAX_PIXELS, deltaY * scale),
   );
-  return Math.exp(-pixels * WHEEL_SENSITIVITY);
+  const gain = trackpadPinch ? TRACKPAD_PINCH_GAIN : 1;
+  return Math.exp(-pixels * WHEEL_SENSITIVITY * gain);
 };
 
 /**
@@ -326,6 +338,18 @@ export const touchSpan = (
   first: { x: number; y: number },
   second: { x: number; y: number },
 ): number => Math.hypot(second.x - first.x, second.y - first.y);
+
+/**
+ * Midpoint of a two-finger gesture. Moving this point rotates the scene while
+ * the span between the same two fingers zooms it, so one gesture does both.
+ */
+export const pinchCenter = (
+  first: { x: number; y: number },
+  second: { x: number; y: number },
+): { x: number; y: number } => ({
+  x: (first.x + second.x) / 2,
+  y: (first.y + second.y) / 2,
+});
 
 /**
  * Whether a wheel step should be handed back to the page instead of consumed.
