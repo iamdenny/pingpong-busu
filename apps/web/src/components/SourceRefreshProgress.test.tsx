@@ -119,6 +119,30 @@ describe("SourceRefreshProgress", () => {
     expect(screen.queryByRole("button", { name: /아이핑 재시도/u })).toBeNull();
   });
 
+  it("tells the reader when a queued collection lands and that it self-updates", () => {
+    render(
+      <SourceRefreshProgress
+        existingRecordCount={2}
+        sources={[
+          {
+            sourceCode: "iping",
+            sourceName: "아이핑",
+            state: "queued",
+            reason: "queued",
+            message: "아이핑 최신 기록 수집을 예약했습니다.",
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "실시간 출처 조회 상세 보기" }),
+    );
+    expect(screen.getByText("아이핑").closest("li")).toHaveTextContent(
+      "보통 10분 안에 반영되며 완료되면 자동으로 갱신됩니다.",
+    );
+  });
+
   it("describes a queued iPing collection without claiming records exist", () => {
     render(
       <SourceRefreshProgress
