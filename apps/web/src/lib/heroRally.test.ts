@@ -9,7 +9,11 @@ import {
   forwardSwingOffset,
   handForLane,
   keepsTableTopVisible,
-  projectArcballPoint,
+  clampPitch,
+  pitchLimitsForViewer,
+  shortestTurn,
+  PITCH_PER_PIXEL,
+  YAW_PER_PIXEL,
   sampleRallyPoint,
   swingRollOffset,
   verticalSwingOffset,
@@ -195,13 +199,61 @@ describe("hero rally model", () => {
     );
   });
 
-  it("projects pointer positions onto a full 3D arcball", () => {
-    expect(projectArcballPoint(0, 0)).toEqual({ x: 0, y: 0, z: 1 });
+  it("turns the table at the same rate in every direction", () => {
+    // Both rates are per screen pixel, so a drag of a given length turns the
+    // table by a comparable amount whichever way it goes. Normalising each
+    // axis by its own side is what made a short wide canvas feel erratic.
+    expect(YAW_PER_PIXEL).toBeGreaterThan(0);
+    expect(PITCH_PER_PIXEL).toBeGreaterThan(0);
+    expect(YAW_PER_PIXEL / PITCH_PER_PIXEL).toBeLessThan(2);
+    expect(YAW_PER_PIXEL / PITCH_PER_PIXEL).toBeGreaterThan(0.5);
+    // A drag across a phone-width canvas has to clear a half turn, or the
+    // table cannot be brought past 90 degrees without repeated grabs.
+    expect(320 * YAW_PER_PIXEL).toBeGreaterThan(Math.PI / 2);
+  });
 
-    const edge = projectArcballPoint(2, 0);
-    expect(edge.x).toBeCloseTo(1);
-    expect(edge.y).toBeCloseTo(0);
-    expect(edge.z).toBeCloseTo(0);
+  it("limits pitch to the arc that keeps the table top toward the camera", () => {
+    // The default hero camera sits above and behind the table.
+    const viewerY = 0.397;
+    const viewerZ = 0.918;
+    const limits = pitchLimitsForViewer(viewerY, viewerZ);
+
+    expect(limits.min).toBeLessThan(0);
+    expect(limits.max).toBeGreaterThan(0);
+
+    // The analytic limits must agree with the guard they stand in for.
+    const facingAt = (pitch: number) =>
+      keepsTableTopVisible(
+        { x: 0, y: Math.cos(pitch), z: Math.sin(pitch) },
+        { x: 0, y: viewerY, z: viewerZ },
+      );
+    expect(facingAt(limits.min + 0.01)).toBe(true);
+    expect(facingAt(limits.max - 0.01)).toBe(true);
+    expect(facingAt(limits.min - 0.01)).toBe(false);
+    expect(facingAt(limits.max + 0.01)).toBe(false);
+  });
+
+  it("clamps pitch without touching yaw, so a tilted table still spins", () => {
+    const limits = { min: -0.3, max: 1.2 };
+
+    expect(clampPitch(0.5, limits)).toBe(0.5);
+    expect(clampPitch(9, limits)).toBe(1.2);
+    expect(clampPitch(-9, limits)).toBe(-0.3);
+    // Pitch pinned at its limit leaves the yaw rate untouched: there is no
+    // shared rejection that could take a sideways turn down with it.
+    expect(clampPitch(9, limits)).toBe(limits.max);
+    expect(YAW_PER_PIXEL).toBeGreaterThan(0);
+  });
+
+  it("unwinds a turn the shorter way round", () => {
+    expect(shortestTurn(0)).toBeCloseTo(0);
+    expect(shortestTurn(Math.PI / 2)).toBeCloseTo(Math.PI / 2);
+    // Two full turns plus a nudge is just the nudge.
+    expect(shortestTurn(4 * Math.PI + 0.3)).toBeCloseTo(0.3);
+    // Just past half a turn comes back the other way rather than the long way.
+    expect(shortestTurn(Math.PI + 0.2)).toBeCloseTo(-Math.PI + 0.2);
+    expect(shortestTurn(-4 * Math.PI - 0.3)).toBeCloseTo(-0.3);
+    expect(Math.abs(shortestTurn(123.4))).toBeLessThanOrEqual(Math.PI);
   });
 
   it("rejects rotations that expose the underside of the table", () => {
