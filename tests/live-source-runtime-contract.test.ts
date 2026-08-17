@@ -101,7 +101,7 @@ describe("refresh-player live source contract", () => {
     );
     expect(refreshPlayer).toContain('status: "queued"');
     expect(refreshPlayer).toContain("아이핑 최신 기록 수집을 예약했습니다.");
-    expect(refreshPlayer).toContain('iping: "iping-4"');
+    expect(refreshPlayer).toContain('iping: "iping-5"');
     expect(refreshPlayer).toContain("loadIpingJobLease");
     expect(refreshPlayer).toContain("normalizeIpingBrowserRecords");
     expect(workerAuth).toContain("crypto.subtle.digest");

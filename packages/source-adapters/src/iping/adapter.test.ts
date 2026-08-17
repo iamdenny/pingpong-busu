@@ -119,7 +119,7 @@ describe("IpingSourceAdapter authentication", () => {
       });
     }
     expect(result.records).toHaveLength(3);
-    expect(result.parserVersion).toBe("iping-4");
+    expect(result.parserVersion).toBe("iping-5");
     expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 

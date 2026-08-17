@@ -13,6 +13,9 @@ const ipingOrigin = new URL(ipingBaseUrl).origin;
 const navigationTimeoutMs = 20_000;
 const maximumHtmlBytes = 1_500_000;
 const maximumPayloadBytes = 4_000_000;
+const sessionSettleAttempts = 24;
+const searchSettleAttempts = 10;
+const sessionSettleIntervalMs = 500;
 
 export const ipingBrowserContextOptions = {
   locale: "ko-KR",
@@ -392,7 +395,7 @@ async function launchChrome(): Promise<Browser> {
   }
 }
 
-class PlaywrightIpingBrowserCollector implements IpingBrowserCollector {
+export class PlaywrightIpingBrowserCollector implements IpingBrowserCollector {
   async collect(
     name: string,
     credentials: IpingBrowserCredentials,
@@ -402,6 +405,13 @@ class PlaywrightIpingBrowserCollector implements IpingBrowserCollector {
       const context = await browser.newContext(ipingBrowserContextOptions);
       const page = await context.newPage();
       page.setDefaultNavigationTimeout(navigationTimeoutMs);
+      let credentialsRejected = false;
+      page.on("dialog", (dialog) => {
+        if (/등록되지 않은|비밀번호/u.test(dialog.message())) {
+          credentialsRejected = true;
+        }
+        void dialog.dismiss().catch(() => undefined);
+      });
 
       let phase: IpingBrowserPhase = "login_page";
       try {
@@ -475,7 +485,19 @@ class PlaywrightIpingBrowserCollector implements IpingBrowserCollector {
         );
 
         phase = "login_verify";
-        const verificationHtml = await readIpingPageContent(page);
+        const verificationHtml = await settleIpingSessionHtml(page);
+        if (credentialsRejected) {
+          throw new IpingBrowserWorkerError({
+            code: "source_auth_failed",
+            phase,
+          });
+        }
+        if (verificationHtml.length === 0) {
+          throw new IpingBrowserWorkerError({
+            code: "source_request_failed",
+            phase,
+          });
+        }
         assertHtmlSize(verificationHtml, phase);
         assertSession(verificationHtml, phase, true);
 
@@ -485,13 +507,23 @@ class PlaywrightIpingBrowserCollector implements IpingBrowserCollector {
         ): Promise<string> => {
           phase = searchPhase;
           const query = encodeIpingForm({ pg: "Search", SchVal: name });
-          const response = await page.goto(
-            `${ipingBaseUrl}?${query}${suffix}`,
-            { waitUntil: "domcontentloaded" },
-          );
+          const searchUrl = `${ipingBaseUrl}?${query}${suffix}`;
+          const response = await page.goto(searchUrl, {
+            waitUntil: "domcontentloaded",
+          });
           assertNavigationStatus(response?.status(), response?.url(), phase);
-          const html = await page.content();
+          const html = await settleIpingSearchHtml(page);
           assertHtmlSize(html, phase);
+          // A query iPing refuses must not look like a source-wide outage.
+          if (
+            isIpingQueryRejectionHtml(html) ||
+            !new URL(page.url()).search.includes("pg=Search")
+          ) {
+            throw new IpingBrowserWorkerError({
+              code: "source_request_failed",
+              phase,
+            });
+          }
           assertSession(html, phase, false);
           return html;
         };
@@ -544,6 +576,10 @@ interface IpingHtmlPage {
   waitForLoadState(state: "domcontentloaded"): Promise<void>;
 }
 
+interface IpingSettlePage extends IpingHtmlPage {
+  waitForTimeout(timeout: number): Promise<void>;
+}
+
 export async function readIpingPageContent(
   page: IpingHtmlPage,
 ): Promise<string> {
@@ -553,6 +589,65 @@ export async function readIpingPageContent(
     await page.waitForLoadState("domcontentloaded");
     return page.content();
   }
+}
+
+async function readSettledHtml(
+  page: IpingSettlePage,
+  isSettled: (html: string) => boolean,
+  attempts: number,
+  intervalMs: number,
+): Promise<string> {
+  let html = "";
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      html = await readIpingPageContent(page);
+      if (isSettled(html)) return html;
+    } catch {
+      // The document is still swapping; retry inside the settle budget.
+    }
+    if (attempt + 1 < attempts) await page.waitForTimeout(intervalMs);
+  }
+  return html;
+}
+
+/**
+ * iPing answers the login POST with a guest interstitial that redirects to the
+ * member home from the client, so the session state is only decidable once the
+ * redirect settles.
+ */
+export async function settleIpingSessionHtml(
+  page: IpingSettlePage,
+  attempts: number = sessionSettleAttempts,
+  intervalMs: number = sessionSettleIntervalMs,
+): Promise<string> {
+  return readSettledHtml(
+    page,
+    (html) => {
+      const state = classifyIpingSessionHtml(html);
+      return state === "authenticated" || state === "challenge";
+    },
+    attempts,
+    intervalMs,
+  );
+}
+
+/** Search results settle on the result table; refused queries navigate away. */
+export async function settleIpingSearchHtml(
+  page: IpingSettlePage,
+  attempts: number = searchSettleAttempts,
+  intervalMs: number = sessionSettleIntervalMs,
+): Promise<string> {
+  return readSettledHtml(
+    page,
+    (html) => html.includes("선수명"),
+    attempts,
+    intervalMs,
+  );
+}
+
+/** iPing rejects some query terms with an alert page that navigates back. */
+export function isIpingQueryRejectionHtml(html: string): boolean {
+  return /alert\((['"])[^'"]*두글자[^'"]*\1\)\s*;\s*history\.back/u.test(html);
 }
 
 function toSafeDuration(startedAt: number): number {

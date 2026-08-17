@@ -120,7 +120,7 @@ export class DemoPlayerRepository implements PlayerRepository {
         baseUrl: "https://www.iping.club/?pg=Search",
         adapterMode: "http",
         enabled: false,
-        parserVersion: "iping-4",
+        parserVersion: "iping-5",
       },
     ];
   }

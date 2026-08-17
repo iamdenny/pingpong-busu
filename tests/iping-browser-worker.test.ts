@@ -4,9 +4,12 @@ import {
   formatIpingBrowserWorkerFailure,
   ipingBrowserContextOptions,
   IpingBrowserWorkerError,
+  isIpingQueryRejectionHtml,
   readIpingPageContent,
   resolveIpingBrowserExecutable,
   runIpingBrowserWorker,
+  settleIpingSearchHtml,
+  settleIpingSessionHtml,
   type ClaimedIpingBrowserJob,
   type IpingBrowserCollector,
   type IpingBrowserFailure,
@@ -84,6 +87,92 @@ describe("iPing login verification", () => {
       }),
     ).rejects.toThrow("page closed");
     expect(content).toHaveBeenCalledTimes(2);
+  });
+});
+
+const guestHtml = '<a href="/?pg=login">로그인</a><input name="Mid"><input name="Pwd">';
+const memberHtml = '<a href="/?pg=logout">로그아웃</a>';
+
+function settlePage(
+  reads: readonly (string | Error)[],
+): {
+  page: {
+    content: () => Promise<string>;
+    waitForLoadState: () => Promise<void>;
+    waitForTimeout: () => Promise<void>;
+  };
+  waits: { count: number };
+} {
+  const waits = { count: 0 };
+  let index = 0;
+  return {
+    waits,
+    page: {
+      content: async () => {
+        const read = reads[Math.min(index++, reads.length - 1)] ?? "";
+        if (read instanceof Error) throw read;
+        return read;
+      },
+      waitForLoadState: async () => undefined,
+      waitForTimeout: async () => {
+        waits.count += 1;
+      },
+    },
+  };
+}
+
+describe("iPing session settling", () => {
+  it("waits for the guest interstitial to redirect to the member page", async () => {
+    const { page, waits } = settlePage([guestHtml, guestHtml, memberHtml]);
+
+    await expect(settleIpingSessionHtml(page, 5, 1)).resolves.toContain(
+      "로그아웃",
+    );
+    expect(waits.count).toBe(2);
+  });
+
+  it("keeps polling while the document is still swapping", async () => {
+    const { page } = settlePage([
+      new Error("page is navigating"),
+      new Error("page is navigating"),
+      memberHtml,
+    ]);
+
+    await expect(settleIpingSessionHtml(page, 5, 1)).resolves.toContain(
+      "로그아웃",
+    );
+  });
+
+  it("returns the guest page once the settle budget is spent", async () => {
+    const { page } = settlePage([guestHtml]);
+
+    await expect(settleIpingSessionHtml(page, 3, 1)).resolves.toBe(guestHtml);
+  });
+
+  it("settles a search page on the result table header", async () => {
+    const { page, waits } = settlePage([
+      new Error("page is navigating"),
+      "<table><tr><td>선수명</td><td>출전이력</td></tr></table>",
+    ]);
+
+    // readIpingPageContent absorbs the first navigation race on its own.
+    await expect(settleIpingSearchHtml(page, 4, 1)).resolves.toContain("선수명");
+    expect(waits.count).toBe(0);
+  });
+});
+
+describe("iPing refused queries", () => {
+  it("detects the query rejection page without matching the search script", () => {
+    expect(
+      isIpingQueryRejectionHtml(
+        "<script>alert('검색어를 두글자 이상 입력해주세요');history.back(-1);</script>",
+      ),
+    ).toBe(true);
+    expect(
+      isIpingQueryRejectionHtml(
+        "<script>function check(){ alert('검색어를 두글자 이상 입력해주세요'); }</script>",
+      ),
+    ).toBe(false);
   });
 });
 
