@@ -1159,6 +1159,7 @@ p {
   margin: 0 0 1.1rem;
   padding: 0;
   border: 0;
+  min-inline-size: 0;
 }
 .identity-candidate-options legend {
   font-weight: 900;
@@ -1186,7 +1187,7 @@ p {
   gap: 0.35rem;
 }
 .identity-candidate-toolbar button {
-  min-block-size: 40px;
+  min-block-size: 44px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   background: #fff;
@@ -1195,12 +1196,17 @@ p {
   font-size: 0.78rem;
   font-weight: 800;
 }
+.identity-candidate-toolbar button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
 .identity-candidate-option {
   margin: 0.5rem 0;
   padding: 0.8rem;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: #f8fafc;
+  min-inline-size: 0;
 }
 .identity-candidate-option > legend {
   display: grid;

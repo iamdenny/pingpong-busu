@@ -161,6 +161,96 @@ describe("IdentityClaimDialog", () => {
     expect(screen.getByText(/소속과 활동 지역/u)).toBeInTheDocument();
   });
 
+  it("groups every candidate under one alias in a single action", async () => {
+    window.localStorage.setItem(ANONYMOUS_EDITOR_STORAGE_KEY, editorId);
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue([]);
+    const submit = vi
+      .spyOn(playerRepository, "applyIdentityEdit")
+      .mockResolvedValue({
+        accepted: true,
+        referenceId: "EF56AB78",
+        operationId: "00000000-0000-4000-8000-000000000002",
+        status: "applied",
+        groupCount: 1,
+      });
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "전체 2건 한 사람으로" }),
+    );
+
+    expect(screen.getByText(/분류 2건 · 전체 2건/u)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "전체 2건 한 사람으로" }),
+    ).toBeDisabled();
+    expect(
+      within(
+        screen.getByRole("group", { name: /부산.*블루라켓/u }),
+      ).getByRole("radio", { name: "파워 드라이브 전문가" }),
+    ).toBeChecked();
+
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /같은 이름 기록 2건을 모두 한 사람으로 묶습니다/u,
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "선택한 기록 묶기" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "별칭으로 기록을 묶었습니다.",
+      }),
+    ).toBeInTheDocument();
+    expect(submit.mock.calls[0]?.[0]).toEqual({
+      groups: [
+        {
+          nickname: "파워 드라이브 전문가",
+          candidateIds: ["candidate-seoul", "candidate-busan"],
+        },
+      ],
+      editorId,
+    });
+  });
+
+  it("clears every assignment and restores the default confirmation", async () => {
+    vi.spyOn(
+      playerRepository,
+      "getIdentityCandidateEvidence",
+    ).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(
+      screen.getByRole("button", { name: "별칭으로 기록 묶기" }),
+    );
+    expect(screen.getByRole("button", { name: "전체 해제" })).toBeDisabled();
+
+    await user.click(
+      screen.getByRole("button", { name: "전체 2건 한 사람으로" }),
+    );
+    await user.click(screen.getByRole("button", { name: "전체 해제" }));
+
+    expect(screen.getByText(/분류 0건 · 전체 2건/u)).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", {
+        name: /선택한 별칭과 기록 구분이 바로 반영되며/u,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("group", { name: /서울.*스핀탁구클럽/u })).getByRole(
+        "radio",
+        { name: "모름" },
+      ),
+    ).toBeChecked();
+  });
+
   it("starts a new classification with one randomized suggestion", async () => {
     vi.mocked(Math.random).mockReturnValue(0.5);
     vi.spyOn(
