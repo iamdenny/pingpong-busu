@@ -128,3 +128,30 @@ describe("iPing worker deployment", () => {
     );
   });
 });
+
+describe("iPing drain dispatch script", () => {
+  const script = readFileSync(
+    resolve(process.cwd(), "ops/iping-runner/dispatch-drain.sh"),
+    "utf8",
+  );
+
+  it("requests one bounded drain run on main", () => {
+    expect(script).toContain("set -euo pipefail");
+    expect(script).toContain('workflow="crawl-scheduled.yml"');
+    expect(script).toContain("--ref main");
+    expect(script).toContain("--field mode=drain-iping");
+  });
+
+  it("skips dispatching while a run is already active", () => {
+    expect(script).toMatch(
+      /status == "in_progress" or \.status == "queued" or \.status == "waiting"/u,
+    );
+    expect(script).toMatch(/if \[ "\$active" != "0" \]; then[\s\S]+?exit 0/u);
+  });
+
+  it("never writes the token to logs or the repository", () => {
+    expect(script).toContain("GH_TOKEN");
+    expect(script).not.toMatch(/echo[^\n]*\$\{?GH_TOKEN/u);
+    expect(script).not.toMatch(/gh auth login/u);
+  });
+});
