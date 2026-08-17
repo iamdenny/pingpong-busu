@@ -1,4 +1,9 @@
-import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useQueries,
+  useQuery,
+  useQueryClient,
+  type Query,
+} from "@tanstack/react-query";
 import {
   CalendarDays,
   ChevronRight,
@@ -42,6 +47,7 @@ import {
   isSourceRefreshEnabled,
   playerRepository,
 } from "../lib/runtime";
+import { queuedRefreshPollInterval } from "../lib/sourceRefreshPolling";
 import {
   asRateLimitError,
   asTimeoutError,
@@ -50,6 +56,7 @@ import {
   shouldRetrySourceRefresh,
   sourceRefreshRetryDelay,
 } from "../lib/sourceRefreshRetry";
+import type { RefreshResponse } from "../lib/repository";
 
 interface SourceRefreshFailureView {
   errorCode: string;
@@ -315,6 +322,20 @@ export function SearchResultsPage() {
         enabled: canStartSourceRefresh,
         staleTime: 0,
         gcTime: 0,
+        refetchInterval: (
+          query: Query<
+            RefreshResponse,
+            Error,
+            RefreshResponse,
+            readonly unknown[]
+          >,
+        ) =>
+          queuedRefreshPollInterval(
+            query.state.data,
+            source.sourceCode,
+            query.state.dataUpdateCount,
+          ),
+        refetchIntervalInBackground: false,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
         retry: shouldRetrySourceRefresh,

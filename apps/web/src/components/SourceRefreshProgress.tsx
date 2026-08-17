@@ -68,6 +68,14 @@ export function sourceRefreshStateText(
   return changes > 0 ? `완료 · 신규·변경 ${changes}건` : "완료 · 새 기록 없음";
 }
 
+export function sourceRefreshDetailText(
+  source: SourceRefreshView,
+): string | undefined {
+  if (source.state === "queued")
+    return "보통 10분 안에 반영되며 완료되면 자동으로 갱신됩니다.";
+  return source.message;
+}
+
 function statusClass(source: SourceRefreshView): string {
   if (source.state === "succeeded") return "fresh";
   if (source.state === "waiting" || source.state === "refreshing")
@@ -184,7 +192,9 @@ function SourceRefreshDisclosure({
                   </span>
                   <span className="source-refresh-progress__result">
                     <strong>{sourceRefreshStateText(source, now)}</strong>
-                    {source.message && <small>{source.message}</small>}
+                    {sourceRefreshDetailText(source) && (
+                      <small>{sourceRefreshDetailText(source)}</small>
+                    )}
                   </span>
                   {source.state === "failed" &&
                     source.sourceCode !== "iping" &&
