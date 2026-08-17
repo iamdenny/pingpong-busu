@@ -6,9 +6,10 @@ import {
   decaySpinVelocity,
   flickVelocity,
   forwardSwingOffset,
-  keepsTableTopVisible,
-  projectArcballPoint,
+  clampPitch,
+  pitchLimitsForViewer,
   sampleRallyPoint,
+  shortestTurn,
   swingRollOffset,
   verticalSwingOffset,
   clampZoom,
@@ -17,8 +18,10 @@ import {
   touchSpan,
   wheelReleasesToPage,
   wheelZoomFactor,
+  PITCH_PER_PIXEL,
   SPIN_MIN_VELOCITY,
   SPIN_RELEASE_GRACE_MS,
+  YAW_PER_PIXEL,
   ZOOM_DEFAULT,
   type RallyShot,
 } from "../lib/heroRally";
@@ -444,8 +447,10 @@ export function HeroRallyScene() {
         const rightBase = new THREE.Vector3(5.16, 2.42, 0);
         const tempEuler = new THREE.Euler();
         const tempQuaternion = new THREE.Quaternion();
-        const identityWorldQuaternion = new THREE.Quaternion();
-        const resetFromQuaternion = new THREE.Quaternion();
+        const worldUpAxis = new THREE.Vector3(0, 1, 0);
+        const worldRightAxis = new THREE.Vector3(1, 0, 0);
+        const yawQuaternion = new THREE.Quaternion();
+        const pitchQuaternion = new THREE.Quaternion();
         // Frames the table top, net and paddle blades. The legs and the floor
         // shadow are allowed to crop so the rally fills the wide hero stage.
         const fitHalfExtents = new THREE.Vector3(5.6, 1.25, 2.55);
@@ -471,16 +476,40 @@ export function HeroRallyScene() {
         let zoomLevel = ZOOM_DEFAULT;
         let resetFromZoom = ZOOM_DEFAULT;
         let hasSetInitialPaddlePose = false;
-        // Flick momentum. The axis is the last drag step's rotation axis and
-        // the velocity decays until it settles, then the return timer starts.
-        const spinAxis = new THREE.Vector3(0, 1, 0);
-        const spinStep = new THREE.Quaternion();
-        const spinCandidate = new THREE.Quaternion();
-        const spinTableNormal = new THREE.Vector3();
-        const spinViewerDirection = new THREE.Vector3();
-        let spinVelocity = 0;
+        /**
+         * The steer is a turntable: yaw spins the table about its own up axis
+         * and never runs out, pitch tilts it about the camera's horizontal
+         * axis and is clamped so the underside stays hidden. Keeping them
+         * apart is what lets a tilted table still be spun sideways — a single
+         * combined rotation has to reject the whole step at the tilt limit,
+         * taking the reader's sideways turn down with it.
+         */
+        let worldYaw = 0;
+        let worldPitch = 0;
+        let resetFromYaw = 0;
+        let resetFromPitch = 0;
+        // Flick momentum, one decaying velocity per steer axis.
+        const viewerDirection = new THREE.Vector3();
+        let yawVelocity = 0;
+        let pitchVelocity = 0;
         let spinningWorld = false;
         let lastDragMoveAt = 0;
+
+        const currentPitchLimits = () => {
+          viewerDirection
+            .copy(camera.position)
+            .sub(rallyWorld.position)
+            .normalize();
+          return pitchLimitsForViewer(viewerDirection.y, viewerDirection.z);
+        };
+        const applyWorldRotation = () => {
+          yawQuaternion.setFromAxisAngle(worldUpAxis, worldYaw);
+          pitchQuaternion.setFromAxisAngle(worldRightAxis, worldPitch);
+          rallyWorld.quaternion
+            .copy(pitchQuaternion)
+            .multiply(yawQuaternion)
+            .normalize();
+        };
         cleanupSteps.push(() => {
           running = false;
           cancelAnimationFrame(frame);
@@ -593,28 +622,21 @@ export function HeroRallyScene() {
           if (running) elapsed += delta;
 
           if (spinningWorld) {
-            spinVelocity = decaySpinVelocity(spinVelocity, delta);
-            spinStep.setFromAxisAngle(spinAxis, spinVelocity * delta);
-            spinCandidate
-              .copy(rallyWorld.quaternion)
-              .premultiply(spinStep)
-              .normalize();
-            spinTableNormal.set(0, 1, 0).applyQuaternion(spinCandidate);
-            spinViewerDirection
-              .copy(camera.position)
-              .sub(rallyWorld.position)
-              .normalize();
-            // Stop on the same guard the drag uses, so momentum can never
-            // carry the table past its underside.
-            if (
-              spinVelocity <= SPIN_MIN_VELOCITY ||
-              !keepsTableTopVisible(spinTableNormal, spinViewerDirection)
-            ) {
-              spinVelocity = 0;
+            yawVelocity = decaySpinVelocity(yawVelocity, delta);
+            pitchVelocity = decaySpinVelocity(pitchVelocity, delta);
+            worldYaw += yawVelocity * delta;
+            // The pitch clamp already keeps the underside hidden, so momentum
+            // slides along the limit instead of being cut short by it.
+            worldPitch = clampPitch(
+              worldPitch + pitchVelocity * delta,
+              currentPitchLimits(),
+            );
+            applyWorldRotation();
+            if (Math.hypot(yawVelocity, pitchVelocity) <= SPIN_MIN_VELOCITY) {
+              yawVelocity = 0;
+              pitchVelocity = 0;
               spinningWorld = false;
               queueWorldReset();
-            } else {
-              rallyWorld.quaternion.copy(spinCandidate);
             }
           }
 
@@ -624,11 +646,9 @@ export function HeroRallyScene() {
               (window.performance.now() - resetStartedAt) / 1100,
             );
             const easedProgress = 1 - Math.pow(1 - resetProgress, 3);
-            rallyWorld.quaternion.slerpQuaternions(
-              resetFromQuaternion,
-              identityWorldQuaternion,
-              easedProgress,
-            );
+            worldYaw = THREE.MathUtils.lerp(resetFromYaw, 0, easedProgress);
+            worldPitch = THREE.MathUtils.lerp(resetFromPitch, 0, easedProgress);
+            applyWorldRotation();
             // Framing returns with the orientation, so a zoomed-in reader is
             // handed back the same default view a first-time reader sees.
             zoomLevel = THREE.MathUtils.lerp(
@@ -637,7 +657,9 @@ export function HeroRallyScene() {
               easedProgress,
             );
             if (resetProgress >= 1) {
-              rallyWorld.quaternion.identity();
+              worldYaw = 0;
+              worldPitch = 0;
+              applyWorldRotation();
               zoomLevel = ZOOM_DEFAULT;
               resettingWorld = false;
               root.dataset.resetState = "idle";
@@ -744,7 +766,8 @@ export function HeroRallyScene() {
           resetTimer = undefined;
           resettingWorld = false;
           spinningWorld = false;
-          spinVelocity = 0;
+          yawVelocity = 0;
+          pitchVelocity = 0;
           root.dataset.resetState = "idle";
         };
         const queueWorldReset = () => {
@@ -762,13 +785,19 @@ export function HeroRallyScene() {
             delete root.dataset.dragging;
             cameraTarget.set(0, 0);
             if (reducedMotion.matches) {
-              rallyWorld.quaternion.identity();
+              worldYaw = 0;
+              worldPitch = 0;
+              applyWorldRotation();
               zoomLevel = ZOOM_DEFAULT;
               root.dataset.resetState = "idle";
               renderScene();
               return;
             }
-            resetFromQuaternion.copy(rallyWorld.quaternion);
+            // Unwind the shorter way: yaw accumulates without a limit, so a
+            // reader who spun the table twice must not watch it spin back.
+            worldYaw = shortestTurn(worldYaw);
+            resetFromYaw = worldYaw;
+            resetFromPitch = worldPitch;
             resetFromZoom = zoomLevel;
             resetStartedAt = window.performance.now();
             resettingWorld = true;
@@ -777,75 +806,63 @@ export function HeroRallyScene() {
         };
 
         const interactionRoot = canvas.closest<HTMLElement>(".hero") ?? root;
-        const arcballPrevious = new THREE.Vector3();
-        const arcballCurrent = new THREE.Vector3();
-        const arcballRotation = new THREE.Quaternion();
-        const candidateWorldQuaternion = new THREE.Quaternion();
-        const candidateTableNormal = new THREE.Vector3();
-        const viewerDirection = new THREE.Vector3();
+        /** Last screen point the steer followed, in client pixels. */
+        let steerX = 0;
+        let steerY = 0;
 
-        const setArcballPoint = (
-          target: InstanceType<typeof THREE.Vector3>,
-          clientX: number,
-          clientY: number,
-        ) => {
-          const bounds = root.getBoundingClientRect();
-          const normalizedX =
-            ((clientX - bounds.left) / Math.max(1, bounds.width)) * 2 - 1;
-          const normalizedY =
-            1 - ((clientY - bounds.top) / Math.max(1, bounds.height)) * 2;
-          const point = projectArcballPoint(normalizedX, normalizedY);
-          target.set(point.x, point.y, point.z);
+        const reseedSteer = (clientX: number, clientY: number) => {
+          steerX = clientX;
+          steerY = clientY;
         };
         /**
-         * Turn the world toward a screen point, tracking how fast the step was
-         * so a release can carry it on. Shared by the one-finger drag and the
-         * two-finger gesture, which steers by the midpoint between the fingers.
+         * Turn the world toward a screen point. Horizontal travel spins the
+         * table, vertical travel tilts it, and each is measured in raw pixels
+         * so the steer answers a drag the same way in every direction.
+         *
+         * The two axes are applied separately on purpose: clamping only the
+         * tilt lets a table held at its tilt limit still be spun sideways.
          */
         const rotateWorldToward = (
           clientX: number,
           clientY: number,
           timeStamp: number,
         ) => {
-          setArcballPoint(arcballCurrent, clientX, clientY);
-          arcballRotation.setFromUnitVectors(arcballPrevious, arcballCurrent);
-          candidateWorldQuaternion
-            .copy(rallyWorld.quaternion)
-            .premultiply(arcballRotation)
-            .normalize();
-          candidateTableNormal
-            .set(0, 1, 0)
-            .applyQuaternion(candidateWorldQuaternion);
-          viewerDirection
-            .copy(camera.position)
-            .sub(rallyWorld.position)
-            .normalize();
-          if (keepsTableTopVisible(candidateTableNormal, viewerDirection)) {
-            rallyWorld.quaternion.copy(candidateWorldQuaternion);
+          const deltaX = clientX - steerX;
+          const deltaY = clientY - steerY;
+          steerX = clientX;
+          steerY = clientY;
+          if (deltaX === 0 && deltaY === 0) return;
 
-            const now = timeStamp || window.performance.now();
-            const stepSeconds = lastDragMoveAt
-              ? (now - lastDragMoveAt) / 1000
-              : 0;
-            lastDragMoveAt = now;
-            const stepAngle =
-              2 *
-              Math.acos(
-                THREE.MathUtils.clamp(Math.abs(arcballRotation.w), -1, 1),
-              );
-            if (stepAngle > 1e-4) {
-              spinAxis
-                .set(arcballRotation.x, arcballRotation.y, arcballRotation.z)
-                .normalize();
-              if (arcballRotation.w < 0) spinAxis.negate();
-              // Blend with the previous step so one jittery event cannot
-              // decide the whole flick.
-              spinVelocity =
-                spinVelocity * 0.35 +
-                flickVelocity(stepAngle, stepSeconds) * 0.65;
-            }
+          const yawStep = deltaX * YAW_PER_PIXEL;
+          const limits = currentPitchLimits();
+          const pitchBefore = worldPitch;
+          worldYaw += yawStep;
+          worldPitch = clampPitch(
+            worldPitch + deltaY * PITCH_PER_PIXEL,
+            limits,
+          );
+          applyWorldRotation();
+
+          const now = timeStamp || window.performance.now();
+          const stepSeconds = lastDragMoveAt
+            ? (now - lastDragMoveAt) / 1000
+            : 0;
+          lastDragMoveAt = now;
+          // Momentum follows what the table actually did, so travel the clamp
+          // swallowed cannot build up a flick the reader never saw.
+          const pitchStep = worldPitch - pitchBefore;
+          if (stepSeconds > 0) {
+            yawVelocity =
+              yawVelocity * 0.35 +
+              Math.sign(yawStep) *
+                flickVelocity(Math.abs(yawStep), stepSeconds) *
+                0.65;
+            pitchVelocity =
+              pitchVelocity * 0.35 +
+              Math.sign(pitchStep) *
+                flickVelocity(Math.abs(pitchStep), stepSeconds) *
+                0.65;
           }
-          arcballPrevious.copy(arcballCurrent);
         };
         /**
          * Touch points currently on the scene. Two of them make a pinch, which
@@ -871,23 +888,38 @@ export function HeroRallyScene() {
           const [first, second] = [...activeTouches.values()];
           return first && second ? pinchCenter(first, second) : undefined;
         };
-        /** Take the capture off a pointer that is no longer steering. */
-        const releaseDragPointer = () => {
-          if (dragPointerId === undefined) return;
-          if (root.hasPointerCapture(dragPointerId)) {
-            root.releasePointerCapture(dragPointerId);
+        /**
+         * Hold every finger of the gesture, so a release that lands outside
+         * the canvas still reaches this element. Without it a finger lifted
+         * off the edge of a short hero is never seen to end, the gesture never
+         * settles, and the return to the default view is never queued.
+         */
+        const capturePointer = (pointerId: number) => {
+          if (root.hasPointerCapture(pointerId)) return;
+          try {
+            root.setPointerCapture(pointerId);
+          } catch {
+            // The pointer may already be gone; the gesture still works without.
           }
-          dragPointerId = undefined;
+        };
+        const releasePointer = (pointerId: number) => {
+          if (!root.hasPointerCapture(pointerId)) return;
+          try {
+            root.releasePointerCapture(pointerId);
+          } catch {
+            // Releasing a pointer the browser already dropped is harmless.
+          }
         };
         /**
          * Hand the gesture to a screen point without letting the change of
-         * steer register as motion: re-seeding the arcball and clearing the
-         * step clock is what stops the table snapping as fingers come and go.
+         * steer register as motion: re-seeding the steer and clearing the step
+         * clock is what stops the table snapping as fingers come and go.
          */
         const reseedGesture = (clientX: number, clientY: number) => {
-          setArcballPoint(arcballPrevious, clientX, clientY);
+          reseedSteer(clientX, clientY);
           lastDragMoveAt = 0;
-          spinVelocity = 0;
+          yawVelocity = 0;
+          pitchVelocity = 0;
           spinningWorld = false;
         };
         const setZoom = (value: number) => {
@@ -924,12 +956,14 @@ export function HeroRallyScene() {
               x: event.clientX,
               y: event.clientY,
             });
+            capturePointer(event.pointerId);
             if (activeTouches.size === 2) {
               cancelWorldReset();
               // The two fingers steer together from here: their midpoint
               // rotates and their span zooms, so the gesture takes over from
-              // whichever finger was dragging alone.
-              releaseDragPointer();
+              // whichever finger was dragging alone. Both keep their capture
+              // so either one can be lifted anywhere and still be seen.
+              dragPointerId = undefined;
               const center = currentPinchCenter();
               if (center) reseedGesture(center.x, center.y);
               pinchStartSpan = currentPinchSpan();
@@ -946,8 +980,8 @@ export function HeroRallyScene() {
           if (!event.isPrimary || dragPointerId !== undefined) return;
           cancelWorldReset();
           dragPointerId = event.pointerId;
-          root.setPointerCapture(event.pointerId);
-          setArcballPoint(arcballPrevious, event.clientX, event.clientY);
+          capturePointer(event.pointerId);
+          reseedSteer(event.clientX, event.clientY);
           cameraTarget.set(0, 0);
           lastDragMoveAt = 0;
           root.dataset.dragging = "true";
@@ -1000,19 +1034,21 @@ export function HeroRallyScene() {
             running &&
             !reducedMotion.matches &&
             stillMs <= SPIN_RELEASE_GRACE_MS &&
-            spinVelocity > SPIN_MIN_VELOCITY
+            Math.hypot(yawVelocity, pitchVelocity) > SPIN_MIN_VELOCITY
           ) {
             spinningWorld = true;
             root.dataset.resetState = "spinning";
             return;
           }
-          spinVelocity = 0;
+          yawVelocity = 0;
+          pitchVelocity = 0;
           spinningWorld = false;
           queueWorldReset();
         };
         const handleWorldPointerEnd = (event: PointerEvent) => {
           if (event.pointerType === "touch") {
             activeTouches.delete(event.pointerId);
+            releasePointer(event.pointerId);
             if (pinching && activeTouches.size < 2) {
               pinching = false;
               pinchStartSpan = 0;
@@ -1023,21 +1059,29 @@ export function HeroRallyScene() {
                 // steer change from reading as a jump.
                 const [remainingId, point] = remaining;
                 dragPointerId = remainingId;
+                capturePointer(remainingId);
                 reseedGesture(point.x, point.y);
                 root.dataset.dragging = "true";
                 root.dataset.resetState = "dragging";
               } else {
+                dragPointerId = undefined;
                 delete root.dataset.dragging;
                 settleWorldDrag();
               }
               event.preventDefault();
               return;
             }
+            // A stray touch that was never steering still has to leave the
+            // scene settled, or nothing will ever queue the return.
+            if (activeTouches.size === 0 && dragPointerId === undefined) {
+              delete root.dataset.dragging;
+              settleWorldDrag();
+              event.preventDefault();
+              return;
+            }
           }
           if (event.pointerId !== dragPointerId) return;
-          if (root.hasPointerCapture(event.pointerId)) {
-            root.releasePointerCapture(event.pointerId);
-          }
+          releasePointer(event.pointerId);
           dragPointerId = undefined;
           delete root.dataset.dragging;
           settleWorldDrag();

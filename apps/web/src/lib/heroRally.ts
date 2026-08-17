@@ -359,25 +359,55 @@ export const pinchCenter = (
 export const wheelReleasesToPage = (zoom: number, factor: number): boolean =>
   clampZoom(clampZoom(zoom) * factor) === clampZoom(zoom);
 
-export const projectArcballPoint = (
-  normalizedX: number,
-  normalizedY: number,
-): RallyVector3 => {
-  const lengthSquared = normalizedX * normalizedX + normalizedY * normalizedY;
-  if (lengthSquared <= 1) {
-    return {
-      x: normalizedX,
-      y: normalizedY,
-      z: Math.sqrt(1 - lengthSquared),
-    };
-  }
+/**
+ * Turn rates for the turntable steer, in radians per pixel dragged.
+ *
+ * Both axes are measured in raw screen pixels rather than a fraction of the
+ * canvas, so a drag of a given length turns the table by the same amount in
+ * any direction. Normalising each axis by its own side, as a virtual trackball
+ * does, makes a short wide canvas spin far faster vertically than horizontally
+ * and is what makes the steer feel unpredictable.
+ */
+export const YAW_PER_PIXEL = Math.PI / 300;
+export const PITCH_PER_PIXEL = Math.PI / 420;
 
-  const inverseLength = 1 / Math.sqrt(lengthSquared);
-  return {
-    x: normalizedX * inverseLength,
-    y: normalizedY * inverseLength,
-    z: 0,
-  };
+/**
+ * Pitch range that keeps the table top facing the camera.
+ *
+ * Pitch turns the table about the camera's horizontal axis, so its normal
+ * traces `(0, cos p, sin p)`. Facing is that normal dotted with the viewer
+ * direction, which is `hypot(y, z) * cos(p - atan2(z, y))`, so the admissible
+ * pitches are a single arc centred on the direction the viewer already sits.
+ *
+ * Yaw has no such limit: spinning about the table's own up axis never shows
+ * the underside, so the steer can turn as far as the reader keeps dragging.
+ */
+export const pitchLimitsForViewer = (
+  viewerY: number,
+  viewerZ: number,
+  minimumFacing = 0.12,
+): { min: number; max: number } => {
+  const radius = Math.hypot(viewerY, viewerZ);
+  if (radius <= 0) return { min: 0, max: 0 };
+  const half = Math.acos(Math.min(1, Math.max(-1, minimumFacing / radius)));
+  const centre = Math.atan2(viewerZ, viewerY);
+  return { min: centre - half, max: centre + half };
+};
+
+export const clampPitch = (
+  pitch: number,
+  limits: { min: number; max: number },
+): number => Math.min(limits.max, Math.max(limits.min, pitch));
+
+/**
+ * The same turn expressed as the shorter way round. Yaw accumulates without a
+ * limit, so returning to the default view has to unwind the remainder rather
+ * than spin back through every full turn the reader made.
+ */
+export const shortestTurn = (angle: number): number => {
+  const turn = 2 * Math.PI;
+  const wrapped = (((angle + Math.PI) % turn) + turn) % turn;
+  return wrapped - Math.PI;
 };
 
 export const keepsTableTopVisible = (
