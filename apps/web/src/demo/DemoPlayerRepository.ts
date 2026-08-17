@@ -196,6 +196,7 @@ export class DemoPlayerRepository implements PlayerRepository {
     return player
       ? {
           ...player,
+          divisionObservations: summarizeDivisionObservations(player.records),
           records: sortPlayerRecordsByLatest(
             player.records.map(normalizePlayerRecordDivisionSystem),
           ),

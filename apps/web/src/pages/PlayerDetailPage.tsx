@@ -13,10 +13,16 @@ import {
   sortPlayerRecordsByLatest,
   type PlayerRecord,
 } from "@busu/domain";
+import { DivisionOverview } from "../components/DivisionOverview";
+import { ExcludedAwardScopeBadge } from "../components/ExcludedAwardScopeBadge";
 import { PageMetadata } from "../components/PageMetadata";
 import { RefreshStatus } from "../components/RefreshStatus";
 import { SourceComparison } from "../components/SourceComparison";
 import { trackAnalyticsEvent } from "../lib/analytics";
+import {
+  groupDivisionSummaries,
+  summarizeObservedDivisions,
+} from "../lib/divisionSummary";
 import { buildPlayerMetadata } from "../lib/pageMetadata";
 import { playerRepository } from "../lib/runtime";
 import { useCalmEntry } from "../lib/motion";
@@ -142,9 +148,14 @@ export function PlayerDetailPage() {
     : player.records;
   const records = sortPlayerRecordsByLatest(visibleRecords);
   const historyTitle = isAwardsTab ? "입상 이력 (4강 이상)" : "전체 이력";
-  const totalAwardCount = player.records.filter((record) =>
-    isAwardRank(record.rank),
-  ).length;
+  const divisionOverviewSections = [
+    {
+      key: "player",
+      label: player.name,
+      isAssigned: false,
+      groups: groupDivisionSummaries(summarizeObservedDivisions([player])),
+    },
+  ];
   const recentIntegratedDivision = findRecentObservedDivisionRecordForSystems(
     player.records,
     ["integrated", "women"],
@@ -228,15 +239,13 @@ export function PlayerDetailPage() {
           </strong>
           <small>일반 시·군·구 대회와 여자 종목 포함</small>
         </article>
-        <article>
-          <span>과거 입상 기록</span>
-          <strong>{totalAwardCount}건</strong>
-          <small>
-            4강 이상 ·{" "}
-            {player.dataKind === "live" ? "수집된 공개 기록" : "가상 출처 포함"}
-          </small>
-        </article>
       </section>
+      <DivisionOverview
+        titleId="player-division-overview-title"
+        title="부수별 입상·참가 기록"
+        description="최근 개인전 기록 기준"
+        sections={divisionOverviewSections}
+      />
       <RefreshStatus sources={player.sources} />
       <nav className="tabs" aria-label="선수 상세 항목">
         {(
@@ -305,7 +314,15 @@ export function PlayerDetailPage() {
                         <td>
                           <strong>{record.tournament}</strong>
                         </td>
-                        <td className="record-event-name">{record.event}</td>
+                        <td className="record-event-name">
+                          {record.event}
+                          <ExcludedAwardScopeBadge
+                            event={record.event}
+                            {...(record.eventType
+                              ? { eventType: record.eventType }
+                              : {})}
+                          />
+                        </td>
                         <td>{record.club ?? "-"}</td>
                         <td>
                           {record.divisionSystem ? (
@@ -336,7 +353,15 @@ export function PlayerDetailPage() {
                     <dl>
                       <div className="record-event-detail">
                         <dt>종목</dt>
-                        <dd>{record.event}</dd>
+                        <dd>
+                          {record.event}
+                          <ExcludedAwardScopeBadge
+                            event={record.event}
+                            {...(record.eventType
+                              ? { eventType: record.eventType }
+                              : {})}
+                          />
+                        </dd>
                       </div>
                       <div>
                         <dt>당시 부수</dt>

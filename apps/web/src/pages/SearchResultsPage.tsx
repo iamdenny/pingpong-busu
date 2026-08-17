@@ -26,6 +26,9 @@ import {
   type AwardResultSummary,
   type SourceCode,
 } from "@busu/domain";
+import { excludedAwardScope, excludedAwardScopeNote } from "../lib/awardScope";
+import { DivisionOverview } from "../components/DivisionOverview";
+import { ExcludedAwardScopeBadge } from "../components/ExcludedAwardScopeBadge";
 import { IdentityClaimDialog } from "../components/IdentityClaimDialog";
 import { IdentityEditHistory } from "../components/IdentityEditHistory";
 import { PageMetadata } from "../components/PageMetadata";
@@ -153,6 +156,9 @@ function AwardResultSummary({
   if (!results?.length) return <>{resultCount}건</>;
   const shown = results.slice(0, 2);
   const remaining = Math.max(0, resultCount - shown.length);
+  const hasExcludedScope = shown.some((result) =>
+    excludedAwardScope({ event: result.event }),
+  );
 
   return (
     <span className="award-result-summary__list">
@@ -181,6 +187,7 @@ function AwardResultSummary({
               {result.event}
             </span>
           )}
+          <ExcludedAwardScopeBadge event={result.event} />
           {result.sourceCount && result.sourceCount > 1 && (
             <span className="award-result-summary__sources">
               출처 {result.sourceCount}곳
@@ -191,6 +198,11 @@ function AwardResultSummary({
       {remaining > 0 && (
         <span className="award-result-summary__remaining">
           외 {remaining}건
+        </span>
+      )}
+      {hasExcludedScope && (
+        <span className="award-result-summary__scope-note">
+          {excludedAwardScopeNote}
         </span>
       )}
     </span>
@@ -672,121 +684,22 @@ export function SearchResultsPage() {
         </div>
         <strong>{result.data?.length ?? 0}건</strong>
       </div>
-      {divisionSummarySections.some(
-        (section) => section.summaries.length > 0,
-      ) && (
-        <section
-          className={`division-overview${showsIdentityDivisionSections ? " division-overview--grouped" : ""}`}
-          aria-labelledby="division-overview-title"
-        >
-          <div className="division-overview__heading">
-            <h2 id="division-overview-title">현재 추정 부수</h2>
-            <p>최근 개인전 기록 기준</p>
-          </div>
-          <div className="division-overview__sections">
-            {divisionSummarySections.map((section, sectionIndex) => {
-              const headingId = `division-overview-section-${sectionIndex}`;
-              return (
-                <div className="division-overview__section" key={section.key}>
-                  {showsIdentityDivisionSections && (
-                    <div className="division-overview__identity-heading">
-                      <h3 id={headingId}>{section.label}</h3>
-                      <span>
-                        {section.isAssigned
-                          ? "별칭으로 연결된 기록"
-                          : "아직 별칭이 없는 기록"}
-                      </span>
-                    </div>
-                  )}
-                  <div className="division-overview__table-wrap">
-                    <table
-                      aria-labelledby={
-                        showsIdentityDivisionSections ? headingId : undefined
-                      }
-                    >
-                      <caption className="visually-hidden">
-                        {showsIdentityDivisionSections
-                          ? `${section.label}의 `
-                          : ""}
-                        부수 체계별 최근 관측 부수와 입상 및 참가 기록 수
-                      </caption>
-                      <colgroup>
-                        <col className="division-overview__system-column" />
-                        <col />
-                      </colgroup>
-                      <tbody>
-                        {section.groups.flatMap((group) =>
-                          group.rows.map((row, rowIndex) => (
-                            <tr
-                              key={`${group.system}-${row.kind}`}
-                              className={`division-overview__subrow division-overview__subrow--${row.kind}`}
-                            >
-                              {rowIndex === 0 && (
-                                <th scope="row" rowSpan={group.rows.length}>
-                                  {group.systemLabel}
-                                </th>
-                              )}
-                              <td>
-                                <span className="visually-hidden">
-                                  {group.systemLabel} {row.label}
-                                </span>
-                                <ul className="division-overview__items">
-                                  {row.items.map((summary) => (
-                                    <li
-                                      key={`${summary.system}-${summary.division}`}
-                                    >
-                                      <button
-                                        type="button"
-                                        className="division-overview__filter"
-                                        aria-controls="candidate-results"
-                                        aria-pressed={
-                                          selectedDivisionSection?.key ===
-                                            section.key &&
-                                          selectedDivision?.system ===
-                                            summary.system &&
-                                          selectedDivision.division ===
-                                            summary.division
-                                        }
-                                        aria-label={`${showsIdentityDivisionSections ? `${section.label}, ` : ""}${summary.systemLabel} ${summary.division} 입상 ${summary.awardCount}건 참가 ${summary.participationCount}건 결과 보기`}
-                                        onClick={() =>
-                                          selectDivision(section, summary)
-                                        }
-                                      >
-                                        <strong>{summary.division}</strong>
-                                        <span className="division-overview__counts">
-                                          <span
-                                            className={
-                                              summary.awardCount > 0
-                                                ? "division-overview__award-count--positive"
-                                                : undefined
-                                            }
-                                          >
-                                            입상 <b>{summary.awardCount}건</b>
-                                          </span>
-                                          <span>
-                                            참가{" "}
-                                            <b>
-                                              {summary.participationCount}건
-                                            </b>
-                                          </span>
-                                        </span>
-                                      </button>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </td>
-                            </tr>
-                          )),
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      <DivisionOverview
+        titleId="division-overview-title"
+        title="현재 추정 부수"
+        description="최근 개인전 기록 기준"
+        sections={divisionSummarySections}
+        showsSectionHeadings={showsIdentityDivisionSections}
+        selectionTargetId="candidate-results"
+        isSelected={(section, summary) =>
+          selectedDivisionSection?.key === section.key &&
+          selectedDivision?.system === summary.system &&
+          selectedDivision.division === summary.division
+        }
+        onSelect={(section, summary) => {
+          selectDivision(section, summary);
+        }}
+      />
       {shouldRefresh && sourceStatuses.isLoading && (
         <div className="refreshing-notice">
           <span
