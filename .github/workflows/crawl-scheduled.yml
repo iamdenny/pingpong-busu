@@ -2,8 +2,8 @@ name: Scheduled iPing refresh worker
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
-    - cron: "5 * * * *"
+    - cron: "*/5 * * * *"
+    - cron: "7 * * * *"
   workflow_run:
     workflows: [Deploy Supabase backend]
     types: [completed]
@@ -73,10 +73,10 @@ jobs:
           test "$RUNNER_OS" = "Linux"
           test -x "$IPING_BROWSER_EXECUTABLE"
       - name: Drain one scheduled iPing refresh job
-        if: github.event_name == 'schedule' && github.event.schedule == '*/10 * * * *'
+        if: github.event_name == 'schedule' && github.event.schedule == '*/5 * * * *'
         run: pnpm iping:worker --mode drain-iping
       - name: Recover iPing protection once an hour
-        if: github.event_name == 'schedule' && github.event.schedule == '5 * * * *'
+        if: github.event_name == 'schedule' && github.event.schedule == '7 * * * *'
         run: pnpm iping:worker --mode recover-iping
       - name: Drain one manually requested iPing refresh job
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'drain-iping'
