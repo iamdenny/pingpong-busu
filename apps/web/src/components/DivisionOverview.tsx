@@ -6,7 +6,9 @@ import type {
 export interface DivisionOverviewSection {
   key: string;
   label: string;
-  isAssigned: boolean;
+  /** 별칭 연결 여부 대신 쓸 설명이 있으면 note를 우선한다. */
+  note?: string;
+  isAssigned?: boolean;
   groups: DivisionSummaryGroup[];
 }
 
@@ -18,6 +20,7 @@ export interface DivisionOverviewProps<
   description: string;
   sections: readonly TSection[];
   showsSectionHeadings?: boolean;
+  embedded?: boolean;
   isSelected?: (section: TSection, summary: DivisionSummaryItem) => boolean;
   onSelect?: (section: TSection, summary: DivisionSummaryItem) => void;
   selectionTargetId?: string;
@@ -55,6 +58,7 @@ export function DivisionOverview<TSection extends DivisionOverviewSection>({
   description,
   sections,
   showsSectionHeadings = false,
+  embedded = false,
   isSelected,
   onSelect,
   selectionTargetId,
@@ -63,7 +67,7 @@ export function DivisionOverview<TSection extends DivisionOverviewSection>({
 
   return (
     <section
-      className={`division-overview${showsSectionHeadings ? " division-overview--grouped" : ""}`}
+      className={`division-overview${showsSectionHeadings ? " division-overview--grouped" : ""}${embedded ? " division-overview--embedded" : ""}`}
       aria-labelledby={titleId}
     >
       <div className="division-overview__heading">
@@ -79,9 +83,10 @@ export function DivisionOverview<TSection extends DivisionOverviewSection>({
                 <div className="division-overview__identity-heading">
                   <h3 id={headingId}>{section.label}</h3>
                   <span>
-                    {section.isAssigned
-                      ? "별칭으로 연결된 기록"
-                      : "아직 별칭이 없는 기록"}
+                    {section.note ??
+                      (section.isAssigned
+                        ? "별칭으로 연결된 기록"
+                        : "아직 별칭이 없는 기록")}
                   </span>
                 </div>
               )}

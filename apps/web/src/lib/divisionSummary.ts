@@ -88,23 +88,29 @@ function compareDivisions(left: string, right: string): number {
 export function summarizeObservedDivisions(
   players: readonly PlayerSummary[],
 ): DivisionSummaryItem[] {
+  return summarizeDivisionObservationItems(
+    players.flatMap((player) => observationsForPlayer(player)),
+  );
+}
+
+export function summarizeDivisionObservationItems(
+  observations: readonly DivisionObservationSummary[],
+): DivisionSummaryItem[] {
   const counts = new Map<
     string,
     Pick<DivisionSummaryItem, "awardCount" | "participationCount">
   >();
-  for (const player of players) {
-    for (const observation of observationsForPlayer(player)) {
-      const key = `${observation.system}\u0000${observation.division}`;
-      const current = counts.get(key) ?? {
-        awardCount: 0,
-        participationCount: 0,
-      };
-      counts.set(key, {
-        awardCount: current.awardCount + observation.awardCount,
-        participationCount:
-          current.participationCount + observation.participationCount,
-      });
-    }
+  for (const observation of observations) {
+    const key = `${observation.system}\u0000${observation.division}`;
+    const current = counts.get(key) ?? {
+      awardCount: 0,
+      participationCount: 0,
+    };
+    counts.set(key, {
+      awardCount: current.awardCount + observation.awardCount,
+      participationCount:
+        current.participationCount + observation.participationCount,
+    });
   }
 
   return [...counts.entries()]
