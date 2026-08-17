@@ -30,6 +30,9 @@ import {
   createRallyAudio,
   crossedBounce,
   impactStrength,
+  isRallyAudioSupported,
+  readSoundPreference,
+  storeSoundPreference,
   type RallyAudio,
 } from "../lib/heroRallyAudio";
 
@@ -39,30 +42,60 @@ export function HeroRallyScene() {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /**
-   * Impact sound is off until the reader asks for it. A hero that starts
-   * making noise on load is hostile, and Safari will not start an audio
-   * context outside a user gesture anyway.
+   * Impact sound is on unless the reader turned it off, and the choice is
+   * remembered. No browser will let a page make noise before its first
+   * gesture, so the context is started on one rather than at load.
    */
   const audioRef = useRef<RallyAudio | undefined>(undefined);
-  const [soundOn, setSoundOn] = useState(false);
+  const [audioSupported] = useState(isRallyAudioSupported);
+  const [soundOn, setSoundOn] = useState(readSoundPreference);
 
   const toggleSound = useCallback(() => {
-    if (soundOn) {
+    setSoundOn((enabled) => {
+      const next = !enabled;
+      storeSoundPreference(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!soundOn) {
       audioRef.current?.close();
       audioRef.current = undefined;
-      setSoundOn(false);
       return;
     }
     const audio = audioRef.current ?? createRallyAudio();
     if (!audio) return;
     audioRef.current = audio;
-    void audio.resume().then(
-      () => setSoundOn(true),
-      () => setSoundOn(false),
-    );
+
+    // Autoplay rules keep a fresh context suspended, so try now and again on
+    // the first gesture, then stop listening once it is actually running.
+    const waken = () => {
+      void audio.resume().then(
+        () => {
+          if (!audio.isRunning()) return;
+          document.removeEventListener("pointerdown", waken);
+          document.removeEventListener("keydown", waken);
+        },
+        () => undefined,
+      );
+    };
+    waken();
+    document.addEventListener("pointerdown", waken);
+    document.addEventListener("keydown", waken);
+    return () => {
+      document.removeEventListener("pointerdown", waken);
+      document.removeEventListener("keydown", waken);
+    };
   }, [soundOn]);
 
-  useEffect(() => () => audioRef.current?.close(), []);
+  useEffect(
+    () => () => {
+      audioRef.current?.close();
+      audioRef.current = undefined;
+    },
+    [],
+  );
 
   useEffect(() => {
     const root = rootRef.current;
@@ -1269,20 +1302,22 @@ export function HeroRallyScene() {
       <div className="hero-rally-scene" ref={rootRef} aria-hidden="true">
         <canvas ref={canvasRef} />
       </div>
-      <button
-        type="button"
-        className="hero-rally-sound"
-        onClick={toggleSound}
-        aria-pressed={soundOn}
-        aria-label={soundOn ? "타구음 끄기" : "타구음 켜기"}
-        title={soundOn ? "타구음 끄기" : "타구음 켜기"}
-      >
-        {soundOn ? (
-          <Volume2 aria-hidden="true" size={16} />
-        ) : (
-          <VolumeX aria-hidden="true" size={16} />
-        )}
-      </button>
+      {audioSupported ? (
+        <button
+          type="button"
+          className="hero-rally-sound"
+          onClick={toggleSound}
+          aria-pressed={soundOn}
+          aria-label={soundOn ? "타구음 끄기" : "타구음 켜기"}
+          title={soundOn ? "타구음 끄기" : "타구음 켜기"}
+        >
+          {soundOn ? (
+            <Volume2 aria-hidden="true" size={16} />
+          ) : (
+            <VolumeX aria-hidden="true" size={16} />
+          )}
+        </button>
+      ) : null}
     </div>
   );
 }

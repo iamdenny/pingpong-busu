@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   crossedBounce,
   impactStrength,
+  readSoundPreference,
+  storeSoundPreference,
+  HERO_SOUND_STORAGE_KEY,
   IMPACT_VOICES,
   MASTER_GAIN,
+  SOUND_ON_BY_DEFAULT,
 } from "./heroRallyAudio";
 
 describe("hero rally audio model", () => {
@@ -49,5 +53,42 @@ describe("hero rally audio model", () => {
     }
     expect(MASTER_GAIN).toBeGreaterThan(0);
     expect(MASTER_GAIN).toBeLessThan(0.5);
+  });
+
+  it("starts on and remembers the reader's choice", () => {
+    window.localStorage.clear();
+    expect(SOUND_ON_BY_DEFAULT).toBe(true);
+    // Nothing stored yet, so the default stands.
+    expect(readSoundPreference(window.localStorage)).toBe(true);
+
+    storeSoundPreference(false, window.localStorage);
+    expect(window.localStorage.getItem(HERO_SOUND_STORAGE_KEY)).toBe("off");
+    expect(readSoundPreference(window.localStorage)).toBe(false);
+
+    storeSoundPreference(true, window.localStorage);
+    expect(readSoundPreference(window.localStorage)).toBe(true);
+  });
+
+  it("falls back to the default when the store is unusable", () => {
+    // Private browsing can throw on both reads and writes.
+    const hostile = {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+      setItem: () => {
+        throw new Error("blocked");
+      },
+    };
+
+    expect(readSoundPreference(hostile)).toBe(SOUND_ON_BY_DEFAULT);
+    expect(() => storeSoundPreference(false, hostile)).not.toThrow();
+    expect(readSoundPreference(undefined)).toBe(SOUND_ON_BY_DEFAULT);
+    expect(() => storeSoundPreference(true, undefined)).not.toThrow();
+  });
+
+  it("ignores a stored value it does not recognise", () => {
+    window.localStorage.setItem(HERO_SOUND_STORAGE_KEY, "yes-please");
+    expect(readSoundPreference(window.localStorage)).toBe(SOUND_ON_BY_DEFAULT);
+    window.localStorage.clear();
   });
 });

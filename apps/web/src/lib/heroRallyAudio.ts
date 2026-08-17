@@ -52,9 +52,56 @@ export const impactStrength = (spinRate: number): number => {
   return 0.72 + speed * 0.28;
 };
 
+export const HERO_SOUND_STORAGE_KEY = "busu:hero-rally-sound:v1";
+
+/**
+ * Impact sound is on unless the reader turned it off. Browsers will not let a
+ * page make noise before its first gesture, so this preference decides what
+ * happens once one arrives rather than what happens at load.
+ */
+export const SOUND_ON_BY_DEFAULT = true;
+
+type SoundStorage = Pick<Storage, "getItem" | "setItem">;
+
+const getLocalStorage = (): SoundStorage | undefined => {
+  if (typeof window === "undefined") return undefined;
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+};
+
+export const readSoundPreference = (
+  storage: SoundStorage | undefined = getLocalStorage(),
+): boolean => {
+  if (!storage) return SOUND_ON_BY_DEFAULT;
+  try {
+    const stored = storage.getItem(HERO_SOUND_STORAGE_KEY);
+    if (stored === "on") return true;
+    if (stored === "off") return false;
+  } catch {
+    // An unreadable store just means the default stands.
+  }
+  return SOUND_ON_BY_DEFAULT;
+};
+
+export const storeSoundPreference = (
+  enabled: boolean,
+  storage: SoundStorage | undefined = getLocalStorage(),
+): void => {
+  if (!storage) return;
+  try {
+    storage.setItem(HERO_SOUND_STORAGE_KEY, enabled ? "on" : "off");
+  } catch {
+    // Private browsing keeps the choice for this page view only.
+  }
+};
+
 export interface RallyAudio {
   play: (impact: RallyImpact, strength: number) => void;
   resume: () => Promise<void>;
+  isRunning: () => boolean;
   close: () => void;
 }
 
@@ -66,6 +113,10 @@ const audioContextConstructor = (): AudioContextConstructor | undefined => {
   };
   return window.AudioContext ?? scope.webkitAudioContext;
 };
+
+/** Whether this browser can synthesise the impacts at all. */
+export const isRallyAudioSupported = (): boolean =>
+  audioContextConstructor() !== undefined;
 
 /**
  * Build the impact voice. Returns `undefined` where the browser has no Web
@@ -120,6 +171,9 @@ export const createRallyAudio = (): RallyAudio | undefined => {
     },
     async resume() {
       await context.resume();
+    },
+    isRunning() {
+      return context.state === "running";
     },
     close() {
       void context.close();
