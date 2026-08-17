@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   bladePitch,
   bladeRollForHand,
@@ -25,12 +25,43 @@ import {
   ZOOM_DEFAULT,
   type RallyShot,
 } from "../lib/heroRally";
+import {
+  createRallyAudio,
+  crossedBounce,
+  impactStrength,
+  type RallyAudio,
+} from "../lib/heroRallyAudio";
 
 const LEG_DURATION_SECONDS = 1.08;
 
 export function HeroRallyScene() {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  /**
+   * Impact sound is off until the reader asks for it. A hero that starts
+   * making noise on load is hostile, and Safari will not start an audio
+   * context outside a user gesture anyway.
+   */
+  const audioRef = useRef<RallyAudio | undefined>(undefined);
+  const [soundOn, setSoundOn] = useState(false);
+
+  const toggleSound = useCallback(() => {
+    if (soundOn) {
+      audioRef.current?.close();
+      audioRef.current = undefined;
+      setSoundOn(false);
+      return;
+    }
+    const audio = audioRef.current ?? createRallyAudio();
+    if (!audio) return;
+    audioRef.current = audio;
+    void audio.resume().then(
+      () => setSoundOn(true),
+      () => setSoundOn(false),
+    );
+  }, [soundOn]);
+
+  useEffect(() => () => audioRef.current?.close(), []);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -468,6 +499,9 @@ export function HeroRallyScene() {
         );
         let elapsed = 0;
         let running = !reducedMotion.matches && !document.hidden;
+        /** Leg and progress the last impact sound was played for. */
+        let lastSoundedShot: number | undefined;
+        let lastSoundedProgress = 0;
         let frame = 0;
         let resetTimer: number | undefined;
         let resetStartedAt = 0;
@@ -674,6 +708,25 @@ export function HeroRallyScene() {
             (elapsed % LEG_DURATION_SECONDS) / LEG_DURATION_SECONDS;
           const outbound = shotIndex % 2 === 0;
           const shot = ensureShot(shotIndex);
+
+          const audio = audioRef.current;
+          if (audio && running) {
+            // A new leg means the ball just left a blade; within a leg the
+            // one impact left is the bounce off the table.
+            if (
+              lastSoundedShot !== undefined &&
+              shotIndex !== lastSoundedShot
+            ) {
+              audio.play("paddle", impactStrength(shot.spinRate));
+            } else if (
+              lastSoundedShot === shotIndex &&
+              crossedBounce(lastSoundedProgress, progress, shot.bounceAt)
+            ) {
+              audio.play("table", impactStrength(shot.spinRate) * 0.85);
+            }
+          }
+          lastSoundedShot = shotIndex;
+          lastSoundedProgress = progress;
           const point = sampleRallyPoint(shot, progress, outbound);
           ballGroup.position.set(point.x, point.y, point.z);
 
@@ -1211,8 +1264,18 @@ export function HeroRallyScene() {
   }, []);
 
   return (
-    <div className="hero-rally-scene" ref={rootRef} aria-hidden="true">
-      <canvas ref={canvasRef} />
+    <div className="hero-rally-stage">
+      <div className="hero-rally-scene" ref={rootRef} aria-hidden="true">
+        <canvas ref={canvasRef} />
+      </div>
+      <button
+        type="button"
+        className="hero-rally-sound"
+        onClick={toggleSound}
+        aria-pressed={soundOn}
+      >
+        {soundOn ? "타구음 끄기" : "타구음 켜기"}
+      </button>
     </div>
   );
 }

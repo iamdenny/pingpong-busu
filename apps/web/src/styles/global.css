@@ -321,6 +321,39 @@ footer strong {
   width: 100%;
   margin: auto;
 }
+.hero-rally-stage {
+  position: relative;
+  width: min(960px, 100%);
+  margin: 0 auto;
+}
+.hero-rally-sound {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 3;
+  padding: 0.32rem 0.7rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    opacity 200ms ease,
+    color 200ms ease;
+}
+.hero-rally-sound:hover {
+  color: var(--primary);
+}
+.hero-rally-sound[aria-pressed="true"] {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+/* No scene, no control: the button follows whatever the canvas is doing. */
+.hero-rally-scene:not([data-ready="true"]) + .hero-rally-sound {
+  display: none;
+}
 .hero-rally-scene {
   position: relative;
   width: min(960px, 100%);
