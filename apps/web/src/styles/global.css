@@ -2746,8 +2746,17 @@ p {
     max-width: 110px;
     text-align: center;
   }
+  .division-summary {
+    padding: 0.9rem;
+  }
   .division-summary__stats {
-    grid-template-columns: 1fr;
+    gap: 0.5rem 0.7rem;
+  }
+  .division-summary__stats dd {
+    font-size: 1.02rem;
+  }
+  .division-overview--embedded .division-overview__system-column {
+    inline-size: 4.6rem;
   }
   .record-table-wrap {
     display: none;
