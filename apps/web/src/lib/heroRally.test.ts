@@ -13,9 +13,34 @@ import {
   sampleRallyPoint,
   swingRollOffset,
   verticalSwingOffset,
+  blockedCourseSide,
+  blockedStroke,
+  clampZoom,
+  pinchZoomFactor,
+  touchSpan,
+  wheelReleasesToPage,
+  wheelZoomFactor,
+  MAX_REPEATED_SHOTS,
   SPIN_MAX_VELOCITY,
   SPIN_MIN_VELOCITY,
+  ZOOM_DEFAULT,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  type RallyShot,
+  type RallyStroke,
 } from "./heroRally";
+
+const shotFixture = (
+  targetZ: number,
+  kind: RallyStroke = "drive",
+): RallyShot => ({
+  hand: "forehand",
+  kind,
+  startZ: -targetZ,
+  targetZ,
+  bounceAt: kind === "drive" ? 0.66 : 0.75,
+  spinRate: kind === "drive" ? -18 : 12,
+});
 
 describe("hero rally model", () => {
   it("mirrors forehand and backhand lanes for opposing players", () => {
@@ -185,5 +210,158 @@ describe("hero rally model", () => {
     expect(keepsTableTopVisible({ x: 0, y: -1, z: 0 }, viewerDirection)).toBe(
       false,
     );
+  });
+
+  it("holds zoom inside its limits", () => {
+    expect(clampZoom(ZOOM_DEFAULT)).toBe(ZOOM_DEFAULT);
+    expect(clampZoom(99)).toBe(ZOOM_MAX);
+    expect(clampZoom(0)).toBe(ZOOM_MIN);
+    expect(clampZoom(-4)).toBe(ZOOM_MIN);
+    // A NaN from a degenerate gesture must not poison the camera distance.
+    expect(clampZoom(Number.NaN)).toBe(ZOOM_DEFAULT);
+    expect(ZOOM_MIN).toBeLessThan(ZOOM_DEFAULT);
+    expect(ZOOM_MAX).toBeGreaterThan(ZOOM_DEFAULT);
+  });
+
+  it("zooms in on scroll up and out on scroll down", () => {
+    expect(wheelZoomFactor(-100)).toBeGreaterThan(1);
+    expect(wheelZoomFactor(100)).toBeLessThan(1);
+    expect(wheelZoomFactor(0)).toBe(1);
+  });
+
+  it("returns to the same zoom after scrolling in and back out", () => {
+    // Exponential steps compose, so the split across events cannot matter.
+    const oneStep = wheelZoomFactor(-120) * wheelZoomFactor(120);
+    const split =
+      wheelZoomFactor(-40) * wheelZoomFactor(-80) * wheelZoomFactor(120);
+
+    expect(oneStep).toBeCloseTo(1, 10);
+    expect(split).toBeCloseTo(1, 10);
+  });
+
+  it("treats line and page wheel modes as larger travel than pixels", () => {
+    // A line-mode notch of 3 moves far more than 3 pixels would.
+    expect(wheelZoomFactor(3, 1)).toBeLessThan(wheelZoomFactor(3, 0));
+    expect(wheelZoomFactor(1, 2)).toBeLessThan(wheelZoomFactor(1, 1));
+  });
+
+  it("caps a single wheel event so a trackpad fling stays gentle", () => {
+    // Beyond the cap every event lands on the same step.
+    expect(wheelZoomFactor(4000)).toBe(wheelZoomFactor(240));
+    expect(wheelZoomFactor(-4000)).toBe(wheelZoomFactor(-240));
+    expect(wheelZoomFactor(4000)).toBeGreaterThan(0);
+  });
+
+  it("hands the wheel back to the page at either zoom limit", () => {
+    // Pinned at the ceiling and still zooming in: the page must scroll on.
+    expect(wheelReleasesToPage(ZOOM_MAX, wheelZoomFactor(-100))).toBe(true);
+    expect(wheelReleasesToPage(ZOOM_MIN, wheelZoomFactor(100))).toBe(true);
+    // Room left in that direction, so the scene consumes the event.
+    expect(wheelReleasesToPage(ZOOM_MAX, wheelZoomFactor(100))).toBe(false);
+    expect(wheelReleasesToPage(ZOOM_DEFAULT, wheelZoomFactor(-100))).toBe(
+      false,
+    );
+  });
+
+  it("zooms by the ratio the pinch span changed", () => {
+    expect(pinchZoomFactor(100, 200)).toBeCloseTo(2);
+    expect(pinchZoomFactor(200, 100)).toBeCloseTo(0.5);
+    expect(pinchZoomFactor(150, 150)).toBeCloseTo(1);
+    // A missing or degenerate span holds still instead of snapping.
+    expect(pinchZoomFactor(0, 120)).toBe(1);
+    expect(pinchZoomFactor(120, 0)).toBe(1);
+  });
+
+  it("only blocks a course once the run reaches the limit", () => {
+    expect(blockedCourseSide([])).toBeUndefined();
+    expect(blockedCourseSide([shotFixture(0.8)])).toBeUndefined();
+    // Two to the same side blocks that side for the next shot.
+    expect(blockedCourseSide([shotFixture(0.8), shotFixture(0.6)])).toBe(1);
+    expect(blockedCourseSide([shotFixture(-0.8), shotFixture(-0.6)])).toBe(-1);
+    // A run that already alternates leaves the next shot free.
+    expect(
+      blockedCourseSide([shotFixture(0.8), shotFixture(-0.6)]),
+    ).toBeUndefined();
+    // Only the tail counts, not older shots.
+    expect(
+      blockedCourseSide([
+        shotFixture(0.8),
+        shotFixture(0.8),
+        shotFixture(-0.6),
+      ]),
+    ).toBeUndefined();
+  });
+
+  it("only blocks a stroke once the run reaches the limit", () => {
+    expect(blockedStroke([])).toBeUndefined();
+    expect(blockedStroke([shotFixture(0.8, "cut")])).toBeUndefined();
+    expect(
+      blockedStroke([shotFixture(0.8, "drive"), shotFixture(-0.6, "drive")]),
+    ).toBe("drive");
+    expect(
+      blockedStroke([shotFixture(0.8, "cut"), shotFixture(-0.6, "cut")]),
+    ).toBe("cut");
+    expect(
+      blockedStroke([shotFixture(0.8, "drive"), shotFixture(-0.6, "cut")]),
+    ).toBeUndefined();
+  });
+
+  it("turns the third shot away from a repeated course and stroke", () => {
+    // This random would otherwise ask for a positive course and a cut again.
+    const recent = [shotFixture(0.9, "cut"), shotFixture(0.7, "cut")];
+    const shot = createRallyShot(-0.5, "left", () => 0.9, recent);
+
+    expect(shot.targetZ).toBeLessThan(0);
+    expect(shot.kind).toBe("drive");
+  });
+
+  it("leaves the third shot alone when the run already varies", () => {
+    const recent = [shotFixture(0.9, "cut"), shotFixture(-0.7, "drive")];
+    const shot = createRallyShot(-0.5, "left", () => 0.9, recent);
+
+    // Nothing is blocked, so the random choice stands.
+    expect(shot.targetZ).toBeGreaterThan(0);
+    expect(shot.kind).toBe("cut");
+  });
+
+  it("never repeats a course or a stroke three times across a long rally", () => {
+    // A deterministic sequence so a failure is reproducible.
+    let seed = 20260817;
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+
+    const plan: RallyShot[] = [];
+    let startZ = 0.72;
+    for (let index = 0; index < 200; index += 1) {
+      const shot = createRallyShot(
+        startZ,
+        index % 2 === 0 ? "left" : "right",
+        random,
+        plan.slice(-MAX_REPEATED_SHOTS),
+      );
+      plan.push(shot);
+      startZ = shot.targetZ;
+    }
+
+    const courses = plan.map((shot) => (shot.targetZ >= 0 ? "right" : "left"));
+    const kinds = plan.map((shot) => shot.kind);
+    for (let index = 2; index < plan.length; index += 1) {
+      expect(new Set(courses.slice(index - 2, index + 1)).size).toBeGreaterThan(
+        1,
+      );
+      expect(new Set(kinds.slice(index - 2, index + 1)).size).toBeGreaterThan(
+        1,
+      );
+    }
+    // The rally still uses both strokes rather than locking into an alternation.
+    expect(new Set(kinds).size).toBe(2);
+  });
+
+  it("measures the span between two touches", () => {
+    expect(touchSpan({ x: 0, y: 0 }, { x: 3, y: 4 })).toBeCloseTo(5);
+    expect(touchSpan({ x: 3, y: 4 }, { x: 0, y: 0 })).toBeCloseTo(5);
+    expect(touchSpan({ x: 2, y: 2 }, { x: 2, y: 2 })).toBe(0);
   });
 });

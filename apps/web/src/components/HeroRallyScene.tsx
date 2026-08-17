@@ -11,8 +11,14 @@ import {
   sampleRallyPoint,
   swingRollOffset,
   verticalSwingOffset,
+  clampZoom,
+  pinchZoomFactor,
+  touchSpan,
+  wheelReleasesToPage,
+  wheelZoomFactor,
   SPIN_MIN_VELOCITY,
   SPIN_RELEASE_GRACE_MS,
+  ZOOM_DEFAULT,
   type RallyShot,
 } from "../lib/heroRally";
 
@@ -415,7 +421,13 @@ export function HeroRallyScene() {
             const startZ = previousShot?.targetZ ?? 0.72;
             const nextIndex = rallyPlanStartIndex + rallyPlan.length;
             rallyPlan.push(
-              createRallyShot(startZ, nextIndex % 2 === 0 ? "left" : "right"),
+              createRallyShot(
+                startZ,
+                nextIndex % 2 === 0 ? "left" : "right",
+                Math.random,
+                // The retained window is the run the anti-repeat rule reads.
+                rallyPlan,
+              ),
             );
           }
           while (rallyPlan.length > 2 && rallyPlanStartIndex < shotIndex) {
@@ -454,6 +466,9 @@ export function HeroRallyScene() {
         let resetTimer: number | undefined;
         let resetStartedAt = 0;
         let resettingWorld = false;
+        /** Multiplier on the framed camera distance; 1 is the default view. */
+        let zoomLevel = ZOOM_DEFAULT;
+        let resetFromZoom = ZOOM_DEFAULT;
         let hasSetInitialPaddlePose = false;
         // Flick momentum. The axis is the last drag step's rotation axis and
         // the velocity decays until it settles, then the return timer starts.
@@ -556,12 +571,14 @@ export function HeroRallyScene() {
               projectedExtent(cameraRight) / horizontalTangent,
             ) *
               1.02;
+          // The fit only ever pushes the camera back, never pulls it in, so
+          // the framed distance is the looser of the two. Zoom then divides
+          // that distance, which is what lets a zoom-in cross the fit.
           const baseDistance = camera.position.distanceTo(cameraLookAt);
-          if (fitDistance > baseDistance) {
-            camera.position
-              .copy(cameraLookAt)
-              .addScaledVector(cameraBackward, fitDistance);
-          }
+          const framedDistance = Math.max(fitDistance, baseDistance);
+          camera.position
+            .copy(cameraLookAt)
+            .addScaledVector(cameraBackward, framedDistance / zoomLevel);
         };
 
         const renderScene = () => {
@@ -611,8 +628,16 @@ export function HeroRallyScene() {
               identityWorldQuaternion,
               easedProgress,
             );
+            // Framing returns with the orientation, so a zoomed-in reader is
+            // handed back the same default view a first-time reader sees.
+            zoomLevel = THREE.MathUtils.lerp(
+              resetFromZoom,
+              ZOOM_DEFAULT,
+              easedProgress,
+            );
             if (resetProgress >= 1) {
               rallyWorld.quaternion.identity();
+              zoomLevel = ZOOM_DEFAULT;
               resettingWorld = false;
               root.dataset.resetState = "idle";
             }
@@ -737,11 +762,13 @@ export function HeroRallyScene() {
             cameraTarget.set(0, 0);
             if (reducedMotion.matches) {
               rallyWorld.quaternion.identity();
+              zoomLevel = ZOOM_DEFAULT;
               root.dataset.resetState = "idle";
               renderScene();
               return;
             }
             resetFromQuaternion.copy(rallyWorld.quaternion);
+            resetFromZoom = zoomLevel;
             resetStartedAt = window.performance.now();
             resettingWorld = true;
             root.dataset.resetState = "returning";
@@ -768,7 +795,68 @@ export function HeroRallyScene() {
           const point = projectArcballPoint(normalizedX, normalizedY);
           target.set(point.x, point.y, point.z);
         };
+        /**
+         * Touch points currently on the scene. Two of them make a pinch, which
+         * takes the gesture over from the one-finger arcball drag until a
+         * finger lifts.
+         */
+        const activeTouches = new Map<number, { x: number; y: number }>();
+        let pinchSpan = 0;
+        let pinching = false;
+
+        const currentPinchSpan = () => {
+          const [first, second] = [...activeTouches.values()];
+          return first && second ? touchSpan(first, second) : 0;
+        };
+        /**
+         * Drop the arcball drag without settling it, so the finger that was
+         * rotating cannot fling the table as the pinch begins.
+         */
+        const abandonDragForPinch = () => {
+          if (dragPointerId === undefined) return;
+          if (root.hasPointerCapture(dragPointerId)) {
+            root.releasePointerCapture(dragPointerId);
+          }
+          dragPointerId = undefined;
+          lastDragMoveAt = 0;
+          spinVelocity = 0;
+          spinningWorld = false;
+          delete root.dataset.dragging;
+        };
+        const applyZoom = (factor: number) => {
+          const next = clampZoom(zoomLevel * factor);
+          if (next === zoomLevel) return;
+          zoomLevel = next;
+          if (!running) renderScene();
+        };
+        const handleWheel = (event: WheelEvent) => {
+          const factor = wheelZoomFactor(event.deltaY, event.deltaMode);
+          // At either limit the scene has nothing left to give, so the wheel
+          // goes back to the page instead of trapping the reader in the hero.
+          if (wheelReleasesToPage(zoomLevel, factor)) return;
+          event.preventDefault();
+          cancelWorldReset();
+          applyZoom(factor);
+          queueWorldReset();
+        };
+
         const handleWorldPointerDown = (event: PointerEvent) => {
+          if (event.pointerType === "touch") {
+            activeTouches.set(event.pointerId, {
+              x: event.clientX,
+              y: event.clientY,
+            });
+            if (activeTouches.size === 2) {
+              abandonDragForPinch();
+              cancelWorldReset();
+              pinchSpan = currentPinchSpan();
+              pinching = true;
+              root.dataset.resetState = "dragging";
+              event.preventDefault();
+              return;
+            }
+            if (activeTouches.size > 2) return;
+          }
           if (!event.isPrimary || dragPointerId !== undefined) return;
           cancelWorldReset();
           dragPointerId = event.pointerId;
@@ -781,6 +869,25 @@ export function HeroRallyScene() {
           event.preventDefault();
         };
         const handleWorldPointerMove = (event: PointerEvent) => {
+          if (
+            event.pointerType === "touch" &&
+            activeTouches.has(event.pointerId)
+          ) {
+            activeTouches.set(event.pointerId, {
+              x: event.clientX,
+              y: event.clientY,
+            });
+            if (pinching) {
+              const span = currentPinchSpan();
+              if (span > 0) {
+                cancelWorldReset();
+                applyZoom(pinchZoomFactor(pinchSpan, span));
+                pinchSpan = span;
+              }
+              event.preventDefault();
+              return;
+            }
+          }
           if (event.pointerId !== dragPointerId) return;
           cancelWorldReset();
           updateArcballPoint(arcballCurrent, event);
@@ -851,6 +958,18 @@ export function HeroRallyScene() {
           queueWorldReset();
         };
         const handleWorldPointerEnd = (event: PointerEvent) => {
+          if (event.pointerType === "touch") {
+            activeTouches.delete(event.pointerId);
+            // The finger still down does not resume rotating: picking the
+            // arcball back up mid-pinch would snap the table sideways.
+            if (pinching && activeTouches.size < 2) {
+              pinching = false;
+              pinchSpan = 0;
+              queueWorldReset();
+              event.preventDefault();
+              return;
+            }
+          }
           if (event.pointerId !== dragPointerId) return;
           if (root.hasPointerCapture(event.pointerId)) {
             root.releasePointerCapture(event.pointerId);
@@ -904,6 +1023,9 @@ export function HeroRallyScene() {
         interactionRoot.addEventListener("pointerleave", resetPointer, {
           passive: true,
         });
+        // Not passive: a wheel step that the scene consumes must be able to
+        // hold the page still while it zooms.
+        root.addEventListener("wheel", handleWheel, { passive: false });
         root.addEventListener("pointerdown", handleWorldPointerDown);
         root.addEventListener("pointermove", handleWorldPointerMove);
         root.addEventListener("pointerup", handleWorldPointerEnd);
@@ -916,6 +1038,7 @@ export function HeroRallyScene() {
           );
           interactionRoot.removeEventListener("pointermove", handlePointerMove);
           interactionRoot.removeEventListener("pointerleave", resetPointer);
+          root.removeEventListener("wheel", handleWheel);
           root.removeEventListener("pointerdown", handleWorldPointerDown);
           root.removeEventListener("pointermove", handleWorldPointerMove);
           root.removeEventListener("pointerup", handleWorldPointerEnd);
