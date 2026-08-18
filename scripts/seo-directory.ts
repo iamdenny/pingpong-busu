@@ -91,6 +91,12 @@ export type DirectoryGroup = {
   pages: readonly DirectoryPage[];
 };
 
+export function groupLabelForSlug(slug: string): string {
+  return (
+    GROUP_DEFINITIONS.find((group) => group.slug === slug)?.label ?? "기타"
+  );
+}
+
 function comparePlayers(left: SeoPlayer, right: SeoPlayer): number {
   const byName = left.canonical_name.localeCompare(right.canonical_name, "ko");
   return byName !== 0 ? byName : left.id.localeCompare(right.id);

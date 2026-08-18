@@ -8,7 +8,13 @@ import {
   siteMetadata,
   type PageMetadataValue,
 } from "../apps/web/src/lib/pageMetadata";
-import { escapeHtml, escapeXml } from "./seo-html";
+import {
+  breadcrumbJsonLd,
+  escapeHtml,
+  escapeXml,
+  jsonLdScript,
+} from "./seo-html";
+import { playerJsonLd, renderPlayerBody } from "./seo-player";
 import {
   buildDirectoryGroups,
   directoryPageMetadataInput,
@@ -203,7 +209,7 @@ export function basePathFromTemplate(template: string): string {
 // Re-running the generator over an already generated dist must stay safe, so a
 // previously injected body is folded back to the empty container first.
 const INJECTED_ROOT =
-  /<div id="root">\s*<(nav|div) class="seo-directory[^"]*"[\s\S]*?<\/\1>\s*<\/div>/u;
+  /<div id="root">\s*<(nav|div|article)[^>]*class="[^"]*\bseo-[^"]*"[\s\S]*?<\/\1>\s*<\/div>/u;
 
 export function withRootContent(html: string, content: string): string {
   const normalized = html.replace(INJECTED_ROOT, ROOT_CONTAINER);
@@ -214,6 +220,14 @@ export function withRootContent(html: string, content: string): string {
 
 export function withoutAppScript(html: string): string {
   return html.replace(APP_SCRIPT_PATTERN, "");
+}
+
+export function withJsonLd(html: string, values: readonly unknown[]): string {
+  if (values.length === 0) return html;
+  const scripts = values
+    .map((value) => `    ${jsonLdScript(value)}`)
+    .join("\n");
+  return html.replace("</head>", `${scripts}\n  </head>`);
 }
 
 export function renderSitemap(
@@ -265,10 +279,16 @@ export async function generateSeoPages(options: {
     });
     await writeFile(
       resolve(directory, "index.html"),
-      renderSeoHtml(
-        template,
-        metadata,
-        buildCanonicalUrl(`/players/${player.id}`),
+      withRootContent(
+        withJsonLd(
+          renderSeoHtml(
+            rawTemplate,
+            metadata,
+            buildCanonicalUrl(`/players/${player.id}`),
+          ),
+          playerJsonLd(player),
+        ),
+        renderPlayerBody(player, basePath),
       ),
     );
   }
@@ -325,6 +345,7 @@ async function writeDirectoryPages(
     title: string,
     description: string,
     body: string,
+    crumbs: readonly { name: string; url: string }[] = [],
   ): Promise<void> => {
     const target = resolve(outputDirectory, path.replace(/^\//u, ""));
     await mkdir(target, { recursive: true });
@@ -333,27 +354,42 @@ async function writeDirectoryPages(
       resolve(target, "index.html"),
       withRootContent(
         withoutAppScript(
-          renderSeoHtml(rawTemplate, metadata, buildCanonicalUrl(path)),
+          withJsonLd(
+            renderSeoHtml(rawTemplate, metadata, buildCanonicalUrl(path)),
+            crumbs.length > 0 ? [breadcrumbJsonLd(crumbs)] : [],
+          ),
         ),
         body,
       ),
     );
   };
   const total = groups.reduce((sum, group) => sum + group.total, 0);
+  const home = { name: "BUSU 홈", url: buildCanonicalUrl("/") };
+  const listRoot = {
+    name: "탁구 선수 전체 목록",
+    url: buildCanonicalUrl(directoryPath()),
+  };
   await write(
     directoryPath(),
     "탁구 선수 전체 목록 · BUSU",
     `BUSU가 공개 대회 기록에서 확인한 탁구 선수 ${total.toLocaleString("ko-KR")}명을 이름 초성별로 찾아보세요.`,
     renderDirectoryRootBody(groups, basePath),
+    [home, listRoot],
   );
   for (const group of groups)
     for (const page of group.pages) {
       const metadata = directoryPageMetadataInput(page);
+      const path = directoryPath(group.slug, page.pageNumber);
       await write(
-        directoryPath(group.slug, page.pageNumber),
+        path,
         metadata.title,
         metadata.description,
         renderDirectoryPageBody(page, basePath),
+        [
+          home,
+          listRoot,
+          { name: `${group.label} 시작 선수`, url: buildCanonicalUrl(path) },
+        ],
       );
     }
 }
