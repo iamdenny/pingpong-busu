@@ -235,3 +235,70 @@ describe("SEO page generation", () => {
     expect(html).toContain('{"@type":"WebSite"}');
   });
 });
+
+describe("crawlable directory output", () => {
+  const appTemplate =
+    '<!doctype html><html><head><title>old</title><link rel="stylesheet" href="/assets/index-abc.css"></head><body><div id="root"></div><script type="module" crossorigin src="/assets/index-abc.js"></script><script src="https://static.cloudflareinsights.com/beacon.min.js"></script></body></html>';
+
+  async function build(players: SeoPlayer[]): Promise<string> {
+    const directory = join(tmpdir(), `busu-seo-${crypto.randomUUID()}`);
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, "index.html"), appTemplate);
+    await generateSeoPages({ outputDirectory: directory, players });
+    return directory;
+  }
+
+  it("links the directory from the home and player documents", async () => {
+    const directory = await build([player]);
+    const home = await readFile(join(directory, "index.html"), "utf8");
+    const detail = await readFile(
+      join(directory, "players", id, "index.html"),
+      "utf8",
+    );
+    expect(home).toContain('<a href="/directory/">');
+    expect(detail).toContain('<a href="/directory/">');
+    expect(home).toContain('src="/assets/index-abc.js"');
+  });
+
+  it("emits a directory page that links players without the app bundle", async () => {
+    const directory = await build([player]);
+    const group = await readFile(
+      join(directory, "directory", "g", "index.html"),
+      "utf8",
+    );
+    expect(group).toContain(`href="/players/${id}/"`);
+    expect(group).not.toContain('src="/assets/index-abc.js"');
+    expect(group).toContain('href="/assets/index-abc.css"');
+    expect(group).toContain("static.cloudflareinsights.com");
+    expect(group).toContain(
+      '<link rel="canonical" href="https://busu.iamdenny.com/directory/g/" />',
+    );
+    expect(group).toContain('name="robots" content="index,follow"');
+    const root = await readFile(
+      join(directory, "directory", "index.html"),
+      "utf8",
+    );
+    expect(root).toContain('href="/directory/g/"');
+  });
+
+  it("lists directory routes in the sitemap", async () => {
+    const directory = await build([player]);
+    const sitemap = await readFile(join(directory, "sitemap.xml"), "utf8");
+    expect(sitemap).toContain(
+      "<loc>https://busu.iamdenny.com/directory/</loc>",
+    );
+    expect(sitemap).toContain(
+      "<loc>https://busu.iamdenny.com/directory/g/</loc>",
+    );
+    expect(sitemap).toContain(`/players/${id}/</loc>`);
+  });
+
+  it("stays idempotent when regenerating over existing output", async () => {
+    const directory = await build([player]);
+    await expect(
+      generateSeoPages({ outputDirectory: directory, players: [player] }),
+    ).resolves.toBeUndefined();
+    const home = await readFile(join(directory, "index.html"), "utf8");
+    expect(home.match(/seo-directory-entry/gu)).toHaveLength(1);
+  });
+});

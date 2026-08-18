@@ -8,6 +8,19 @@ import {
   siteMetadata,
   type PageMetadataValue,
 } from "../apps/web/src/lib/pageMetadata";
+import { escapeHtml, escapeXml } from "./seo-html";
+import {
+  buildDirectoryGroups,
+  directoryPageMetadataInput,
+  directoryPath,
+  directoryPaths,
+  renderDirectoryEntryLink,
+  renderDirectoryPageBody,
+  renderDirectoryRootBody,
+  type DirectoryGroup,
+} from "./seo-directory";
+
+export { escapeHtml, escapeXml } from "./seo-html";
 
 export type SeoPlayer = {
   id: string;
@@ -61,19 +74,6 @@ function parseManifest(value: unknown): SeoPlayer[] {
       source_count: Number(candidate.source_count),
     };
   });
-}
-
-export function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-export function escapeXml(value: string): string {
-  return escapeHtml(value);
 }
 
 export async function fetchPublicPlayerManifest(options: {
@@ -186,9 +186,43 @@ export function renderSeoHtml(
   );
 }
 
-export function renderSitemap(players: SeoPlayer[]): string {
+const APP_SCRIPT_PATTERN =
+  /\s*<script\b[^>]*\ssrc="(?!https?:)[^"]*"[^>]*>\s*<\/script>/gu;
+const ROOT_CONTAINER = '<div id="root"></div>';
+
+// Vite rewrites asset URLs with the deployment base, so the built template is
+// the only reliable source for the base path the generated pages must use.
+export function basePathFromTemplate(template: string): string {
+  const asset = /(?:src|href)="([^"]*\/)assets\/[^"]*\.(?:js|css)"/u.exec(
+    template,
+  );
+  const prefix = asset?.[1];
+  return prefix && prefix.startsWith("/") ? prefix : "/";
+}
+
+// Re-running the generator over an already generated dist must stay safe, so a
+// previously injected body is folded back to the empty container first.
+const INJECTED_ROOT =
+  /<div id="root">\s*<(nav|div) class="seo-directory[^"]*"[\s\S]*?<\/\1>\s*<\/div>/u;
+
+export function withRootContent(html: string, content: string): string {
+  const normalized = html.replace(INJECTED_ROOT, ROOT_CONTAINER);
+  if (!normalized.includes(ROOT_CONTAINER))
+    throw new Error("The build template no longer exposes an empty #root.");
+  return normalized.replace(ROOT_CONTAINER, `<div id="root">${content}</div>`);
+}
+
+export function withoutAppScript(html: string): string {
+  return html.replace(APP_SCRIPT_PATTERN, "");
+}
+
+export function renderSitemap(
+  players: SeoPlayer[],
+  extraPaths: readonly string[] = [],
+): string {
   const urls = [
     buildCanonicalUrl("/"),
+    ...extraPaths.map((path) => buildCanonicalUrl(path)),
     ...players.map((player) => buildCanonicalUrl(`/players/${player.id}`)),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((url) => `  <url><loc>${escapeXml(url)}</loc></url>`).join("\n")}\n</urlset>\n`;
@@ -204,9 +238,17 @@ export async function generateSeoPages(options: {
   const uniquePlayerIds = new Set(parsedPlayers.map((player) => player.id));
   if (uniquePlayerIds.size !== parsedPlayers.length)
     throw new Error("Public SEO manifest contains duplicate player ids.");
-  const template = await readFile(
+  const rawTemplate = await readFile(
     resolve(options.outputDirectory, "index.html"),
     "utf8",
+  );
+  const basePath = basePathFromTemplate(rawTemplate);
+  const groups = buildDirectoryGroups(parsedPlayers);
+  // Every app page ships the directory entry link inside #root so crawlers can
+  // reach the index from the raw HTML; createRoot replaces it on mount.
+  const template = withRootContent(
+    rawTemplate,
+    renderDirectoryEntryLink(basePath),
   );
   const playersDirectory = resolve(options.outputDirectory, "players");
   await rm(playersDirectory, { recursive: true, force: true });
@@ -251,14 +293,69 @@ export async function generateSeoPages(options: {
     resolve(options.outputDirectory, "404.html"),
     renderSeoHtml(template, fallbackMetadata),
   );
+  await writeFile(resolve(options.outputDirectory, "index.html"), template);
+  await writeDirectoryPages(
+    options.outputDirectory,
+    rawTemplate,
+    basePath,
+    groups,
+  );
   await writeFile(
     resolve(options.outputDirectory, "robots.txt"),
     `User-agent: *\nAllow: /\nSitemap: ${buildCanonicalUrl("/sitemap.xml")}\n`,
   );
   await writeFile(
     resolve(options.outputDirectory, "sitemap.xml"),
-    renderSitemap(parsedPlayers),
+    renderSitemap(parsedPlayers, directoryPaths(groups)),
   );
+}
+
+// Directory pages are plain documents: the SPA has no matching route, so the
+// application bundle is dropped and the crawlable list is the whole body.
+async function writeDirectoryPages(
+  outputDirectory: string,
+  rawTemplate: string,
+  basePath: string,
+  groups: readonly DirectoryGroup[],
+): Promise<void> {
+  const root = resolve(outputDirectory, "directory");
+  await rm(root, { recursive: true, force: true });
+  const write = async (
+    path: string,
+    title: string,
+    description: string,
+    body: string,
+  ): Promise<void> => {
+    const target = resolve(outputDirectory, path.replace(/^\//u, ""));
+    await mkdir(target, { recursive: true });
+    const metadata = buildPageMetadata(path, title, description);
+    await writeFile(
+      resolve(target, "index.html"),
+      withRootContent(
+        withoutAppScript(
+          renderSeoHtml(rawTemplate, metadata, buildCanonicalUrl(path)),
+        ),
+        body,
+      ),
+    );
+  };
+  const total = groups.reduce((sum, group) => sum + group.total, 0);
+  await write(
+    directoryPath(),
+    "탁구 선수 전체 목록 · BUSU",
+    `BUSU가 공개 대회 기록에서 확인한 탁구 선수 ${total.toLocaleString("ko-KR")}명을 이름 초성별로 찾아보세요.`,
+    renderDirectoryRootBody(groups, basePath),
+  );
+  for (const group of groups)
+    for (const page of group.pages) {
+      const metadata = directoryPageMetadataInput(page);
+      await write(
+        directoryPath(group.slug, page.pageNumber),
+        metadata.title,
+        metadata.description,
+        renderDirectoryPageBody(page, basePath),
+      );
+    }
 }
 
 export async function generateSeoPagesFromEnvironment(

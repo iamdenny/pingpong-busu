@@ -16,9 +16,10 @@ export function buildCanonicalUrl(pathname: string): string {
   const url = new URL(siteMetadata.url);
   const trimmedPath =
     pathname === "/" ? pathname : pathname.replace(/\/+$/u, "");
-  const normalizedPath = /^\/(?:players\/[^/]+|search)$/u.test(trimmedPath)
-    ? `${trimmedPath}/`
-    : trimmedPath;
+  const normalizedPath =
+    /^\/(?:players\/[^/]+|search|directory(?:\/[^/]+){0,2})$/u.test(trimmedPath)
+      ? `${trimmedPath}/`
+      : trimmedPath;
   url.pathname = normalizedPath || "/";
   return url.href;
 }
