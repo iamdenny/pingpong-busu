@@ -125,6 +125,7 @@ title: "BUSU 제품 스펙"
 | F-021 | 공통 footer에서 로그인 없이 문의·제보를 보내고 현재 URL과 브라우저 User-Agent를 공개 GitHub Issue에 함께 기록한다.                            | 구현      |
 | F-022 | 검색 후보는 참여 편집 선수를 우선하고 이후 기록일순으로 정렬하며, 관련 대회명·원문 종목명과 최신 공개 지역·소속을 표시한다.                   | 구현      |
 | F-023 | 홈은 `탁구 부수`, `탁구부수`, `BUSU` 검색 의도를 자연스러운 제목·설명·본문과 `WebSite` 구조화 데이터로 표현한다.                              | 구현      |
+| F-024 | 공개 선수 상세는 이름 초성별 정적 색인(`/directory/`)에서 링크로 도달할 수 있고, 모든 앱 페이지 초기 HTML과 footer가 색인 진입점을 제공한다.  | 구현      |
 
 ## 6. 도메인 규칙
 
@@ -231,6 +232,8 @@ title: "BUSU 제품 스펙"
 hosted production에서 실시간 갱신 UI는 `VITE_SOURCE_REFRESH_ENABLED=true`일 때만 켜진다. hosted development는 별도 Supabase 프로젝트와 합성 seed를 사용하고 실출처 갱신을 켜지 않는다.
 
 production의 검색엔진 공개 목록은 배포 시 경량 `public_player_seo_manifest`를 publishable key로 끝까지 페이지 조회한 스냅샷이다. 활성 공개 출처가 하나 이상인 유효 선수만 정적 상세 HTML과 sitemap에 포함하며, 새 선수와 변경된 메타데이터는 다음 배포에서 반영한다. 검색 결과 URL은 검색어와 관계없이 canonical `/search`를 사용하고 색인하지 않는다.
+
+같은 스냅샷으로 `/directory/` 정적 색인을 함께 생성한다. 선수를 이름 초성 14개 그룹(ASCII slug)으로 나누고 그룹마다 200명씩 페이지를 끊어, 모든 공개 선수가 홈에서 세 번의 링크 이동 안에 도달한다. 그룹 페이지는 자기 그룹의 모든 페이지 번호를 함께 링크한다. 색인 페이지는 SPA 라우트가 아니므로 애플리케이션 번들 없이 렌더링하며, 앱 페이지는 초기 HTML의 `#root`와 공통 footer 양쪽에 색인 진입 링크를 둔다. `#root`의 링크는 `createRoot` 마운트 시 React가 대체한다.
 
 운영 제품 분석은 `VITE_UMAMI_SCRIPT_URL`과 `VITE_UMAMI_WEBSITE_ID`가 모두 유효할 때만 셀프 호스트 Umami tracker를 불러온다. 페이지 조회에서는 query string을 제외하고, 검증된 검색어와 최소한의 클릭·완료 이벤트만 [제품 분석 이벤트 사전](./analytics.md)에 따라 전송한다. 설정 누락이나 전송 실패는 사용자 흐름을 중단하지 않는다.
 

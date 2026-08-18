@@ -38,6 +38,12 @@ export function Layout() {
           공개 대회 기록을 출처와 함께 제공하며, 정정 요청은 근거 확인 후
           반영합니다.
         </p>
+        <p className="directory-link">
+          {/* Static build output, not a router route: a full navigation is intended. */}
+          <a href={`${import.meta.env.BASE_URL}directory/`}>
+            탁구 선수 전체 목록
+          </a>
+        </p>
         <FeedbackDialog
           repository={feedbackRepository}
           appVersion={appVersion}
