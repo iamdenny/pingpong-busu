@@ -301,4 +301,48 @@ describe("crawlable directory output", () => {
     const home = await readFile(join(directory, "index.html"), "utf8");
     expect(home.match(/seo-directory-entry/gu)).toHaveLength(1);
   });
+
+  it("prerenders the player summary and page level structured data", async () => {
+    const directory = await build([player]);
+    const html = await readFile(
+      join(directory, "players", id, "index.html"),
+      "utf8",
+    );
+    expect(html).toContain("김&lt;&amp;&quot;탁구");
+    expect(html).toContain("<dd>2건</dd>");
+    expect(html).toContain("서울");
+    expect(html).toContain('"@type":"ProfilePage"');
+    expect(html).toContain('"@type":"Person"');
+    expect(html).toContain('"@type":"BreadcrumbList"');
+    // The raw body must stand on its own without the application bundle running.
+    const bodyText = (html.match(/<body[\s\S]*<\/body>/u)?.[0] ?? "")
+      .replace(/<script[\s\S]*?<\/script>/gu, "")
+      .replace(/<[^>]*>/gu, "")
+      .replace(/\s+/gu, "");
+    expect(bodyText.length).toBeGreaterThan(120);
+    expect(html).toContain('src="/assets/index-abc.js"');
+  });
+
+  it("gives directory pages their own breadcrumb data", async () => {
+    const directory = await build([player]);
+    const group = await readFile(
+      join(directory, "directory", "g", "index.html"),
+      "utf8",
+    );
+    expect(group).toContain('"@type":"BreadcrumbList"');
+    expect(group).toContain('"name":"BUSU 홈"');
+    expect(group).not.toContain('"@type":"ProfilePage"');
+  });
+
+  it("never lets a player name break out of the JSON-LD script", async () => {
+    const directory = await build([
+      { ...player, canonical_name: "김</script><img src=x>탁구" },
+    ]);
+    const html = await readFile(
+      join(directory, "players", id, "index.html"),
+      "utf8",
+    );
+    expect(html).not.toContain("</script><img src=x>");
+    expect(html).toContain("\\u003c/script");
+  });
 });
