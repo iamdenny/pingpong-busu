@@ -2277,9 +2277,14 @@ p {
 .back-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  min-height: 44px;
-  margin-bottom: 1.25rem;
+  gap: 0.3rem;
+  min-height: 32px;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+}
+.back-link svg {
+  width: 15px;
+  height: 15px;
 }
 .player-header {
   display: flex;

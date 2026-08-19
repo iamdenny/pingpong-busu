@@ -1,16 +1,19 @@
 import { render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { appVersion } from "../lib/appVersion";
 import { Layout } from "./Layout";
 
+// ScrollRestoration은 data router에서만 동작하므로 실제 구성과 같게 렌더한다.
+function layoutRouter(route = "/") {
+  return createMemoryRouter([{ path: "*", element: <Layout /> }], {
+    initialEntries: [route],
+  });
+}
+
 describe("Layout", () => {
   it("shows the demo mode banner, brand, and data policy", () => {
-    const { container } = render(
-      <MemoryRouter>
-        <Layout />
-      </MemoryRouter>,
-    );
+    const { container } = render(<RouterProvider router={layoutRouter()} />);
 
     expect(
       screen.getByText("현재 화면은 개발용 가상 데이터입니다."),
@@ -36,11 +39,7 @@ describe("Layout", () => {
   });
 
   it("offers the search box beside the brand outside the home page", async () => {
-    render(
-      <MemoryRouter initialEntries={["/players/player-1"]}>
-        <Layout />
-      </MemoryRouter>,
-    );
+    render(<RouterProvider router={layoutRouter("/players/player-1")} />);
 
     const header = document.querySelector(".site-header");
     expect(header).not.toBeNull();
@@ -53,21 +52,13 @@ describe("Layout", () => {
   });
 
   it("carries the current query into the header search box", () => {
-    render(
-      <MemoryRouter initialEntries={["/search?q=임대현"]}>
-        <Layout />
-      </MemoryRouter>,
-    );
+    render(<RouterProvider router={layoutRouter("/search?q=임대현")} />);
 
     expect(screen.getByLabelText("선수 검색")).toHaveValue("임대현");
   });
 
   it("leaves the home hero search alone", () => {
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <Layout />
-      </MemoryRouter>,
-    );
+    render(<RouterProvider router={layoutRouter("/")} />);
 
     expect(screen.queryByLabelText("선수 검색")).not.toBeInTheDocument();
   });
@@ -75,11 +66,7 @@ describe("Layout", () => {
   it.each(["/", "/search?q=임대현", "/players/player-1"])(
     "shows the compact version label on %s",
     (route) => {
-      render(
-        <MemoryRouter initialEntries={[route]}>
-          <Layout />
-        </MemoryRouter>,
-      );
+      render(<RouterProvider router={layoutRouter(route)} />);
 
       expect(screen.getByText(`버전 ${appVersion}`)).toHaveClass("app-version");
     },

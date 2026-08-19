@@ -24,3 +24,8 @@ if (
     this.dispatchEvent(new Event("close"));
   };
 }
+
+// jsdom은 스크롤을 구현하지 않으므로 ScrollRestoration 경고만 막는다.
+if (typeof window !== "undefined") {
+  window.scrollTo = () => undefined;
+}
