@@ -869,6 +869,37 @@ p {
   outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
+.record-focus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.7rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #cddcff;
+  border-radius: var(--radius);
+  background: #eef4ff;
+  color: #153e9f;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+.record-focus button {
+  border: 1px solid #9db8f6;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #153e9f;
+  padding: 0.2rem 0.6rem;
+  font: inherit;
+  cursor: pointer;
+}
+.record-focus button:hover {
+  background: #dbe7ff;
+}
+#player-record-history:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 4px;
+}
 .division-overview--embedded {
   margin: 0.9rem 0 0;
   padding: 0.9rem 0 0;

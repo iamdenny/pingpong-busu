@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -154,6 +154,69 @@ describe("PlayerDetailPage metadata", () => {
     ).toBeInTheDocument();
   });
 
+  it("focuses the matching records when a division is chosen", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/players/kim-seoul"]}>
+          <Routes>
+            <Route path="/players/:id" element={<PlayerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const teamDivision = await screen.findByRole("button", {
+      name: "단체전, 통합부수 5부 입상 0건 참가 1건 결과 보기",
+    });
+    await user.click(teamDivision);
+
+    expect(teamDivision).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("tab", { name: "전체 이력" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.getByText("단체전 · 통합부수 5부 기록만 보는 중"),
+    ).toBeInTheDocument();
+    const history = document.getElementById("player-record-history");
+    expect(history).toHaveFocus();
+    expect(
+      within(history!).getAllByText("서울 가상 클럽대항전"),
+    ).not.toHaveLength(0);
+    expect(
+      within(history!).queryByText("2026 가상 전국오픈"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("returns to every record when the division is cleared", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/players/kim-seoul"]}>
+          <Routes>
+            <Route path="/players/:id" element={<PlayerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "개인전, 오픈부수 5부 입상 1건 참가 0건 결과 보기",
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "전체 보기" }));
+
+    expect(screen.queryByText(/기록만 보는 중/u)).not.toBeInTheDocument();
+    const history = document.getElementById("player-record-history");
+    expect(
+      within(history!).getAllByText("서울 가상 클럽대항전"),
+    ).not.toHaveLength(0);
+  });
+
   it("drops the identity badge that never changes", async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -184,7 +247,9 @@ describe("PlayerDetailPage metadata", () => {
 
     await user.click(await screen.findByRole("tab", { name: "전체 이력" }));
 
-    const doublesRecord = screen.getAllByText("혼합 복식")[0]?.closest("td, dd");
+    const doublesRecord = screen
+      .getAllByText("혼합 복식")[0]
+      ?.closest("td, dd");
     expect(doublesRecord).toHaveTextContent("복식");
     expect(
       screen.getAllByTitle(
