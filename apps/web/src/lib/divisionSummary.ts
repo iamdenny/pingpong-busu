@@ -2,8 +2,12 @@ import {
   displayDivisionValue,
   divisionSystemLabels,
   homonymNicknameLabel,
+  isCurrentSummaryRecord,
+  isIndividualDivisionRecord,
+  prioritizeWomenDivisionSystem,
   type DivisionObservationSummary,
   type DivisionSystem,
+  type PlayerRecord,
   type PlayerSummary,
 } from "@busu/domain";
 
@@ -317,4 +321,32 @@ export function matchesObservedDivision(
   summary: Pick<DivisionSummaryItem, "system" | "division">,
 ): boolean {
   return divisionObservationForPlayer(player, summary) !== undefined;
+}
+
+export type DivisionRecordScope = "individual" | "team";
+
+/**
+ * 부수별 요약 항목 하나가 어떤 기록에서 나왔는지 되짚는다. 집계와 같은 규칙을
+ * 써야 화면에서 고른 부수와 아래 목록이 어긋나지 않는다.
+ */
+export function recordMatchesDivisionSummary(
+  record: PlayerRecord,
+  summary: Pick<DivisionSummaryItem, "system" | "division">,
+  scope: DivisionRecordScope,
+): boolean {
+  const isIndividual = isIndividualDivisionRecord(record);
+  if (scope === "individual" ? !isIndividual : isIndividual) return false;
+  if (!isCurrentSummaryRecord(record)) return false;
+  const division = record.division?.trim();
+  if (!division) return false;
+  const system =
+    prioritizeWomenDivisionSystem(
+      record.divisionSystem,
+      record.event,
+      division,
+    ) ?? "unknown";
+  return (
+    system === summary.system &&
+    displayDivisionValue(system, division) === summary.division
+  );
 }

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
   displayDivisionValue,
@@ -23,13 +23,23 @@ import { SourceComparison } from "../components/SourceComparison";
 import { trackAnalyticsEvent } from "../lib/analytics";
 import {
   groupDivisionSummaries,
+  recordMatchesDivisionSummary,
   summarizeDivisionObservationItems,
+  type DivisionRecordScope,
+  type DivisionSummaryItem,
 } from "../lib/divisionSummary";
 import { buildPlayerMetadata } from "../lib/pageMetadata";
 import { playerRepository } from "../lib/runtime";
 import { useCalmEntry } from "../lib/motion";
 
 type Tab = "history" | "awards" | "sources";
+
+interface DivisionFocus {
+  sectionKey: string;
+  sectionLabel: string;
+  scope: DivisionRecordScope;
+  summary: DivisionSummaryItem;
+}
 
 function RecordDate({ record }: { record: PlayerRecord }) {
   if (!record.date)
@@ -112,6 +122,17 @@ export function PlayerDetailPage() {
   const { id = "" } = useParams();
   const location = useLocation();
   const [tab, setTab] = useState<Tab>("awards");
+  const [divisionFocus, setDivisionFocus] = useState<DivisionFocus | null>(
+    null,
+  );
+  const historyRef = useRef<HTMLElement>(null);
+  const focusRequestRef = useRef(false);
+  useEffect(() => {
+    if (!focusRequestRef.current || !historyRef.current) return;
+    focusRequestRef.current = false;
+    historyRef.current.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    historyRef.current.focus({ preventScroll: true });
+  }, [divisionFocus]);
   const result = useQuery({
     queryKey: ["player", id],
     queryFn: () => playerRepository.getPlayer(id),
@@ -145,9 +166,18 @@ export function PlayerDetailPage() {
     );
   const player = result.data;
   const isAwardsTab = tab === "awards";
-  const visibleRecords = isAwardsTab
-    ? player.records.filter((record) => isAwardRank(record.rank))
+  const focusedRecords = divisionFocus
+    ? player.records.filter((record) =>
+        recordMatchesDivisionSummary(
+          record,
+          divisionFocus.summary,
+          divisionFocus.scope,
+        ),
+      )
     : player.records;
+  const visibleRecords = isAwardsTab
+    ? focusedRecords.filter((record) => isAwardRank(record.rank))
+    : focusedRecords;
   const records = sortPlayerRecordsByLatest(visibleRecords);
   const historyTitle = isAwardsTab ? "입상 이력 (4강 이상)" : "전체 이력";
   const divisionOverviewSections = [
@@ -264,6 +294,30 @@ export function PlayerDetailPage() {
           sections={divisionOverviewSections}
           showsSectionHeadings
           embedded
+          selectionTargetId="player-record-history"
+          isSelected={(section, summary) =>
+            divisionFocus?.sectionKey === section.key &&
+            divisionFocus.summary.system === summary.system &&
+            divisionFocus.summary.division === summary.division
+          }
+          onSelect={(section, summary) => {
+            const alreadyFocused =
+              divisionFocus?.sectionKey === section.key &&
+              divisionFocus.summary.system === summary.system &&
+              divisionFocus.summary.division === summary.division;
+            focusRequestRef.current = true;
+            setDivisionFocus(
+              alreadyFocused
+                ? null
+                : {
+                    sectionKey: section.key,
+                    sectionLabel: section.label,
+                    scope: section.key === "team" ? "team" : "individual",
+                    summary,
+                  },
+            );
+            if (!alreadyFocused) setTab("history");
+          }}
         />
       </section>
       <RefreshStatus sources={player.sources} />
@@ -295,17 +349,40 @@ export function PlayerDetailPage() {
       {(tab === "history" || tab === "awards") && (
         <section
           key={tab}
+          id="player-record-history"
+          ref={historyRef}
+          tabIndex={-1}
           aria-labelledby="history-title"
           className="tab-panel-entry"
         >
           <h2 id="history-title" className="visually-hidden">
             {historyTitle}
           </h2>
+          {divisionFocus && (
+            <p className="record-focus" role="status">
+              <span>
+                {divisionFocus.sectionLabel} ·{" "}
+                {divisionFocus.summary.systemLabel}{" "}
+                {divisionFocus.summary.division} 기록만 보는 중
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  focusRequestRef.current = false;
+                  setDivisionFocus(null);
+                }}
+              >
+                전체 보기
+              </button>
+            </p>
+          )}
           {records.length === 0 ? (
             <p className="empty-state">
-              {isAwardsTab
-                ? "4강 이상 입상 이력이 없습니다."
-                : "확인된 대회 이력이 없습니다."}
+              {divisionFocus
+                ? "선택한 부수의 기록이 없습니다."
+                : isAwardsTab
+                  ? "4강 이상 입상 이력이 없습니다."
+                  : "확인된 대회 이력이 없습니다."}
             </p>
           ) : (
             <>
