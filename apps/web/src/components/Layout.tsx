@@ -1,4 +1,10 @@
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import {
+  Link,
+  Outlet,
+  ScrollRestoration,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { appVersion } from "../lib/appVersion";
 import { isDemoMode, isDevLiveMode } from "../lib/runtime";
 import { feedbackRepository } from "../lib/runtime";
@@ -12,6 +18,8 @@ export function Layout() {
   const showsHeaderSearch = location.pathname !== "/";
   return (
     <div className="app-shell">
+      {/* 새 화면은 위에서 시작하고, 뒤로 가면 보던 위치로 돌아온다. */}
+      <ScrollRestoration />
       {isDemoMode && (
         <div className="demo-banner" role="status">
           현재 화면은 개발용 가상 데이터입니다.
