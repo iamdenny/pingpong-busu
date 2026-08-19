@@ -12,12 +12,7 @@ import {
   Waypoints,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import {
-  Link,
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   formatDivisionObservation,
   homonymNicknameLabel,
@@ -32,7 +27,6 @@ import { ExcludedAwardScopeBadge } from "../components/ExcludedAwardScopeBadge";
 import { IdentityClaimDialog } from "../components/IdentityClaimDialog";
 import { IdentityEditHistory } from "../components/IdentityEditHistory";
 import { PageMetadata } from "../components/PageMetadata";
-import { SearchForm } from "../components/SearchForm";
 import { trackAnalyticsEvent, trackSearchSubmitted } from "../lib/analytics";
 import {
   SourceRefreshProgress,
@@ -258,7 +252,12 @@ function directSearchUrl(
 }
 
 export function SearchResultsPage() {
-  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  // 검색어가 바뀌면 결과 탭과 부수 선택을 기본 상태로 되돌린다.
+  return <SearchResultsView key={params.get("q")?.trim() ?? ""} />;
+}
+
+function SearchResultsView() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
@@ -661,19 +660,6 @@ export function SearchResultsPage() {
   return (
     <div className="page">
       <PageMetadata title={pageTitle} description={pageDescription} />
-      <SearchForm
-        key={query}
-        compact
-        initialQuery={query}
-        onSearch={(value) => {
-          setResultTabDirection("none");
-          setResultTab("awards");
-          setDivisionSelection(null);
-          void navigate(`/search?q=${encodeURIComponent(value)}`, {
-            viewTransition: true,
-          });
-        }}
-      />
       <div className="page-heading">
         <div>
           <p className="eyebrow">검색 결과</p>

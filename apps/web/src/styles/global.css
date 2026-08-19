@@ -89,9 +89,17 @@ a {
   font-size: 0.9rem;
 }
 .site-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   max-width: 1120px;
   margin: auto;
   padding: 1.15rem 1.25rem;
+}
+.site-header .search-form--compact {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  margin: 0;
 }
 .brand {
   display: inline-flex;
@@ -702,6 +710,17 @@ p {
 .search-form--compact {
   margin: 0 0 2.5rem;
   max-width: none;
+}
+.site-header .search-form__row {
+  padding: 0.3rem 0.3rem 0.3rem 0.75rem;
+}
+.site-header .search-form__row input {
+  padding: 0.5rem 0;
+  font-size: 0.95rem;
+}
+.site-header .search-form__row button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
 }
 .search-form--compact > label {
   position: absolute;
@@ -2547,7 +2566,24 @@ p {
     flex: 1;
   }
   .site-header {
+    gap: 0.6rem;
     padding: 0.9rem 1rem;
+  }
+  .site-header .brand span {
+    font-size: 1.2rem;
+  }
+  .site-header .brand img {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+  .site-header .search-form__row {
+    padding: 0.25rem 0.25rem 0.25rem 0.6rem;
+  }
+  .site-header .search-form__row input {
+    font-size: 0.9rem;
+  }
+  .site-header .search-form__row button {
+    padding: 0.45rem 0.7rem;
   }
   .brand small {
     display: none;

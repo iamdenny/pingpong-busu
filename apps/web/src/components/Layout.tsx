@@ -1,10 +1,15 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { appVersion } from "../lib/appVersion";
 import { isDemoMode, isDevLiveMode } from "../lib/runtime";
 import { feedbackRepository } from "../lib/runtime";
 import { FeedbackDialog } from "./FeedbackDialog";
+import { SearchForm } from "./SearchForm";
 
 export function Layout() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  // 홈은 히어로 검색을 쓰므로 머리글 검색은 나머지 화면에서만 제공한다.
+  const showsHeaderSearch = location.pathname !== "/";
   return (
     <div className="app-shell">
       {isDemoMode && (
@@ -27,6 +32,20 @@ export function Layout() {
           <span>BUSU</span>
           <small>탁구 기록 통합검색</small>
         </Link>
+        {showsHeaderSearch && (
+          <SearchForm
+            key={location.key}
+            compact
+            initialQuery={
+              new URLSearchParams(location.search).get("q")?.trim() ?? ""
+            }
+            onSearch={(value) => {
+              void navigate(`/search?q=${encodeURIComponent(value)}`, {
+                viewTransition: true,
+              });
+            }}
+          />
+        )}
       </header>
       <main>
         <Outlet />

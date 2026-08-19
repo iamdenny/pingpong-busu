@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { appVersion } from "../lib/appVersion";
@@ -33,6 +33,43 @@ describe("Layout", () => {
     expect(
       screen.queryByText("라이선스는 아직 결정되지 않음"),
     ).not.toBeInTheDocument();
+  });
+
+  it("offers the search box beside the brand outside the home page", async () => {
+    render(
+      <MemoryRouter initialEntries={["/players/player-1"]}>
+        <Layout />
+      </MemoryRouter>,
+    );
+
+    const header = document.querySelector(".site-header");
+    expect(header).not.toBeNull();
+    expect(
+      within(header as HTMLElement).getByLabelText("선수 검색"),
+    ).toBeInTheDocument();
+    expect(
+      within(header as HTMLElement).getByLabelText("BUSU 홈"),
+    ).toBeInTheDocument();
+  });
+
+  it("carries the current query into the header search box", () => {
+    render(
+      <MemoryRouter initialEntries={["/search?q=임대현"]}>
+        <Layout />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByLabelText("선수 검색")).toHaveValue("임대현");
+  });
+
+  it("leaves the home hero search alone", () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <Layout />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByLabelText("선수 검색")).not.toBeInTheDocument();
   });
 
   it.each(["/", "/search?q=임대현", "/players/player-1"])(
