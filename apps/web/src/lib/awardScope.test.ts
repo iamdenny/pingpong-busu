@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { excludedAwardScope } from "./awardScope";
+import { excludedAwardScope, isMixedGenderEvent } from "./awardScope";
 
 describe("excludedAwardScope", () => {
   it("keeps individual records out of the excluded scope", () => {
@@ -29,5 +29,20 @@ describe("excludedAwardScope", () => {
     expect(
       excludedAwardScope({ event: "오픈 4~6부", eventType: "doubles" }),
     ).toBe("doubles");
+  });
+});
+
+describe("isMixedGenderEvent", () => {
+  it("flags events that rate players on the mixed scale", () => {
+    expect(isMixedGenderEvent("[혼합복식] B그룹(합 15~19부)")).toBe(true);
+    expect(isMixedGenderEvent("B그룹(혼성6~8부)")).toBe(true);
+    expect(isMixedGenderEvent("[남(혼)단식] 수원통합 7~10부 A")).toBe(true);
+  });
+
+  it("leaves single-gender events alone", () => {
+    expect(isMixedGenderEvent("[여자단식] 여자 3~6부")).toBe(false);
+    expect(isMixedGenderEvent("[여자복식] 여자1~6부")).toBe(false);
+    expect(isMixedGenderEvent("오픈개인 [5~8/]부")).toBe(false);
+    expect(isMixedGenderEvent(undefined)).toBe(false);
   });
 });

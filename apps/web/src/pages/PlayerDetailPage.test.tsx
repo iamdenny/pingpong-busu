@@ -217,6 +217,31 @@ describe("PlayerDetailPage metadata", () => {
     ).not.toHaveLength(0);
   });
 
+  it("marks a mixed-gender record so its division is not read as a women scale", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/players/kim-seoul"]}>
+          <Routes>
+            <Route path="/players/:id" element={<PlayerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole("tab", { name: "전체 이력" }));
+
+    const mixedRecord = screen
+      .getAllByText("혼합 복식")[0]
+      ?.closest("tr, article");
+    expect(mixedRecord).toHaveTextContent("혼성 종목 기준");
+    const singlesRecord = screen
+      .getAllByText("남자 단식")[0]
+      ?.closest("tr, article");
+    expect(singlesRecord).not.toHaveTextContent("혼성 종목 기준");
+  });
+
   it("drops the identity badge that never changes", async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>

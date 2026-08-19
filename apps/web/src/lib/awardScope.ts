@@ -32,3 +32,15 @@ export function excludedAwardScope(
   if (record.eventType === "doubles" || /복식/u.test(event)) return "doubles";
   return "mixed";
 }
+
+export const mixedGenderScaleNote =
+  "혼성 종목에서 매긴 부수라 여자부수와 번호 기준이 다를 수 있습니다.";
+
+/**
+ * 혼성·혼합 종목은 여자부수가 아니라 그 종목 기준으로 부수를 매긴다. 같은
+ * 선수가 같은 날 여자6부와 혼성8부를 함께 받는 사례가 있어, 화면에서 두 값을
+ * 같은 척도로 읽지 않도록 표시한다.
+ */
+export function isMixedGenderEvent(event: string | undefined): boolean {
+  return /혼성|혼합|\(혼\)/u.test((event ?? "").normalize("NFKC"));
+}
