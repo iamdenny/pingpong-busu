@@ -17,6 +17,7 @@ import {
 } from "@busu/domain";
 import { DivisionOverview } from "../components/DivisionOverview";
 import { ExcludedAwardScopeBadge } from "../components/ExcludedAwardScopeBadge";
+import { isMixedGenderEvent, mixedGenderScaleNote } from "../lib/awardScope";
 import { PageMetadata } from "../components/PageMetadata";
 import { RefreshStatus } from "../components/RefreshStatus";
 import { SourceComparison } from "../components/SourceComparison";
@@ -63,6 +64,22 @@ function RecordDate({ record }: { record: PlayerRecord }) {
         <small className="record-transition-note">({transitionNotice})</small>
       )}
     </span>
+  );
+}
+
+function RecordDivision({ record }: { record: PlayerRecord }) {
+  return (
+    <>
+      {record.divisionSystem ? (
+        <small>{divisionSystemLabels[record.divisionSystem]}</small>
+      ) : null}
+      {displayDivisionValue(record.divisionSystem, record.division ?? "-")}
+      {isMixedGenderEvent(record.event) && (
+        <small className="record-division-scale" title={mixedGenderScaleNote}>
+          혼성 종목 기준
+        </small>
+      )}
+    </>
   );
 }
 
@@ -422,15 +439,7 @@ export function PlayerDetailPage() {
                         </td>
                         <td>{record.club ?? "-"}</td>
                         <td>
-                          {record.divisionSystem ? (
-                            <small>
-                              {divisionSystemLabels[record.divisionSystem]}
-                            </small>
-                          ) : null}
-                          {displayDivisionValue(
-                            record.divisionSystem,
-                            record.division ?? "-",
-                          )}
+                          <RecordDivision record={record} />
                         </td>
                         <td>{record.rank ?? "-"}</td>
                         <td>
@@ -466,6 +475,14 @@ export function PlayerDetailPage() {
                           {formatDivisionObservation(
                             record.divisionSystem,
                             record.division ?? "-",
+                          )}
+                          {isMixedGenderEvent(record.event) && (
+                            <small
+                              className="record-division-scale"
+                              title={mixedGenderScaleNote}
+                            >
+                              혼성 종목 기준
+                            </small>
                           )}
                         </dd>
                       </div>

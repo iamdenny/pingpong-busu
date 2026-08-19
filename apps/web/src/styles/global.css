@@ -869,6 +869,14 @@ p {
   outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
+.record-division-scale {
+  display: block;
+  margin-block-start: 0.1rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
 .record-focus {
   display: flex;
   align-items: center;
