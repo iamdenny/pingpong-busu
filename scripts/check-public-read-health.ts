@@ -61,12 +61,7 @@ export async function checkPublicReadHealth(options: {
     "/rest/v1/public_player_seo_manifest",
     options.supabaseUrl,
   );
-  // The static player documents render these columns, so a manifest missing
-  // them must fail this gate rather than the later Pages build.
-  manifestEndpoint.searchParams.set(
-    "select",
-    "id,canonical_name,recent_observed_division,recent_awards,source_names,last_checked_at",
-  );
+  manifestEndpoint.searchParams.set("select", "id,canonical_name");
   manifestEndpoint.searchParams.set("order", "id.asc");
   manifestEndpoint.searchParams.set("limit", "1");
   const manifest = await requestRows({
@@ -89,16 +84,6 @@ export async function checkPublicReadHealth(options: {
     canonicalName.trim().length === 0
   )
     throw new Error("seo-manifest returned an invalid player identity.");
-  for (const column of [
-    "recent_observed_division",
-    "recent_awards",
-    "source_names",
-    "last_checked_at",
-  ])
-    if (!(column in first))
-      throw new Error(`seo-manifest is missing the ${column} column.`);
-  if (!Array.isArray(first.recent_awards))
-    throw new Error("seo-manifest returned an invalid record snapshot.");
 
   const searchEndpoint = new URL(
     "/rest/v1/public_player_search",

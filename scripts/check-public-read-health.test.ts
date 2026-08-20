@@ -5,14 +5,7 @@ import {
 } from "./check-public-read-health";
 
 const id = "11111111-1111-4111-8111-111111111111";
-const manifestRow = {
-  id,
-  canonical_name: "김탁구",
-  recent_observed_division: "6부",
-  recent_awards: [],
-  source_names: ["아스트리 탁구"],
-  last_checked_at: "2026-08-19T00:00:00.000Z",
-};
+const manifestRow = { id, canonical_name: "김탁구" };
 
 describe("production public read health check", () => {
   it("checks manifest, search, and detail through the public API", async () => {
@@ -89,37 +82,5 @@ describe("production public read health check", () => {
         timeoutMs: 1,
       }),
     ).rejects.toThrow(/aborted/u);
-  });
-});
-
-describe("manifest record snapshot", () => {
-  it("fails closed when the record columns are missing", async () => {
-    await expect(
-      checkPublicReadHealth({
-        supabaseUrl: "https://example.supabase.co",
-        publishableKey: "public",
-        fetcher: vi
-          .fn()
-          .mockResolvedValue(
-            new Response(JSON.stringify([{ id, canonical_name: "김탁구" }])),
-          ),
-      }),
-    ).rejects.toThrow(/recent_observed_division/u);
-  });
-
-  it("rejects a snapshot that is not an award array", async () => {
-    await expect(
-      checkPublicReadHealth({
-        supabaseUrl: "https://example.supabase.co",
-        publishableKey: "public",
-        fetcher: vi
-          .fn()
-          .mockResolvedValue(
-            new Response(
-              JSON.stringify([{ ...manifestRow, recent_awards: null }]),
-            ),
-          ),
-      }),
-    ).rejects.toThrow(/record snapshot/u);
   });
 });

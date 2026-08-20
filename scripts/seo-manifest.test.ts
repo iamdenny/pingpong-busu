@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   fetchPublicPlayerManifest,
-  isMissingRecordColumn,
+  shouldRetryWithIdentityColumns,
   MANIFEST_COLUMNS,
   MANIFEST_IDENTITY_SELECT,
   MAX_MANIFEST_AWARDS,
@@ -92,6 +92,10 @@ describe("public SEO manifest parsing", () => {
 });
 
 describe("manifest fetch against a database without the record columns", () => {
+  const timeoutBody = JSON.stringify({
+    code: "57014",
+    message: "canceling statement due to statement timeout",
+  });
   const missingColumnBody = JSON.stringify({
     code: "42703",
     message: "column public_player_seo_manifest.recent_awards does not exist",
@@ -160,10 +164,36 @@ describe("manifest fetch against a database without the record columns", () => {
     ).rejects.toThrow(/400/u);
   });
 
-  it("recognises only the missing-column shape", () => {
-    expect(isMissingRecordColumn(400, missingColumnBody)).toBe(true);
-    expect(isMissingRecordColumn(400, "source_names unknown")).toBe(true);
-    expect(isMissingRecordColumn(400, "bad range")).toBe(false);
-    expect(isMissingRecordColumn(500, missingColumnBody)).toBe(false);
+  it("retries only on a missing column or a cancelled statement", () => {
+    expect(shouldRetryWithIdentityColumns(400, missingColumnBody)).toBe(true);
+    expect(shouldRetryWithIdentityColumns(400, "source_names unknown")).toBe(
+      true,
+    );
+    expect(shouldRetryWithIdentityColumns(400, "bad range")).toBe(false);
+    expect(shouldRetryWithIdentityColumns(500, missingColumnBody)).toBe(false);
+    expect(shouldRetryWithIdentityColumns(500, timeoutBody)).toBe(true);
+    expect(
+      shouldRetryWithIdentityColumns(
+        504,
+        "canceling statement due to statement timeout",
+      ),
+    ).toBe(true);
+    expect(shouldRetryWithIdentityColumns(500, "boom")).toBe(false);
+    expect(shouldRetryWithIdentityColumns(401, timeoutBody)).toBe(false);
+  });
+
+  it("falls back when the wide select cannot finish", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(timeoutBody, { status: 500 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([row])));
+    const players = await fetchPublicPlayerManifest({
+      supabaseUrl: "https://example.supabase.co",
+      publishableKey: "public",
+      fetch: fetcher,
+    });
+    expect(players).toHaveLength(1);
+    const retried = new URL(String(fetcher.mock.calls[1]?.[0]));
+    expect(retried.searchParams.get("select")).toBe(MANIFEST_IDENTITY_SELECT);
   });
 });
