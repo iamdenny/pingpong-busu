@@ -30,7 +30,7 @@ export type SeoPlayer = {
   last_checked_at?: string | null;
 };
 
-export const MANIFEST_COLUMNS = [
+const MANIFEST_IDENTITY_COLUMNS = [
   "id",
   "canonical_name",
   "homonym_nickname",
@@ -38,12 +38,31 @@ export const MANIFEST_COLUMNS = [
   "primary_club",
   "result_count",
   "source_count",
+] as const;
+
+const MANIFEST_RECORD_COLUMNS = [
   "recent_observed_division",
   "recent_observed_division_system",
   "recent_awards",
   "source_names",
   "last_checked_at",
+] as const;
+
+export const MANIFEST_IDENTITY_SELECT = MANIFEST_IDENTITY_COLUMNS.join(",");
+export const MANIFEST_COLUMNS = [
+  ...MANIFEST_IDENTITY_COLUMNS,
+  ...MANIFEST_RECORD_COLUMNS,
 ].join(",");
+
+// The production read gate builds this bundle against the database as it is
+// *before* the release's migration runs, so a manifest without the record
+// columns must degrade to the identity snapshot instead of failing the build.
+// PostgREST answers an unknown column with 400 and SQLSTATE 42703.
+export function isMissingRecordColumn(status: number, body: string): boolean {
+  if (status !== 400) return false;
+  if (body.includes("42703")) return true;
+  return MANIFEST_RECORD_COLUMNS.some((column) => body.includes(column));
+}
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -194,7 +213,10 @@ export async function fetchPublicPlayerManifest(options: {
   const fetcher = options.fetch ?? fetch;
   const pageSize = options.pageSize ?? 500;
   const requestTimeoutMs = options.requestTimeoutMs ?? 15_000;
-  const maxDurationMs = options.maxDurationMs ?? 120_000;
+  // 2026-08-21 baseline: 13,148 players over 27 identity-column pages took
+  // 16.5s. The record snapshot adds a per-player lateral subquery, so the
+  // ceiling leaves room for a several-fold slowdown while still failing closed.
+  const maxDurationMs = options.maxDurationMs ?? 300_000;
   const maxPages = options.maxPages ?? 50;
   const maxPlayers = options.maxPlayers ?? 25_000;
   if (pageSize < 1 || pageSize > 1_000)
@@ -202,26 +224,39 @@ export async function fetchPublicPlayerManifest(options: {
   const rows: SeoPlayer[] = [];
   const startedAt = Date.now();
   let lastId: string | undefined;
+  let select: string = MANIFEST_COLUMNS;
   for (let pageNumber = 0; pageNumber < maxPages; pageNumber += 1) {
     const remainingMs = maxDurationMs - (Date.now() - startedAt);
     if (remainingMs <= 0)
       throw new Error("Public SEO manifest exceeded its time budget.");
-    const endpoint = new URL(
-      "/rest/v1/public_player_seo_manifest",
-      options.supabaseUrl,
-    );
-    endpoint.searchParams.set("select", MANIFEST_COLUMNS);
-    endpoint.searchParams.set("source_count", "gt.0");
-    endpoint.searchParams.set("order", "id.asc");
-    endpoint.searchParams.set("limit", String(pageSize));
-    if (lastId) endpoint.searchParams.set("id", `gt.${lastId}`);
-    const response = await fetcher(endpoint, {
-      signal: AbortSignal.timeout(Math.min(requestTimeoutMs, remainingMs)),
-      headers: {
-        apikey: options.publishableKey,
-        Authorization: `Bearer ${options.publishableKey}`,
-      },
-    });
+    const request = async (columns: string): Promise<Response> => {
+      const endpoint = new URL(
+        "/rest/v1/public_player_seo_manifest",
+        options.supabaseUrl,
+      );
+      endpoint.searchParams.set("select", columns);
+      endpoint.searchParams.set("source_count", "gt.0");
+      endpoint.searchParams.set("order", "id.asc");
+      endpoint.searchParams.set("limit", String(pageSize));
+      if (lastId) endpoint.searchParams.set("id", `gt.${lastId}`);
+      return fetcher(endpoint, {
+        signal: AbortSignal.timeout(Math.min(requestTimeoutMs, remainingMs)),
+        headers: {
+          apikey: options.publishableKey,
+          Authorization: `Bearer ${options.publishableKey}`,
+        },
+      });
+    };
+    let response = await request(select);
+    if (!response.ok && select === MANIFEST_COLUMNS) {
+      const body = await response.text().catch(() => "");
+      if (!isMissingRecordColumn(response.status, body))
+        throw new Error(
+          `Public SEO manifest fetch failed (${response.status}).`,
+        );
+      select = MANIFEST_IDENTITY_SELECT;
+      response = await request(select);
+    }
     if (!response.ok)
       throw new Error(`Public SEO manifest fetch failed (${response.status}).`);
     const page = parseManifest(await response.json());

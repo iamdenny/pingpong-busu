@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { MAX_MANIFEST_AWARDS, parseManifest } from "./seo-manifest";
+import { describe, expect, it, vi } from "vitest";
+import {
+  fetchPublicPlayerManifest,
+  isMissingRecordColumn,
+  MANIFEST_COLUMNS,
+  MANIFEST_IDENTITY_SELECT,
+  MAX_MANIFEST_AWARDS,
+  parseManifest,
+} from "./seo-manifest";
 
 const row = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -81,5 +88,82 @@ describe("public SEO manifest parsing", () => {
         },
       ]),
     ).toThrow(/recent_awards/u);
+  });
+});
+
+describe("manifest fetch against a database without the record columns", () => {
+  const missingColumnBody = JSON.stringify({
+    code: "42703",
+    message: "column public_player_seo_manifest.recent_awards does not exist",
+  });
+
+  it("falls back to the identity columns and still returns players", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(missingColumnBody, { status: 400 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([row])));
+    const players = await fetchPublicPlayerManifest({
+      supabaseUrl: "https://example.supabase.co",
+      publishableKey: "public",
+      fetch: fetcher,
+    });
+    expect(players).toHaveLength(1);
+    expect(players[0]?.recent_awards).toEqual([]);
+    expect(String(fetcher.mock.calls[0]?.[0])).toContain(
+      encodeURIComponent("recent_awards"),
+    );
+    const retried = new URL(String(fetcher.mock.calls[1]?.[0]));
+    expect(retried.searchParams.get("select")).toBe(MANIFEST_IDENTITY_SELECT);
+    expect(MANIFEST_COLUMNS).toContain("recent_awards");
+  });
+
+  it("keeps requesting the identity columns for later pages", async () => {
+    const second = { ...row, id: "22222222-2222-4222-8222-222222222222" };
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(missingColumnBody, { status: 400 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([row])))
+      .mockResolvedValueOnce(new Response(JSON.stringify([second])))
+      .mockResolvedValueOnce(new Response(JSON.stringify([])));
+    await fetchPublicPlayerManifest({
+      supabaseUrl: "https://example.supabase.co",
+      publishableKey: "public",
+      fetch: fetcher,
+      pageSize: 1,
+    });
+    for (const call of fetcher.mock.calls.slice(1)) {
+      const url = new URL(String(call[0]));
+      expect(url.searchParams.get("select")).toBe(MANIFEST_IDENTITY_SELECT);
+    }
+  });
+
+  it("does not mask an unrelated failure", async () => {
+    await expect(
+      fetchPublicPlayerManifest({
+        supabaseUrl: "https://example.supabase.co",
+        publishableKey: "public",
+        fetch: vi
+          .fn()
+          .mockResolvedValue(new Response("denied", { status: 401 })),
+      }),
+    ).rejects.toThrow(/401/u);
+    await expect(
+      fetchPublicPlayerManifest({
+        supabaseUrl: "https://example.supabase.co",
+        publishableKey: "public",
+        fetch: vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ message: "bad range" }), {
+            status: 400,
+          }),
+        ),
+      }),
+    ).rejects.toThrow(/400/u);
+  });
+
+  it("recognises only the missing-column shape", () => {
+    expect(isMissingRecordColumn(400, missingColumnBody)).toBe(true);
+    expect(isMissingRecordColumn(400, "source_names unknown")).toBe(true);
+    expect(isMissingRecordColumn(400, "bad range")).toBe(false);
+    expect(isMissingRecordColumn(500, missingColumnBody)).toBe(false);
   });
 });
