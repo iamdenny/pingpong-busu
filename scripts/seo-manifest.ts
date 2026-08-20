@@ -54,14 +54,28 @@ export const MANIFEST_COLUMNS = [
   ...MANIFEST_RECORD_COLUMNS,
 ].join(",");
 
-// The production read gate builds this bundle against the database as it is
-// *before* the release's migration runs, so a manifest without the record
-// columns must degrade to the identity snapshot instead of failing the build.
-// PostgREST answers an unknown column with 400 and SQLSTATE 42703.
-export function isMissingRecordColumn(status: number, body: string): boolean {
-  if (status !== 400) return false;
-  if (body.includes("42703")) return true;
-  return MANIFEST_RECORD_COLUMNS.some((column) => body.includes(column));
+// The generator enumerates the whole manifest, so the wide record select is the
+// first thing to become unaffordable. Two states must degrade to the identity
+// snapshot instead of failing the build:
+//   * the release's migration has not run yet, so the columns do not exist
+//     (the production read gate builds against the pre-migration database) —
+//     PostgREST answers 400 with SQLSTATE 42703;
+//   * the columns exist but the wide select cannot finish — PostgreSQL cancels
+//     with SQLSTATE 57014. Postgres prunes the unreferenced select-list
+//     expressions, so the identity select still answers quickly.
+// Every other failure stays fatal.
+export function shouldRetryWithIdentityColumns(
+  status: number,
+  body: string,
+): boolean {
+  if (status === 400)
+    return (
+      body.includes("42703") ||
+      MANIFEST_RECORD_COLUMNS.some((column) => body.includes(column))
+    );
+  if (status === 500 || status === 504)
+    return body.includes("57014") || body.includes("statement timeout");
+  return false;
 }
 
 const uuidPattern =
@@ -250,7 +264,7 @@ export async function fetchPublicPlayerManifest(options: {
     let response = await request(select);
     if (!response.ok && select === MANIFEST_COLUMNS) {
       const body = await response.text().catch(() => "");
-      if (!isMissingRecordColumn(response.status, body))
+      if (!shouldRetryWithIdentityColumns(response.status, body))
         throw new Error(
           `Public SEO manifest fetch failed (${response.status}).`,
         );
