@@ -242,7 +242,7 @@ ${pagination}`,
 }
 
 export function renderDirectoryEntryLink(basePath: string): string {
-  return `<nav class="seo-directory-entry" aria-label="선수 색인"><a href="${escapeHtml(href(basePath, directoryPath()))}">탁구 선수 전체 목록</a></nav>`;
+  return `<nav class="seo-directory-entry" aria-label="선수 색인"><a href="${escapeHtml(href(basePath, directoryPath()))}">탁구 선수 전체 목록</a><a href="${escapeHtml(href(basePath, "/guide"))}">탁구 부수 안내</a></nav>`;
 }
 
 export function directoryPageMetadataInput(page: DirectoryPage): {

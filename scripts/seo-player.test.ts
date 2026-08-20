@@ -3,6 +3,7 @@ import {
   playerBreadcrumb,
   playerDisplayName,
   playerJsonLd,
+  playerSummarySentence,
   renderPlayerBody,
 } from "./seo-player";
 import type { SeoPlayer } from "./generate-seo-pages";
@@ -15,6 +16,28 @@ const base: SeoPlayer = {
   primary_club: "물결 탁구 동호회",
   result_count: 3,
   source_count: 2,
+  recent_observed_division: "6부",
+  recent_observed_division_system: "integrated",
+  recent_awards: [
+    {
+      rank: "우승",
+      date: "2026-05-03",
+      tournament: "제5회 물결배",
+      event: "개인전",
+      division: "6부",
+      division_system: "integrated",
+    },
+    {
+      rank: "4강",
+      date: "2025-11-02",
+      tournament: "가을 리그",
+      event: "여자 단식",
+      division: "6부",
+      division_system: "women",
+    },
+  ],
+  source_names: ["아스트리 탁구", "마이탁구"],
+  last_checked_at: "2026-08-19T04:05:06.000Z",
 };
 
 describe("static player summary", () => {
@@ -98,5 +121,87 @@ describe("player structured data", () => {
     );
     const [, breadcrumb] = playerJsonLd(base) as Record<string, unknown>[];
     expect(breadcrumb?.["@type"]).toBe("BreadcrumbList");
+  });
+});
+
+describe("static player records", () => {
+  it("renders the observed division, award table and sources in the raw markup", () => {
+    const html = renderPlayerBody(base, "/");
+    expect(html).toContain("<dd>통합부수 6부</dd>");
+    expect(html).toContain("제5회 물결배");
+    expect(html).toContain("<td>우승</td>");
+    expect(html).toContain('<time datetime="2026-05-03">');
+    expect(html).toContain("통합부수 여자6부");
+    expect(html).toContain("아스트리 탁구");
+    expect(html).toContain('<time datetime="2026-08-19">');
+  });
+
+  it("leads with a sentence that answers the division on its own", () => {
+    expect(playerSummarySentence(base)).toContain(
+      "김탁구 선수의 최근 관측 부수는 통합부수 6부입니다.",
+    );
+    expect(playerSummarySentence(base)).toContain("4강 이상 입상 3건");
+    expect(playerSummarySentence(base)).toContain("2026년 8월 19일");
+  });
+
+  it("states plainly when no division or award was observed", () => {
+    const bare = {
+      ...base,
+      recent_observed_division: null,
+      recent_observed_division_system: null,
+      recent_awards: [],
+      source_names: [],
+      last_checked_at: null,
+    };
+    expect(playerSummarySentence(bare)).toContain(
+      "최근 관측 부수가 확인되지 않았습니다",
+    );
+    const html = renderPlayerBody(bare, "/");
+    expect(html).toContain("<dd>확인 필요</dd>");
+    expect(html).toContain("4강 이상 입상 기록이 아직 없습니다");
+    expect(html).not.toContain("<table");
+    expect(html).not.toContain("확인한 공개 출처");
+  });
+
+  it("escapes record text that came from a source", () => {
+    const html = renderPlayerBody(
+      {
+        ...base,
+        recent_awards: [
+          {
+            rank: "<b>우승</b>",
+            date: "2026-05-03",
+            tournament: "<script>",
+            event: null,
+            division: null,
+            division_system: null,
+          },
+        ],
+        source_names: ["<img>"],
+      },
+      "/",
+    );
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain("<img>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("publishes the records as structured data with a freshness date", () => {
+    const [profile, , list] = playerJsonLd(base) as Record<string, unknown>[];
+    expect(profile?.dateModified).toBe("2026-08-19T04:05:06.000Z");
+    expect(profile?.description).toContain("통합부수 6부");
+    const person = profile?.mainEntity as Record<string, unknown>;
+    expect(person.award).toHaveLength(2);
+    expect((person.award as string[])[0]).toContain("제5회 물결배");
+    expect(list?.["@type"]).toBe("ItemList");
+    expect(list?.numberOfItems).toBe(2);
+    const first = (list?.itemListElement as Record<string, unknown>[])[0];
+    const event = first?.item as Record<string, unknown>;
+    expect(event.startDate).toBe("2026-05-03");
+    expect(event["@type"]).toBe("SportsEvent");
+  });
+
+  it("omits the award list when nothing was observed", () => {
+    expect(playerJsonLd({ ...base, recent_awards: [] })).toHaveLength(2);
   });
 });

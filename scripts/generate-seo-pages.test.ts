@@ -20,6 +20,20 @@ const player: SeoPlayer = {
   primary_club: null,
   result_count: 2,
   source_count: 1,
+  recent_observed_division: "6부",
+  recent_observed_division_system: "integrated",
+  recent_awards: [
+    {
+      rank: "우승",
+      date: "2026-05-03",
+      tournament: "제5회 <악성> 오픈",
+      event: "개인전",
+      division: "6부",
+      division_system: "integrated",
+    },
+  ],
+  source_names: ["아스트리 탁구"],
+  last_checked_at: "2026-08-19T00:00:00.000Z",
 };
 const template =
   '<!doctype html><html><head><title>old</title><meta name="description" content="old" /></head><body><div id="root"></div></body></html>';
@@ -198,8 +212,12 @@ describe("SEO page generation", () => {
     expect(fallback).toContain('name="robots" content="noindex,follow"');
     expect(fallback).not.toContain('rel="canonical"');
     expect(fallback).not.toContain('property="og:url"');
-    expect(await readFile(join(directory, "robots.txt"), "utf8")).toBe(
-      "User-agent: *\nAllow: /\nSitemap: https://busu.iamdenny.com/sitemap.xml\n",
+    const robots = await readFile(join(directory, "robots.txt"), "utf8");
+    for (const agent of ["GPTBot", "PerplexityBot", "ClaudeBot", "Yeti", "*"])
+      expect(robots).toContain(`User-agent: ${agent}\nAllow: /`);
+    expect(robots).not.toContain("Disallow:");
+    expect(robots).toContain(
+      "Sitemap: https://busu.iamdenny.com/sitemap.xml\n",
     );
   });
 
@@ -344,5 +362,85 @@ describe("crawlable directory output", () => {
     );
     expect(html).not.toContain("</script><img src=x>");
     expect(html).toContain("\\u003c/script");
+  });
+});
+
+describe("citation surfaces", () => {
+  it("writes a guide page, llms.txt and dated sitemap entries", async () => {
+    const directory = join(tmpdir(), `busu-seo-${crypto.randomUUID()}`);
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, "index.html"), template);
+    await generateSeoPages({ outputDirectory: directory, players: [player] });
+
+    const guide = await readFile(
+      join(directory, "guide", "index.html"),
+      "utf8",
+    );
+    expect(guide).toContain('"@type":"FAQPage"');
+    expect(guide).toContain(
+      'rel="canonical" href="https://busu.iamdenny.com/guide/"',
+    );
+    expect(guide).toContain("탁구 부수란 무엇인가요?");
+    expect(guide).not.toContain('<script type="module" src="/assets');
+
+    const llms = await readFile(join(directory, "llms.txt"), "utf8");
+    expect(llms.startsWith("# BUSU")).toBe(true);
+    expect(llms).toContain("https://busu.iamdenny.com/guide/");
+    expect(llms).toContain("부수를 판정하지 않습니다");
+    expect(llms).toContain("2026-08-19");
+
+    const sitemap = await readFile(join(directory, "sitemap.xml"), "utf8");
+    expect(sitemap).toContain(
+      `<loc>https://busu.iamdenny.com/players/${id}/</loc><lastmod>2026-08-19</lastmod>`,
+    );
+    expect(sitemap).toContain("<loc>https://busu.iamdenny.com/guide/</loc>");
+  });
+
+  it("describes the corpus once, on the home document only", async () => {
+    const directory = join(tmpdir(), `busu-seo-${crypto.randomUUID()}`);
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, "index.html"), template);
+    await generateSeoPages({ outputDirectory: directory, players: [player] });
+    const home = await readFile(join(directory, "index.html"), "utf8");
+    expect(home).toContain('"@type":"Dataset"');
+    expect(home).toContain('"dateModified":"2026-08-19"');
+    expect(home).toContain("선수 1명");
+    expect(
+      await readFile(join(directory, "players", id, "index.html"), "utf8"),
+    ).not.toContain('"@type":"Dataset"');
+  });
+
+  it("carries the player records into the static player document", async () => {
+    const directory = join(tmpdir(), `busu-seo-${crypto.randomUUID()}`);
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, "index.html"), template);
+    await generateSeoPages({ outputDirectory: directory, players: [player] });
+    const html = await readFile(
+      join(directory, "players", id, "index.html"),
+      "utf8",
+    );
+    expect(html).toContain("통합부수 6부");
+    expect(html).toContain("제5회 &lt;악성&gt; 오픈");
+    expect(html).not.toContain("<악성>");
+    expect(html).toContain('"@type":"ItemList"');
+    expect(html).toContain('"dateModified":"2026-08-19T00:00:00.000Z"');
+  });
+
+  it("leaves the sitemap undated when no record date is known", () => {
+    const sitemap = renderSitemap([{ ...player, last_checked_at: null }]);
+    expect(sitemap).not.toContain("<lastmod>");
+  });
+
+  it("folds a regenerated player body back to an empty root", async () => {
+    const directory = join(tmpdir(), `busu-seo-${crypto.randomUUID()}`);
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, "index.html"), template);
+    await generateSeoPages({ outputDirectory: directory, players: [player] });
+    await generateSeoPages({ outputDirectory: directory, players: [player] });
+    const html = await readFile(
+      join(directory, "players", id, "index.html"),
+      "utf8",
+    );
+    expect(html.match(/<h1>/gu)).toHaveLength(1);
   });
 });

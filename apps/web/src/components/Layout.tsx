@@ -66,10 +66,11 @@ export function Layout() {
           반영합니다.
         </p>
         <p className="directory-link">
-          {/* Static build output, not a router route: a full navigation is intended. */}
+          {/* Static build output, not router routes: full navigations are intended. */}
           <a href={`${import.meta.env.BASE_URL}directory/`}>
             탁구 선수 전체 목록
           </a>
+          <a href={`${import.meta.env.BASE_URL}guide/`}>탁구 부수 안내</a>
         </p>
         <FeedbackDialog
           repository={feedbackRepository}

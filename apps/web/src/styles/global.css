@@ -3057,10 +3057,17 @@ p {
 }
 /* Injected into #root before hydration; React replaces it on mount. */
 .seo-directory-entry {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1rem;
   padding: 1.25rem;
   text-align: center;
 }
 .directory-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   margin-top: 0.75rem;
 }
 
@@ -3099,4 +3106,110 @@ p {
 .seo-player-counts dd {
   margin: 0;
   font-weight: 700;
+}
+.seo-player-summary {
+  margin: 0 0 1rem;
+  line-height: 1.6;
+}
+.seo-player-section {
+  margin: 0 0 1.5rem;
+}
+.seo-player-section h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.5rem;
+}
+.seo-player-scroll {
+  overflow-x: auto;
+}
+.seo-player-awards {
+  width: 100%;
+  min-width: 32rem;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.seo-player-awards td:first-child,
+.seo-player-awards td:last-child {
+  white-space: nowrap;
+}
+.seo-player-awards caption {
+  text-align: start;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding-block-end: 0.5rem;
+}
+.seo-player-awards th,
+.seo-player-awards td {
+  border-block-end: 1px solid var(--border);
+  padding: 0.5rem 0.4rem;
+  text-align: start;
+  vertical-align: top;
+}
+.seo-player-awards th {
+  color: var(--muted);
+  font-weight: 600;
+}
+.seo-player-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.seo-player-sources li {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+/* Static division guide; it has no matching router route. */
+.seo-guide {
+  max-width: 760px;
+  margin: auto;
+  padding: 1.5rem 1.25rem;
+  line-height: 1.7;
+}
+.seo-guide-breadcrumb {
+  font-size: 0.85rem;
+  margin-block-end: 0.75rem;
+}
+.seo-guide h1 {
+  font-size: 1.5rem;
+  margin: 0 0 0.75rem;
+}
+.seo-guide-summary {
+  color: var(--muted);
+  margin: 0 0 2rem;
+}
+.seo-guide-question {
+  margin-block-end: 1.75rem;
+}
+.seo-guide-question h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+.seo-guide-question p {
+  margin: 0 0 0.6rem;
+}
+.seo-guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.seo-guide-table caption {
+  text-align: start;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding-block-end: 0.5rem;
+}
+.seo-guide-table th,
+.seo-guide-table td {
+  border-block-end: 1px solid var(--border);
+  padding: 0.5rem 0.4rem;
+  text-align: start;
+  vertical-align: top;
+}
+.seo-guide-links {
+  margin-block-start: 2rem;
 }
