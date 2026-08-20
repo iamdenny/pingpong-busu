@@ -45,7 +45,7 @@ flowchart LR
 | `supabase/functions/report-runtime-incident`      | `index.ts`, `handler.ts`                                                                                                                  | 브라우저 오류 allow-list 검증, private 집계와 GitHub 전달                          | origin/auth, fingerprint, 개인정보 비수집             |
 | `supabase/functions/_shared`                      | auth/http/normalize/worker-auth/request-origin/generated                                                                                  | Edge 공통 경계                                                                     | secret 노출, `pnpm edge:sync`                         |
 | `fixtures/sources`                                | 출처별 합성 응답                                                                                                                          | parser 회귀 입력                                                                   | 개인정보 제거 여부                                    |
-| `scripts`                                         | crawler, edge sync, DB size, `release-version.ts`, `generate-seo-pages.ts`, `seo-directory.ts`, `seo-player.ts`, `seo-html.ts`            | 로컬/운영 도구, 릴리즈 버전, 공개 선수 SEO 스냅샷과 초성별 정적 색인 생성          | commands/operations docs, root unit tests             |
+| `scripts`                                         | crawler, edge sync, DB size, `release-version.ts`, `generate-seo-pages.ts`, `seo-manifest.ts`, `seo-directory.ts`, `seo-player.ts`, `seo-guide.ts`, `seo-html.ts` | 로컬/운영 도구, 릴리즈 버전, 공개 선수 SEO 스냅샷과 초성별 정적 색인·부수 안내 문서 생성 | commands/operations docs, root unit tests             |
 | `tests`                                           | migration contract, Edge auth, e2e, SQL integration                                                                                       | workspace 밖 통합·배포 회귀 검증                                                   | migration/workflow 변경                               |
 | `.github/workflows`                               | CI, Pages, production/development Supabase, manual/scheduled crawl                                                                        | 검증 → 태그/Release/노트 → Pages 배포와 환경별 backend 배포                        | environment variables/secrets, deployment contract    |
 
@@ -81,7 +81,7 @@ page/component → component test → `global.css` → desktop/mobile preview �
 
 ### 라우팅·검색 노출 변경
 
-`browserRouting.ts`/`App.tsx` → route·legacy hash test → `pageMetadata.ts`와 component metadata → `generate-seo-pages.ts` manifest 검증·정적 HTML·robots/sitemap → Vite `404.html` fallback → Pages fail-closed workflow → product/architecture/operations/testing 문서.
+`browserRouting.ts`/`App.tsx` → route·legacy hash test → `pageMetadata.ts`와 component metadata → `seo-manifest.ts` 행 검증 → `generate-seo-pages.ts` 정적 HTML·`/guide/`·robots/sitemap/llms.txt → Vite `404.html` fallback → Pages fail-closed workflow → product/architecture/operations/testing 문서.
 
 ### Supabase 개발 환경 변경
 
@@ -93,4 +93,4 @@ page/component → component test → `global.css` → desktop/mobile preview �
 - `graphify-out/`: 로컬 지식 그래프이며 재생성 가능하므로 커밋하지 않는다.
 - `.busu-crawler-state.json`: fixture crawler 로컬 상태이며 커밋하지 않는다.
 - `apps/web/dist/`: build 결과이며 커밋하지 않는다.
-- `apps/web/dist/players/*`, `search/index.html`, `robots.txt`, `sitemap.xml`: 배포 시 공개 manifest에서 재생성되는 SEO 스냅샷이며 개별 산출물을 커밋하지 않는다.
+- `apps/web/dist/players/*`, `directory/*`, `guide/index.html`, `search/index.html`, `robots.txt`, `sitemap.xml`, `llms.txt`: 배포 시 공개 manifest에서 재생성되는 SEO 스냅샷이며 개별 산출물을 커밋하지 않는다.

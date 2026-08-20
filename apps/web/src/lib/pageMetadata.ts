@@ -17,7 +17,9 @@ export function buildCanonicalUrl(pathname: string): string {
   const trimmedPath =
     pathname === "/" ? pathname : pathname.replace(/\/+$/u, "");
   const normalizedPath =
-    /^\/(?:players\/[^/]+|search|directory(?:\/[^/]+){0,2})$/u.test(trimmedPath)
+    /^\/(?:players\/[^/]+|search|guide|directory(?:\/[^/]+){0,2})$/u.test(
+      trimmedPath,
+    )
       ? `${trimmedPath}/`
       : trimmedPath;
   url.pathname = normalizedPath || "/";

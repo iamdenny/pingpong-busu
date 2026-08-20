@@ -16,6 +16,17 @@ import {
 } from "./seo-html";
 import { playerJsonLd, renderPlayerBody } from "./seo-player";
 import {
+  fetchPublicPlayerManifest,
+  parseManifest,
+  type SeoPlayer,
+} from "./seo-manifest";
+import {
+  guideJsonLd,
+  guideMetadata,
+  renderGuideBody,
+  GUIDE_PATH,
+} from "./seo-guide";
+import {
   buildDirectoryGroups,
   directoryPageMetadataInput,
   directoryPath,
@@ -27,122 +38,13 @@ import {
 } from "./seo-directory";
 
 export { escapeHtml, escapeXml } from "./seo-html";
-
-export type SeoPlayer = {
-  id: string;
-  canonical_name: string;
-  homonym_nickname: string | null;
-  primary_region: string | null;
-  primary_club: string | null;
-  result_count: number;
-  source_count: number;
-};
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-
-function parseManifest(value: unknown): SeoPlayer[] {
-  if (!Array.isArray(value))
-    throw new Error("Public SEO manifest must be an array.");
-  return value.map((row, index) => {
-    if (typeof row !== "object" || row === null)
-      throw new Error(`Invalid public SEO row ${index}.`);
-    const candidate = row as Record<string, unknown>;
-    const nullableText = (
-      field: "primary_region" | "primary_club" | "homonym_nickname",
-    ): string | null => {
-      const item = candidate[field];
-      if (item === null || (typeof item === "string" && item.length <= 200))
-        return item;
-      throw new Error(`Invalid ${field} in public SEO row ${index}.`);
-    };
-    if (typeof candidate.id !== "string" || !uuidPattern.test(candidate.id))
-      throw new Error(`Invalid id in public SEO row ${index}.`);
-    if (
-      typeof candidate.canonical_name !== "string" ||
-      candidate.canonical_name.trim().length === 0 ||
-      candidate.canonical_name.length > 200
-    )
-      throw new Error(`Invalid canonical_name in public SEO row ${index}.`);
-    if (
-      !Number.isInteger(candidate.result_count) ||
-      Number(candidate.result_count) < 0 ||
-      !Number.isInteger(candidate.source_count) ||
-      Number(candidate.source_count) < 0
-    )
-      throw new Error(`Invalid counts in public SEO row ${index}.`);
-    return {
-      id: candidate.id,
-      canonical_name: candidate.canonical_name.trim(),
-      homonym_nickname: nullableText("homonym_nickname"),
-      primary_region: nullableText("primary_region"),
-      primary_club: nullableText("primary_club"),
-      result_count: Number(candidate.result_count),
-      source_count: Number(candidate.source_count),
-    };
-  });
-}
-
-export async function fetchPublicPlayerManifest(options: {
-  supabaseUrl: string;
-  publishableKey: string;
-  fetch?: typeof fetch;
-  pageSize?: number;
-  requestTimeoutMs?: number;
-  maxDurationMs?: number;
-  maxPages?: number;
-  maxPlayers?: number;
-}): Promise<SeoPlayer[]> {
-  const fetcher = options.fetch ?? fetch;
-  const pageSize = options.pageSize ?? 500;
-  const requestTimeoutMs = options.requestTimeoutMs ?? 15_000;
-  const maxDurationMs = options.maxDurationMs ?? 120_000;
-  const maxPages = options.maxPages ?? 50;
-  const maxPlayers = options.maxPlayers ?? 25_000;
-  if (pageSize < 1 || pageSize > 1_000)
-    throw new Error("Public SEO manifest page size is out of bounds.");
-  const rows: SeoPlayer[] = [];
-  const startedAt = Date.now();
-  let lastId: string | undefined;
-  for (let pageNumber = 0; pageNumber < maxPages; pageNumber += 1) {
-    const remainingMs = maxDurationMs - (Date.now() - startedAt);
-    if (remainingMs <= 0)
-      throw new Error("Public SEO manifest exceeded its time budget.");
-    const endpoint = new URL(
-      "/rest/v1/public_player_seo_manifest",
-      options.supabaseUrl,
-    );
-    endpoint.searchParams.set(
-      "select",
-      "id,canonical_name,homonym_nickname,primary_region,primary_club,result_count,source_count",
-    );
-    endpoint.searchParams.set("source_count", "gt.0");
-    endpoint.searchParams.set("order", "id.asc");
-    endpoint.searchParams.set("limit", String(pageSize));
-    if (lastId) endpoint.searchParams.set("id", `gt.${lastId}`);
-    const response = await fetcher(endpoint, {
-      signal: AbortSignal.timeout(Math.min(requestTimeoutMs, remainingMs)),
-      headers: {
-        apikey: options.publishableKey,
-        Authorization: `Bearer ${options.publishableKey}`,
-      },
-    });
-    if (!response.ok)
-      throw new Error(`Public SEO manifest fetch failed (${response.status}).`);
-    const page = parseManifest(await response.json());
-    if (page.some((row, index) => index > 0 && row.id <= page[index - 1]!.id))
-      throw new Error("Public SEO manifest page is not ordered by player id.");
-    if (lastId && page[0] && page[0].id <= lastId)
-      throw new Error("Public SEO manifest pagination did not advance.");
-    rows.push(...page.filter((row) => row.source_count > 0));
-    if (rows.length > maxPlayers)
-      throw new Error("Public SEO manifest exceeded its player budget.");
-    if (page.length < pageSize) break;
-    lastId = page.at(-1)?.id;
-    if (pageNumber === maxPages - 1)
-      throw new Error("Public SEO manifest exceeded its page budget.");
-  }
-  return rows.sort((left, right) => left.id.localeCompare(right.id));
-}
+export {
+  fetchPublicPlayerManifest,
+  MAX_MANIFEST_AWARDS,
+  parseManifest,
+  type SeoAward,
+  type SeoPlayer,
+} from "./seo-manifest";
 
 function metadataTags(metadata: PageMetadataValue, canonical?: string): string {
   const values = [
@@ -230,16 +132,112 @@ export function withJsonLd(html: string, values: readonly unknown[]): string {
   return html.replace("</head>", `${scripts}\n  </head>`);
 }
 
+export function sitemapDate(
+  value: string | null | undefined,
+): string | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  return parsed.toISOString().slice(0, 10);
+}
+
+// Answer engines weigh freshness heavily, so every URL carries the newest date
+// the underlying records were confirmed rather than the deployment timestamp.
+export function latestCheckedDate(
+  players: readonly SeoPlayer[],
+): string | undefined {
+  return players.reduce<string | undefined>((latest, player) => {
+    const date = sitemapDate(player.last_checked_at);
+    if (!date) return latest;
+    return !latest || date > latest ? date : latest;
+  }, undefined);
+}
+
 export function renderSitemap(
   players: SeoPlayer[],
   extraPaths: readonly string[] = [],
 ): string {
-  const urls = [
-    buildCanonicalUrl("/"),
-    ...extraPaths.map((path) => buildCanonicalUrl(path)),
-    ...players.map((player) => buildCanonicalUrl(`/players/${player.id}`)),
+  const siteDate = latestCheckedDate(players);
+  const entries = [
+    { path: "/", lastmod: siteDate },
+    ...extraPaths.map((path) => ({ path, lastmod: siteDate })),
+    ...players.map((player) => ({
+      path: `/players/${player.id}`,
+      lastmod: sitemapDate(player.last_checked_at) ?? siteDate,
+    })),
   ];
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((url) => `  <url><loc>${escapeXml(url)}</loc></url>`).join("\n")}\n</urlset>\n`;
+  const urls = entries.map((entry) => {
+    const lastmod = entry.lastmod
+      ? `<lastmod>${escapeXml(entry.lastmod)}</lastmod>`
+      : "";
+    return `  <url><loc>${escapeXml(buildCanonicalUrl(entry.path))}</loc>${lastmod}</url>`;
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+}
+
+// Crawlers that ground generative answers are named explicitly so the intent to
+// be cited is unambiguous, including the tokens that are opt-out only.
+const CITATION_CRAWLERS = [
+  "Googlebot",
+  "Google-Extended",
+  "Bingbot",
+  "Yeti",
+  "Daumoa",
+  "GPTBot",
+  "OAI-SearchBot",
+  "ChatGPT-User",
+  "ClaudeBot",
+  "Claude-User",
+  "Claude-SearchBot",
+  "PerplexityBot",
+  "Perplexity-User",
+  "Applebot",
+  "Applebot-Extended",
+  "DuckAssistBot",
+  "Meta-ExternalAgent",
+  "CCBot",
+] as const;
+
+export function renderRobots(): string {
+  const groups = [
+    ...CITATION_CRAWLERS.map((agent) => `User-agent: ${agent}\nAllow: /`),
+    "User-agent: *\nAllow: /",
+  ];
+  return `${groups.join("\n\n")}\n\nSitemap: ${buildCanonicalUrl("/sitemap.xml")}\n`;
+}
+
+// llms.txt is a plain-text orientation file: it states what the site is, what
+// the data does and does not mean, and where the dense pages live.
+export function renderLlmsTxt(players: readonly SeoPlayer[]): string {
+  const checked = latestCheckedDate(players);
+  const lines = [
+    "# BUSU",
+    "",
+    "> 공개 탁구 대회 기록에서 선수별 관측 부수, 소속, 출전·입상 이력을 원문 출처와 함께 모아 보여주는 한국어 서비스입니다.",
+    "",
+    ...(players.length > 0
+      ? [
+          `BUSU는 공개된 탁구 대회 기록 사이트에서 선수 ${players.length.toLocaleString("ko-KR")}명의 공개 기록을 모았습니다.`,
+        ]
+      : []),
+    "BUSU는 부수를 판정하지 않습니다. 화면의 값은 공개 대회 기록에서 확인한 관측 부수이며 공식 등급이나 승급 판정이 아닙니다.",
+    "입상은 우승·준우승·1~3위·2강·4강까지만 집계하고 8강 이하는 참가 이력으로 둡니다.",
+    "이름이 같다는 이유만으로 선수를 자동 병합하지 않으며, 동명이인은 사용자가 입력한 탁구 별칭으로 구분합니다.",
+    "전화번호, 이메일, 전체 생년월일, 주소 등 민감한 개인정보는 수집하지 않습니다.",
+    ...(checked ? ["", `마지막 기록 확인일: ${checked}`] : []),
+    "",
+    "## 주요 문서",
+    "",
+    `- [탁구 부수 안내](${buildCanonicalUrl(GUIDE_PATH)}): 통합부수·지역부수·오픈부수·디비전부수의 차이와 지역별 통합부수 적용 시작일, 입상 집계 기준`,
+    `- [탁구 선수 전체 목록](${buildCanonicalUrl("/directory")}): 이름 초성별 선수 색인`,
+    `- [선수 상세 페이지](${buildCanonicalUrl("/players")}/{선수 id}/): 선수별 최근 관측 부수, 최근 입상 기록, 확인한 공개 출처`,
+    "",
+    "## 참고",
+    "",
+    `- [sitemap.xml](${buildCanonicalUrl("/sitemap.xml")})`,
+    "",
+  ];
+  return lines.join("\n");
 }
 
 export async function generateSeoPages(options: {
@@ -313,20 +311,101 @@ export async function generateSeoPages(options: {
     resolve(options.outputDirectory, "404.html"),
     renderSeoHtml(template, fallbackMetadata),
   );
-  await writeFile(resolve(options.outputDirectory, "index.html"), template);
+  await writeFile(
+    resolve(options.outputDirectory, "index.html"),
+    withJsonLd(template, [homeDatasetJsonLd(parsedPlayers)]),
+  );
   await writeDirectoryPages(
     options.outputDirectory,
     rawTemplate,
     basePath,
     groups,
   );
+  await writeGuidePage(
+    options.outputDirectory,
+    rawTemplate,
+    basePath,
+    parsedPlayers.length,
+  );
   await writeFile(
     resolve(options.outputDirectory, "robots.txt"),
-    `User-agent: *\nAllow: /\nSitemap: ${buildCanonicalUrl("/sitemap.xml")}\n`,
+    renderRobots(),
+  );
+  await writeFile(
+    resolve(options.outputDirectory, "llms.txt"),
+    renderLlmsTxt(parsedPlayers),
   );
   await writeFile(
     resolve(options.outputDirectory, "sitemap.xml"),
-    renderSitemap(parsedPlayers, directoryPaths(groups)),
+    renderSitemap(parsedPlayers, [GUIDE_PATH, ...directoryPaths(groups)]),
+  );
+}
+
+// A Dataset node tells an answer engine what the corpus is, how it was built
+// and what it deliberately does not claim, which is the context a citation needs.
+export function homeDatasetJsonLd(players: readonly SeoPlayer[]): unknown {
+  const modified = latestCheckedDate(players);
+  const dataset: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    "@id": `${siteMetadata.url}#dataset`,
+    name: "BUSU 공개 탁구 대회 기록 모음",
+    description:
+      "공개된 탁구 대회 결과에서 모은 선수별 관측 부수, 소속, 출전·입상 기록과 원문 출처. 관측 부수는 공식 등급이나 승급 판정이 아니며 입상은 4강 이상만 집계한다.",
+    url: siteMetadata.url,
+    inLanguage: "ko-KR",
+    isAccessibleForFree: true,
+    creator: { "@id": `${siteMetadata.url}#organization` },
+    isPartOf: { "@id": `${siteMetadata.url}#website` },
+    keywords: [
+      "탁구 부수",
+      "통합부수",
+      "지역부수",
+      "디비전부수",
+      "탁구 대회 입상 기록",
+    ],
+    measurementTechnique: "공개 대회 결과 페이지의 공개 게시 정보 수집",
+    variableMeasured: [
+      "관측 부수",
+      "부수 체계",
+      "대회 입상 성적",
+      "소속",
+      "지역",
+      "원문 출처",
+    ],
+  };
+  if (players.length > 0)
+    dataset.size = `선수 ${players.length.toLocaleString("ko-KR")}명`;
+  if (modified) dataset.dateModified = modified;
+  return dataset;
+}
+
+// The guide is a plain document as well: it explains the domain rules the rest
+// of the site assumes, which is the content an answer engine can quote directly.
+async function writeGuidePage(
+  outputDirectory: string,
+  rawTemplate: string,
+  basePath: string,
+  playerCount: number,
+): Promise<void> {
+  const target = resolve(outputDirectory, GUIDE_PATH.replace(/^\//u, ""));
+  await mkdir(target, { recursive: true });
+  const metadata = buildPageMetadata(
+    GUIDE_PATH,
+    guideMetadata.title,
+    guideMetadata.description,
+  );
+  await writeFile(
+    resolve(target, "index.html"),
+    withRootContent(
+      withoutAppScript(
+        withJsonLd(
+          renderSeoHtml(rawTemplate, metadata, buildCanonicalUrl(GUIDE_PATH)),
+          guideJsonLd(),
+        ),
+      ),
+      renderGuideBody(basePath, playerCount),
+    ),
   );
 }
 
