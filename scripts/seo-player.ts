@@ -9,6 +9,7 @@ import {
   groupLabelForSlug,
   groupSlugForName,
 } from "./seo-directory";
+import { GUIDE_PATH } from "./seo-guide";
 import type { SeoAward, SeoPlayer } from "./seo-manifest";
 
 function href(basePath: string, path: string): string {
@@ -198,7 +199,10 @@ ${
       ${renderAwardSection(player)}
       ${renderSourceSection(player)}
       <p>BUSU는 부수를 판정하지 않고 공개된 근거만 모아 보여줍니다. 관측 부수는 공개 대회 기록에서 확인한 값이며 공식 등급이 아닙니다. 입상은 우승·준우승·1~3위·2강·4강까지만 집계하고 8강 이하는 참가 이력으로 둡니다.</p>
-      <p><a href="${escapeHtml(href(basePath, directoryPath(slug)))}">${escapeHtml(label)}으로 시작하는 다른 선수 보기</a></p>
+      <p class="seo-player-links">
+        <a href="${escapeHtml(href(basePath, directoryPath(slug)))}">${escapeHtml(label)}으로 시작하는 다른 선수 보기</a>
+        <a href="${escapeHtml(href(basePath, GUIDE_PATH))}">탁구 부수 안내</a>
+      </p>
     </article>`;
 }
 
