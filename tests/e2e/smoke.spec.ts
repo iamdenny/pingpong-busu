@@ -1,4 +1,78 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
+
+const readSearchFocusMetrics = async (input: Locator) =>
+  input.evaluate((element) => {
+    const row = element.closest(".search-form__row");
+    if (!(row instanceof HTMLElement)) {
+      throw new Error("Search input must be inside .search-form__row");
+    }
+
+    const inputStyle = getComputedStyle(element);
+    const rowStyle = getComputedStyle(row);
+    return {
+      borderColor: rowStyle.borderColor,
+      boxShadow: rowStyle.boxShadow,
+      fontSize: Number.parseFloat(inputStyle.fontSize),
+      viewportScale: window.visualViewport?.scale ?? null,
+    };
+  });
+
+test("mobile search focus keeps its size and browser zoom access", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.goto("");
+
+  const viewportContent = await page
+    .locator('meta[name="viewport"]')
+    .getAttribute("content");
+  expect(viewportContent).toBe("width=device-width, initial-scale=1.0");
+
+  const homeInput = page.locator("#home-search");
+  const homeBefore = await readSearchFocusMetrics(homeInput);
+  await homeInput.focus();
+  const homeAfter = await readSearchFocusMetrics(homeInput);
+
+  expect(homeBefore.fontSize).toBeGreaterThanOrEqual(16);
+  expect(homeAfter.fontSize).toBeGreaterThanOrEqual(16);
+  expect(homeBefore.viewportScale).toBe(1);
+  expect(homeAfter.viewportScale).toBe(1);
+  expect(homeAfter.borderColor).toBe("rgb(22, 93, 255)");
+  expect(homeBefore.boxShadow).not.toBe("none");
+  expect(homeAfter.boxShadow).toBe(homeBefore.boxShadow);
+
+  await page.goto("search?q=%EA%B9%80%ED%83%81%EA%B5%AC");
+  const headerInput = page.locator("#header-search");
+  const headerBefore = await readSearchFocusMetrics(headerInput);
+  await headerInput.focus();
+  const headerAfter = await readSearchFocusMetrics(headerInput);
+
+  expect(headerBefore.fontSize).toBeGreaterThanOrEqual(16);
+  expect(headerAfter.fontSize).toBeGreaterThanOrEqual(16);
+  expect(headerBefore.viewportScale).toBe(1);
+  expect(headerAfter.viewportScale).toBe(1);
+  expect(headerAfter.borderColor).toBe("rgb(22, 93, 255)");
+  expect(headerBefore.boxShadow).toBe("none");
+  expect(headerAfter.boxShadow).toBe(headerBefore.boxShadow);
+
+  await page.setViewportSize({ width: 915, height: 412 });
+  const landscapeHeader = await readSearchFocusMetrics(headerInput);
+  expect(landscapeHeader.fontSize).toBeGreaterThanOrEqual(16);
+
+  await page.emulateMedia({ forcedColors: "active" });
+  const forcedColorsOutline = await headerInput.evaluate((element) => {
+    const row = element.closest(".search-form__row");
+    if (!(row instanceof HTMLElement)) {
+      throw new Error("Search input must be inside .search-form__row");
+    }
+    const rowStyle = getComputedStyle(row);
+    return {
+      style: rowStyle.outlineStyle,
+      width: rowStyle.outlineWidth,
+    };
+  });
+  expect(forcedColorsOutline).toEqual({ style: "solid", width: "2px" });
+});
 
 test("demo search vertical slice", async ({ page }) => {
   await page.goto("");
