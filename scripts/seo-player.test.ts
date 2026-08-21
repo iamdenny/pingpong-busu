@@ -49,6 +49,8 @@ describe("static player summary", () => {
     expect(html).toContain("<dd>2곳</dd>");
     expect(html).toContain('href="/directory/g/"');
     expect(html).toContain('href="/directory/"');
+    // A JavaScript-free crawler reaches the guide only through these links.
+    expect(html).toContain('href="/guide/"');
   });
 
   it("escapes player-controlled text", () => {

@@ -1,6 +1,6 @@
 {
   "name": "pingpong-busu",
-  "version": "2026.34.18",
+  "version": "2026.34.19",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.17.0",
@@ -25,6 +25,7 @@
     "crawl:live": "NODE_EXTRA_CA_CERTS=packages/source-adapters/src/ttadivision/sectigo-dv-r36.pem node --env-file-if-exists=.env.local --import tsx scripts/crawl.ts live",
     "iping:worker": "node --import tsx scripts/iping-browser-worker.ts",
     "db:size": "tsx scripts/check-db-size.ts",
+    "db:replay": "node --import tsx scripts/replay-migrations.ts",
     "edge:sync": "node --import tsx scripts/sync-edge-shared.ts"
   },
   "devDependencies": {

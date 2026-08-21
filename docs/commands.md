@@ -113,6 +113,12 @@ DB 용량 확인:
 pnpm db:size
 ```
 
+migration을 운영에 적용하기 전에 로컬 PostgreSQL 컨테이너에 전체 migration을 재생한다. Docker가 필요하며 pg_cron처럼 관리형 전용 확장은 대체하고, 관리형 platform이 기본 부여하는 anon SELECT 권한도 재현한다. `--seed`를 붙이면 seed까지 적용한다.
+
+```bash
+pnpm db:replay
+```
+
 PAT, service role key, DB password는 명령 문자열이나 문서에 기록하지 않는다. development에는 production 데이터, Kakao key 또는 iPing 계정을 복제하지 않는다.
 
 production 공개 조회 배포 게이트를 로컬에서 재현하려면 publishable 설정만 주입해 다음 명령을 실행한다. service role key는 사용하지 않는다.

@@ -181,6 +181,9 @@ ${inner}
     <footer>
       <strong>BUSU</strong>
       <p>공개 대회 기록을 출처와 함께 제공합니다.</p>
+      <p class="seo-directory-links">
+        <a href="${escapeHtml(href(basePath, "/guide"))}">탁구 부수 안내</a>
+      </p>
     </footer>
   </div>`;
 }

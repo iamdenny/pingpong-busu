@@ -3213,3 +3213,9 @@ p {
 .seo-guide-links {
   margin-block-start: 2rem;
 }
+.seo-player-links,
+.seo-directory-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}

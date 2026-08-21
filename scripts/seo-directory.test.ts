@@ -111,3 +111,14 @@ describe("directory rendering", () => {
     expect(html).toContain("탁구 선수 전체 목록");
   });
 });
+
+describe("static directory links", () => {
+  it("reaches the division guide from every directory document", () => {
+    const groups = buildDirectoryGroups([player("김탁구", 1)]);
+    expect(renderDirectoryRootBody(groups, "/")).toContain('href="/guide/"');
+    expect(renderDirectoryPageBody(groups[0]!.pages[0]!, "/")).toContain(
+      'href="/guide/"',
+    );
+    expect(renderDirectoryEntryLink("/")).toContain('href="/guide/"');
+  });
+});
