@@ -1,20 +1,59 @@
--- Precompute the player record snapshot instead of widening the manifest view.
+-- Precompute the player record snapshot outside the deployment's critical path.
 --
--- 202608200001 put the record expressions in the view itself. The deployment
--- enumerates the whole manifest, so those per-player laterals multiplied across
--- every page and the anon role's statement timeout cancelled even a `limit 1`
--- request (57014). A materialized view moves that work to migration time, where
--- it runs once as the migration role and without the anon timeout, and leaves
--- the public view a cheap join against an indexed snapshot.
+-- History: 202608200001 put the record expressions in the enumerated view and
+-- the anon statement timeout cancelled every wide read (57014). Building the
+-- same expressions as a materialized view then moved the cost into `supabase db
+-- push`, where the migration connection's own statement timeout cancelled the
+-- initial populate. So the deployment must not depend on how long the snapshot
+-- takes to compute at all.
 --
--- The snapshot is not RLS-protected, so its predicates reproduce the anon
--- policies exactly: identities `match_status <> 'disputed'` and results
--- `record_status <> 'disputed'`. It must never expose a row anon could not
--- already read through the base tables.
+-- The snapshot is therefore an ordinary table created empty. An empty table is
+-- queryable (an unpopulated materialized view is not), so the public view keeps
+-- answering from the moment this migration lands and simply reports no records
+-- until the first refresh. The refresh runs on its own schedule, raises its own
+-- statement timeout, and computes into a staging table so the swap holds its
+-- lock for a single insert rather than for the whole computation.
+--
+-- The snapshot is written by a security definer function, so its query
+-- reproduces the anon policies exactly: identities `match_status <> 'disputed'`,
+-- results `record_status <> 'disputed'`, and merged players excluded. It must
+-- never hold a row anon could not already read through the base tables, and it
+-- is keyed by the public id so no internal identifier reaches this schema.
 
 drop materialized view if exists public.player_seo_record_snapshot;
 
-create materialized view public.player_seo_record_snapshot as
+create table if not exists public.player_seo_record_snapshot (
+  id text primary key,
+  recent_observed_division text,
+  recent_observed_division_system text,
+  recent_awards jsonb not null default '[]'::jsonb,
+  source_names text[] not null default '{}'::text[],
+  last_checked_at timestamptz,
+  refreshed_at timestamptz not null default now()
+);
+
+alter table public.player_seo_record_snapshot enable row level security;
+
+drop policy if exists "public reads seo record snapshot" on public.player_seo_record_snapshot;
+create policy "public reads seo record snapshot"
+  on public.player_seo_record_snapshot
+  for select to anon using (true);
+
+grant select on public.player_seo_record_snapshot to anon;
+
+create or replace function public.refresh_player_seo_record_snapshot()
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  written integer;
+begin
+  -- The computation is the slow part and it runs before the swap, so the write
+  -- lock below is held only for one delete and one insert of ~13k rows.
+  set local statement_timeout = '20min';
+  create temporary table player_seo_record_staging on commit drop as
 select
   p.public_id::text id,
   (array_agg(
@@ -133,16 +172,40 @@ cross join lateral (
 ) effective
 where p.merged_into_player_id is null
 group by p.id;
+  delete from public.player_seo_record_snapshot;
+  insert into public.player_seo_record_snapshot(
+    id,
+    recent_observed_division,
+    recent_observed_division_system,
+    recent_awards,
+    source_names,
+    last_checked_at,
+    refreshed_at
+  )
+  select
+    staging.id,
+    staging.recent_observed_division,
+    staging.recent_observed_division_system,
+    staging.recent_awards,
+    staging.source_names,
+    staging.last_checked_at,
+    now()
+  from player_seo_record_staging staging;
+  get diagnostics written = row_count;
+  return written;
+end;
+$$;
 
--- refresh materialized view concurrently requires a unique index, and the join
--- below uses it. The snapshot is keyed by the public id so no internal player
--- identifier reaches the public schema.
-create unique index player_seo_record_snapshot_id_idx
-  on public.player_seo_record_snapshot (id);
+revoke all on function public.refresh_player_seo_record_snapshot() from public, anon, authenticated;
+grant execute on function public.refresh_player_seo_record_snapshot() to service_role;
 
--- security_invoker on the view below means anon reads the snapshot directly, so
--- the grant is required. The snapshot holds only rows anon can already read.
-grant select on public.player_seo_record_snapshot to anon;
+create extension if not exists pg_cron with schema pg_catalog;
+
+select cron.schedule(
+  'refresh-player-seo-record-snapshot',
+  '41 2 * * *',
+  $$select public.refresh_player_seo_record_snapshot();$$
+);
 
 drop view if exists public.public_player_seo_manifest;
 
@@ -198,35 +261,13 @@ left join public.player_seo_record_snapshot snapshot
 
 grant select on public.public_player_seo_manifest to anon;
 
-comment on materialized view public.player_seo_record_snapshot is
-  'Deployment-time record snapshot for static player pages. Reproduces the anon RLS predicates; refreshed by the backend deployment.';
+comment on table public.player_seo_record_snapshot is
+  'Precomputed record snapshot for static player pages. Written only by refresh_player_seo_record_snapshot, which reproduces the anon row-level predicates.';
+
+comment on function public.refresh_player_seo_record_snapshot() is
+  'Recomputes the static player page record snapshot. Service role only; scheduled nightly.';
 
 comment on view public.public_player_seo_manifest is
   'Bounded public player metadata joined to the precomputed record snapshot, used only for deployment-time SEO snapshots.';
-
--- The snapshot must not go stale between deployments. Crawls land throughout the
--- day, so a nightly refresh keeps it within a day of the base tables; the static
--- pages are a deployment snapshot anyway. concurrently keeps readers unblocked.
-create or replace function public.refresh_player_seo_record_snapshot()
-returns void
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-begin
-  refresh materialized view concurrently public.player_seo_record_snapshot;
-end;
-$$;
-
-revoke all on function public.refresh_player_seo_record_snapshot() from public, anon, authenticated;
-grant execute on function public.refresh_player_seo_record_snapshot() to service_role;
-
-create extension if not exists pg_cron with schema pg_catalog;
-
-select cron.schedule(
-  'refresh-player-seo-record-snapshot',
-  '41 2 * * *',
-  $$select public.refresh_player_seo_record_snapshot();$$
-);
 
 notify pgrst, 'reload schema';
