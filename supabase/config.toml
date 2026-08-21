@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.report-runtime-incident]
 verify_jwt = false
+
+[functions.record-player-view]
+verify_jwt = false

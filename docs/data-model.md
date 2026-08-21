@@ -12,6 +12,12 @@ title: "데이터 모델"
 
 `feedback_reports`는 public API에 노출하지 않는 service-role 전용 전달 outbox다. `submission_id`와 `payload_hash`가 재시도 멱등성을 보장하고, 전체 요청량 예산은 트랜잭션 안에서 원자적으로 검사한다. 상태는 `pending → delivering → published`이며 GitHub 응답을 확정할 수 없으면 `delivery_unknown`으로 두고 고유 marker로 조정한다. `published` 전환 시 message, page URL, User-Agent, 언어와 viewport는 즉시 null 처리하고 Issue 번호·URL과 비민감 전달 메타데이터만 보존한다.
 
+## 선수 조회 순위 집계
+
+`player_view_counts`는 `선수 + 시간 bucket`별 고유 세션 수만 담는 service-role 전용 집계다. `player_view_origins`는 같은 원점이 같은 선수를 한 시간에 두 번 올리지 못하게 막는 `(origin hash, 선수, bucket)` marker이며, 원점은 service-role HMAC-SHA-256 해시로만 저장하고 원본 주소·User-Agent·검색어·referrer는 schema에 없다. 한 원점은 한 시간에 최대 60명까지만 올릴 수 있다.
+
+`public_trending_players`는 최근 24시간 합계 기준 상위 10명만 내보내는 view다. 고유 세션 5회 미만인 선수와 병합된 선수는 제외하고, 순위·공개 ID·이름·대표 지역·대표 소속·별칭만 노출하며 조회 수 자체는 내보내지 않는다. 집계가 private table이므로 이 view만 view 소유자 권한으로 실행하고 anon에는 view select만 부여한다. `prune_player_view_counts_internal`은 25시간이 지난 두 table의 행을 삭제하고 `pg_cron`이 매시 실행한다.
+
 ## 운영 오류 집계
 
 `operational_incidents`는 허용된 category, query/hash 없는 route, 선택적인 출처 코드·parser version으로 만든 SHA-256 fingerprint별 집계다. 출처 fingerprint에는 앱 버전을 포함하지만 공개 브라우저 보고는 임의 버전 회전으로 fingerprint를 늘릴 수 없도록 category와 고정 route template만 사용한다. 브라우저는 `render_error`, `uncaught_error`, `unhandled_rejection`, 출처는 `source_schema_changed`, `source_auth_failed`만 허용한다. `operational_incident_events.event_id`가 같은 전송 재시도를 멱등 처리하고, 서로 다른 event는 원자적으로 `occurrence_count`와 `last_seen_at`을 늘린다. 검색어·선수명·메시지·stack·원문 URL·HTML/body·쿠키·자격증명·세션 또는 기기 fingerprint는 schema에 없다.

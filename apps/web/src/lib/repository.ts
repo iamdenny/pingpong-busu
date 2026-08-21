@@ -4,6 +4,7 @@ import type {
   PlayerSummary,
   SourceCode,
   SourceStatus,
+  TrendingPlayers,
 } from "@busu/domain";
 
 export interface PlayerSearchInput {
@@ -98,6 +99,8 @@ export interface IdentityCandidateEvidence {
 }
 export interface PlayerRepository {
   listSourceStatuses(): Promise<SourceStatus[]>;
+  listTrendingPlayers(): Promise<TrendingPlayers>;
+  recordPlayerView(playerId: string): Promise<void>;
   searchPlayers(input: PlayerSearchInput): Promise<PlayerSummary[]>;
   getPlayer(id: string): Promise<PlayerDetail | null>;
   getIdentityCandidateEvidence(

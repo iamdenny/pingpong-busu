@@ -147,3 +147,16 @@ export interface PlayerDetail extends PlayerSummary {
   records: PlayerRecord[];
   sources: SourceComparison[];
 }
+
+export interface TrendingPlayer {
+  playerId: string;
+  name: string;
+  region?: string;
+  club?: string;
+  homonymNickname?: string;
+}
+
+export interface TrendingPlayers {
+  updatedAt: string;
+  players: TrendingPlayer[];
+}

@@ -5,6 +5,7 @@ import {
   type PlayerDetail,
   type PlayerSummary,
   type SourceStatus,
+  type TrendingPlayers,
 } from "@busu/domain";
 import type {
   IdentityCandidateEvidence,
@@ -126,6 +127,13 @@ export class DevLivePlayerRepository implements PlayerRepository {
         parserVersion: "iping-5",
       },
     ];
+  }
+  async listTrendingPlayers(): Promise<TrendingPlayers> {
+    // Local live search has no shared view counter to aggregate.
+    return { updatedAt: new Date().toISOString(), players: [] };
+  }
+  async recordPlayerView(): Promise<void> {
+    // Local live search never writes view counts.
   }
   async searchPlayers(input: PlayerSearchInput): Promise<PlayerSummary[]> {
     const response = await fetch(

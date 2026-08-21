@@ -28,6 +28,7 @@ Umami 자체의 기본 방문 분석에는 페이지 경로, referrer, 기기·�
 | ------------------------------ | ----------------------- | ------------------------------------------------------------------- |
 | `search_submitted`             | 검색 결과가 처음 확정됨 | 검증된 `query`, `result_bucket` (`0`, `1`, `2-5`, `6-20`, `21+`)    |
 | `search_result_clicked`        | 선수 결과 카드 선택     | `player_id`, 1부터 시작하는 `position`, `result_tab`                |
+| `trending_player_clicked`      | 홈 조회 순위 항목 선택  | `player_id`, 1부터 시작하는 `position`                              |
 | `division_filter_selected`     | 부수 요약 필터 선택     | `division_system`, `division`, `award_count`, `participation_count` |
 | `search_result_tab_selected`   | 입상/출전 탭 전환       | `result_tab`                                                        |
 | `direct_source_search_clicked` | 원문 사이트 직접 검색   | `source_code`                                                       |
@@ -46,6 +47,8 @@ Umami 자체의 기본 방문 분석에는 페이지 경로, referrer, 기기·�
 - 데이터 가치: 선수별 상세 조회와 원문 확인율, 출처별 원문 이동량
 - 참여: 상세 조회 대비 동명이인 편집·문의 전환율과 문의 분류
 - 획득: referrer·캠페인별 방문, 검색 실행, 선수 상세 및 원문 이동 퍼널
+
+홈의 조회 순위는 이 분석 이벤트가 아니라 Supabase의 자체 집계를 사용한다. 제품 화면이 분석 스택 가용성에 의존하지 않게 하고, 분석 데이터를 제품 노출로 되돌려 쓰지 않기 위해서다.
 
 검색어·선수별 장기 추이는 event data로 분석하고, 개인 사용자를 재식별하거나 개별 행동 이력을 영업 대상으로 사용하지 않는다.
 

@@ -6,6 +6,7 @@ import { CollapsibleContent } from "../components/CollapsibleContent";
 import { HeroRallyScene } from "../components/HeroRallyScene";
 import { PageMetadata } from "../components/PageMetadata";
 import { SearchForm } from "../components/SearchForm";
+import { TrendingPlayers } from "../components/TrendingPlayers";
 import { trackAnalyticsEvent } from "../lib/analytics";
 import {
   clearRecentSearches,
@@ -112,6 +113,7 @@ export function HomePage() {
               <p>최근 10개를 이 브라우저에만 저장합니다.</p>
             </section>
           )}
+          <TrendingPlayers />
         </div>
       </section>
       {sources.data && (

@@ -62,7 +62,10 @@ pnpm docs-check:scan
 docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/reversible-player-merge.sql
 docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/source-observation-boundary.sql
 docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/community-identity-edit.sql
+docker exec -i supabase_db_pingpong-busu psql -U postgres -d postgres < tests/sql/trending-player-views.sql
 ```
+
+`trending-player-views.sql`은 한 원점의 시간당 1회 집계, 병합·미확인 선수 제외, 고유 세션 임계값, 25시간 정리와 집계 table의 RLS 차단을 확인한다. `pnpm db:replay`로 만든 일회용 PostgreSQL에서도 같은 방식으로 실행할 수 있다.
 
 ## 기능별 최소 검증
 
