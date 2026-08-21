@@ -11,12 +11,30 @@ const migration = readFileSync(
 );
 
 describe("player SEO record snapshot migration", () => {
-  it("precomputes the snapshot instead of widening the enumerated view", () => {
+  // An unpopulated materialized view cannot be queried, which would break the
+  // public view until the first refresh; an empty table answers immediately.
+  it("creates an empty table the public view can read from day one", () => {
     expect(migration).toContain(
-      "create materialized view public.player_seo_record_snapshot",
+      "create table if not exists public.player_seo_record_snapshot",
     );
+    expect(migration).not.toContain("create materialized view public.player");
     expect(migration).toContain("left join public.player_seo_record_snapshot");
     expect(migration).toContain("limit 5");
+  });
+
+  // The deployment must never wait on the computation: 202608210001 first tried
+  // to populate during `supabase db push` and hit the migration connection's own
+  // statement timeout.
+  it("keeps the computation out of the migration", () => {
+    const beforeFunction = migration.slice(
+      0,
+      migration.indexOf("create or replace function"),
+    );
+    expect(beforeFunction).not.toContain("cross join lateral");
+    expect(migration).toContain("set local statement_timeout");
+    expect(migration).toContain(
+      "create temporary table player_seo_record_staging on commit drop",
+    );
   });
 
   // The snapshot is not RLS-protected, so losing either predicate would expose
@@ -33,6 +51,7 @@ describe("player SEO record snapshot migration", () => {
     expect(migration).toContain("p.public_id::text id");
     expect(migration).toContain("snapshot.id = base.id");
     expect(migration).not.toContain("p.id player_id");
+    expect(migration).toContain("id text primary key");
   });
 
   it("applies the division invariants to the snapshot", () => {
@@ -44,6 +63,9 @@ describe("player SEO record snapshot migration", () => {
 
   it("grants anon the snapshot the security_invoker view reads", () => {
     expect(migration).toContain(
+      "alter table public.player_seo_record_snapshot enable row level security",
+    );
+    expect(migration).toContain(
       "grant select on public.player_seo_record_snapshot to anon",
     );
     expect(migration).toContain(
@@ -53,10 +75,6 @@ describe("player SEO record snapshot migration", () => {
   });
 
   it("keeps the snapshot fresh without blocking readers", () => {
-    expect(migration).toContain(
-      "refresh materialized view concurrently public.player_seo_record_snapshot",
-    );
-    expect(migration).toContain("create unique index");
     expect(migration).toContain("refresh-player-seo-record-snapshot");
     expect(migration).toContain(
       "grant execute on function public.refresh_player_seo_record_snapshot() to service_role",
