@@ -13,6 +13,7 @@ flowchart LR
   UI --> IDENTITY["identity edit Edge Functions"]
   UI --> FEEDBACK["submit-feedback Edge Function"]
   UI --> INCIDENT["report-runtime-incident Edge Function"]
+  UI --> VIEWS["record-player-view Edge Function"]
   EDGE --> ADAPTERS["source adapters"]
   ADAPTERS --> DOMAIN["domain normalization"]
   EDGE --> RPC["Supabase upsert RPC"]
@@ -43,6 +44,7 @@ flowchart LR
 | `supabase/functions/revert-identity-edit`         | `index.ts`                                                                                                                                                                                | 공개 편집 원복, 익명 편집자 ID HMAC                                                                           | merge snapshot, conflict guard                        |
 | `supabase/functions/submit-feedback`              | `index.ts`, `handler.ts`                                                                                                                                                                  | 익명 제보 검증, private outbox, GitHub Issue 전달                                                             | origin/auth, abuse limit, idempotency                 |
 | `supabase/functions/report-runtime-incident`      | `index.ts`, `handler.ts`                                                                                                                                                                  | 브라우저 오류 allow-list 검증, private 집계와 GitHub 전달                                                     | origin/auth, fingerprint, 개인정보 비수집             |
+| `supabase/functions/record-player-view`           | `index.ts`, `handler.ts`                                                                                                                                                                  | 공개 선수 ID 검증과 시간 단위 조회 집계 호출                                                                  | origin/auth, HMAC 원점, 개인정보 비수집               |
 | `supabase/functions/_shared`                      | auth/http/normalize/worker-auth/request-origin/generated                                                                                                                                  | Edge 공통 경계                                                                                                | secret 노출, `pnpm edge:sync`                         |
 | `fixtures/sources`                                | 출처별 합성 응답                                                                                                                                                                          | parser 회귀 입력                                                                                              | 개인정보 제거 여부                                    |
 | `scripts`                                         | crawler, edge sync, DB size, `replay-migrations.ts`, `release-version.ts`, `generate-seo-pages.ts`, `seo-manifest.ts`, `seo-directory.ts`, `seo-player.ts`, `seo-guide.ts`, `seo-html.ts` | 로컬/운영 도구, migration 로컬 재생, 릴리즈 버전, 공개 선수 SEO 스냅샷과 초성별 정적 색인·부수 안내 문서 생성 | commands/operations docs, root unit tests             |

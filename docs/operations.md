@@ -66,7 +66,7 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 1. 프로젝트 연결과 migration dry-run
 2. `supabase db push`로 미적용 migration 적용
 3. crawler 안전 플래그를 Edge Function secrets에 동기화
-4. `refresh-player`, `refresh-status`, `submit-identity-claim`, `revert-identity-edit`, `submit-feedback`, `report-runtime-incident` Edge Function 배포
+4. `refresh-player`, `refresh-status`, `submit-identity-claim`, `revert-identity-edit`, `submit-feedback`, `report-runtime-incident`, `record-player-view` Edge Function 배포
 
 이번 변경의 migration은 파일명 순서대로 적용해야 합니다.
 
@@ -106,6 +106,7 @@ main 브랜치의 `CI`가 성공하면 [Deploy Supabase backend](../.github/work
 34. `202608200001_seo_manifest_records.sql`: 정적 선수 문서가 초기 HTML에 실을 수 있도록 SEO manifest view에 최근 관측 부수, 최근 입상 최대 5건, 공개 출처 이름, 마지막 확인 시각을 상한이 있는 payload로 추가. 운영에서 조회가 statement timeout을 넘겨 `202608200002`로 되돌림
 35. `202608200002_restore_bounded_seo_manifest.sql`: 배포 시 전체 열거가 가능하도록 SEO manifest view를 식별 컬럼만 제공하는 `202608150008` 정의로 복원
 36. `202608210001_player_seo_record_snapshot.sql`: 선수 기록 스냅샷 테이블을 비워 둔 채 만들고 SEO manifest가 그 스냅샷을 join하도록 변경. 계산은 야간 pg_cron이 실행하는 service-role 갱신 함수가 담당하며 migration은 계산하지 않는다
+37. `202608210002_trending_player_views.sql`: 홈 조회 순위를 위한 시간 단위 집계 `player_view_counts`·`player_view_origins`, 상위 10명만 노출하는 `public_trending_players` view, service-role 전용 기록·정리 RPC와 매시 정리 pg_cron
 
 배포 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`에서 전체 migration 파일의 순서를 확인합니다. `202608130004`는 이미 적용된 DB도 안전하게 다음 migration으로 교정할 수 있도록 기록으로 유지하며, 최종 동작은 `202608130005`가 정의한 검색어별 제한을 따릅니다. `202608130009`는 이미 `202608130008`이 적용된 운영 DB에서도 별칭 한 그룹과 사용자 입력 별칭을 허용하기 위한 필수 후속 migration입니다. 배포 후에는 내부 `player_merge_review_log`, `identity_partition_*`, `feedback_reports`, `source_request_diagnostics`, `operational_incident*` table이 일반 공개 역할에 노출되지 않고 개인정보를 제거한 공개 조회만 제공되는지, `claim_source_request_with_policy`, `record_source_request_outcome`, `delete_expired_source_request_diagnostics`와 출처 상태 기록 및 참여 편집·문의·운영 오류 mutation RPC가 service role 전용인지, `public_player_search.division_observations`, `homonym_nickname`, `latest_participation_date`, `latest_participation_tournament`가 조회되고 `award_results`에 대회명이 포함되는지 확인합니다. 후속 migration의 view는 첫 번째 migration이 추가한 병합 선수 제외 조건을 유지하므로 일부만 골라 적용하지 않습니다.
 
@@ -153,6 +154,8 @@ token을 회전하거나 누락을 복구할 때는 GitHub `production` environm
 자동 집계 대상은 브라우저의 렌더 오류·미처리 오류·미처리 Promise 거부와 출처의 구조 변경·인증 실패뿐입니다. timeout, rate limit, offline, 취소, 일반 네트워크 실패는 자동 Issue로 만들지 않습니다. payload와 DB에는 category, 앱 버전, query/hash를 제거한 route, 선택적인 출처 코드·parser version, 무작위 event ID와 그 조합의 SHA-256 fingerprint만 둡니다. 오류 메시지, stack, 검색어, 선수명, 전체 URL, HTML/body, 쿠키, 자격증명과 브라우저/기기 식별자는 수집하지 않습니다.
 
 같은 fingerprint가 3회 쌓여야 게시 lease를 얻으며 브라우저·출처 범위별로 시간당 최대 5건만 새로 전달합니다. 수집도 두 범위를 분리해 DB에서 각각 10분당 300개의 새 event로 원자적으로 제한하고 초과 요청은 429를 반환합니다. 브라우저 fingerprint는 category와 고정 route template만 사용하므로 공개 key·Origin을 재사용해 앱 버전을 바꿔도 새 fingerprint나 출처용 quota를 소진할 수 없습니다. GitHub 본문의 `busu-operational-incident:{fingerprint}` marker가 중복 조정 기준입니다. Issue 생성 뒤 응답을 확정하지 못한 `delivery_unknown`은 다음 동일 이벤트에서 marker를 정확히 검색해 기존 Issue를 연결하고, 찾지 못하면 새 Issue를 만들지 않습니다. 자동 종료는 하지 않습니다. 게시 실패는 집계를 `failed` 또는 `delivery_unknown`으로 남기지만 브라우저 fallback과 출처 refresh 응답은 그대로 유지합니다. 출처 incident 게시 전체는 `EdgeRuntime.waitUntil` background lifetime으로 넘겨 원래 refresh 응답이 GitHub 요청을 기다리지 않습니다.
+
+`record-player-view`는 production에서 `PLAYER_VIEW_ALLOWED_ORIGINS`를 사용합니다. production/development workflow가 이 값을 Edge secrets에 함께 설정하므로 별도 수동 설정이 필요 없고, repository variable을 두지 않으면 production은 `https://busu.iamdenny.com`, development는 개발 프런트 Origin만 허용합니다. 함수 코드에는 값이 비어 있을 때를 위한 `FEEDBACK_ALLOWED_ORIGINS` fallback도 남아 있습니다. 함수는 publishable key와 Origin을 확인한 뒤 공개 선수 ID 하나만 받아 service-role HMAC origin 해시와 함께 집계 RPC를 호출합니다. 원본 주소와 User-Agent는 저장하지 않고, 집계 정리는 `prune_player_view_counts_internal`을 `pg_cron`이 매시 실행해 25시간이 지난 행을 삭제합니다. 순위를 즉시 내리려면 이 함수 배포를 중단하거나 `public_trending_players` view의 anon grant를 회수하면 되고 검색·선수 상세는 계속 동작합니다.
 
 보존 정리는 service role 전용 `purge_operational_incidents_internal(<기준 시각>)`을 `pg_cron`이 매일 실행합니다. 함수는 최근 30일 이내 집계를 삭제하지 않고 전달 중 lease도 건드리지 않으며, 2일이 지난 수집·게시 예산을 함께 삭제합니다. 운영자는 scheduler 실행 여부와 삭제 건수만 확인하고 fingerprint나 token 원문을 로그에 출력하지 않습니다. 장애 시 우선 `report-runtime-incident` 배포를 중단하거나 GitHub token을 폐기할 수 있으며 사용자 검색·저장 결과는 계속 동작합니다.
 

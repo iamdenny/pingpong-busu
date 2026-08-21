@@ -8,6 +8,7 @@ import {
   summarizeDivisionObservations,
   type PlayerDetail,
   type SourceStatus,
+  type TrendingPlayers,
 } from "@busu/domain";
 import type {
   IdentityCandidateEvidence,
@@ -22,6 +23,7 @@ import type {
   RevertIdentityEditInput,
   RevertIdentityEditResponse,
 } from "../lib/repository";
+import { TRENDING_PLAYER_LIMIT } from "../lib/trendingPlayers";
 import { demoPlayers } from "./data";
 
 function latestParticipationSummary(player: PlayerDetail): {
@@ -124,6 +126,26 @@ export class DemoPlayerRepository implements PlayerRepository {
       },
     ];
   }
+  async listTrendingPlayers(): Promise<TrendingPlayers> {
+    const players = [...demoPlayers]
+      .sort((left, right) => right.resultCount - left.resultCount)
+      .slice(0, TRENDING_PLAYER_LIMIT)
+      .map((player) => ({
+        playerId: player.id,
+        name: player.name,
+        ...(player.region ? { region: player.region } : {}),
+        ...(player.club ? { club: player.club } : {}),
+        ...(player.homonymNickname
+          ? { homonymNickname: player.homonymNickname }
+          : {}),
+      }));
+    return { updatedAt: new Date().toISOString(), players };
+  }
+
+  async recordPlayerView(): Promise<void> {
+    // Demo mode keeps every count in the fixture and stores nothing.
+  }
+
   async searchPlayers(input: PlayerSearchInput) {
     const query = normalizeSearchText(input.query);
     return demoPlayers

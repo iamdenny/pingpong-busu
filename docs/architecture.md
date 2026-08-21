@@ -27,6 +27,9 @@ flowchart LR
   F --> O["private feedback outbox"]
   F --> G["GitHub Issues API"]
   W --> I["report-runtime-incident Edge Function"]
+  W --> PV["record-player-view Edge Function"]
+  PV --> PC["private player_view_counts"]
+  PC --> V
   I --> Q["private incident aggregate/outbox"]
   I --> G
   E --> Q
@@ -41,6 +44,8 @@ flowchart LR
   E --> P["upsert RPC / PostgreSQL"]
   P --> V
 ```
+
+홈의 조회 순위는 별도 경로다. 선수 상세가 열리면 브라우저가 `record-player-view`에 공개 선수 ID 하나만 보내고, Edge가 요청 주소를 service-role HMAC으로 해싱해 시간 단위 집계 RPC를 호출한다. 브라우저는 집계 table을 직접 읽거나 쓰지 않고 `public_trending_players` view만 조회한다. 기록이 실패해도 선수 상세와 검색은 그대로 동작한다.
 
 ## Workspace 책임
 

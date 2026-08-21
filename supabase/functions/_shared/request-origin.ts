@@ -12,6 +12,7 @@ function requestOrigin(request: Request): string {
 export async function hashRequestOrigin(
   request: Request,
   secret: string,
+  scope = "iping-refresh-origin",
 ): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
@@ -23,7 +24,7 @@ export async function hashRequestOrigin(
   const digest = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(`iping-refresh-origin:${requestOrigin(request)}`),
+    encoder.encode(`${scope}:${requestOrigin(request)}`),
   );
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))

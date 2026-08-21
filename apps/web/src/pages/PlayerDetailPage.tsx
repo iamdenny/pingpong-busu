@@ -154,6 +154,12 @@ export function PlayerDetailPage() {
     queryKey: ["player", id],
     queryFn: () => playerRepository.getPlayer(id),
   });
+  const viewedPlayerRef = useRef<string>(undefined);
+  useEffect(() => {
+    if (!result.data || viewedPlayerRef.current === id) return;
+    viewedPlayerRef.current = id;
+    void playerRepository.recordPlayerView(id);
+  }, [id, result.data]);
   const detailRef = useCalmEntry(
     ".motion-entry",
     result.data ? `${id}-ready` : `${id}-loading`,

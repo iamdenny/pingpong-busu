@@ -15,6 +15,7 @@ import {
   type PlayerRecord,
   type PlayerSummary,
   type SourceComparison,
+  type TrendingPlayers,
 } from "@busu/domain";
 import type {
   IdentityCandidateEvidence,
@@ -25,6 +26,7 @@ import type {
   RefreshRequest,
   RevertIdentityEditInput,
 } from "./repository";
+import { TRENDING_PLAYER_LIMIT } from "./trendingPlayers";
 
 const homonymNicknameSchema = z.custom<string>(
   (value) => typeof value === "string" && isHomonymNickname(value),
@@ -165,6 +167,13 @@ const sourceStatusSchema = z.object({
   adapter_mode: z.enum(["http", "browser", "manual"]),
   enabled: z.boolean(),
   parser_version: z.string(),
+});
+const trendingPlayerSchema = z.object({
+  player_id: z.coerce.string().min(1),
+  canonical_name: z.string().min(1),
+  primary_region: z.string().nullable(),
+  primary_club: z.string().nullable(),
+  homonym_nickname: homonymNicknameSchema.nullish(),
 });
 const identityEditCandidateSchema = z.object({
   player_id: z.coerce.string(),
@@ -318,6 +327,39 @@ export class SupabasePlayerRepository implements PlayerRepository {
         enabled: source.enabled,
         parserVersion: source.parser_version,
       }));
+  }
+  async listTrendingPlayers(): Promise<TrendingPlayers> {
+    const { data, error } = await this.client
+      .from("public_trending_players")
+      .select(
+        "player_id,canonical_name,primary_region,primary_club,homonym_nickname",
+      )
+      .order("rank")
+      .limit(TRENDING_PLAYER_LIMIT);
+    if (error) throw error;
+    const rows = z.array(trendingPlayerSchema).parse(data);
+    return {
+      updatedAt: new Date().toISOString(),
+      players: rows.map((row) => ({
+        playerId: row.player_id,
+        name: row.canonical_name,
+        ...(row.primary_region ? { region: row.primary_region } : {}),
+        ...(row.primary_club ? { club: row.primary_club } : {}),
+        ...(row.homonym_nickname
+          ? { homonymNickname: row.homonym_nickname }
+          : {}),
+      })),
+    };
+  }
+  async recordPlayerView(playerId: string): Promise<void> {
+    // A missed count must never surface an error on the player detail page.
+    try {
+      await this.client.functions.invoke("record-player-view", {
+        body: { playerId },
+      });
+    } catch {
+      // Ignored on purpose.
+    }
   }
   async searchPlayers(input: PlayerSearchInput): Promise<PlayerSummary[]> {
     const query = normalizePlayerName(input.query).replaceAll("%", "");

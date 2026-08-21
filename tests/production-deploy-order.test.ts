@@ -30,6 +30,15 @@ describe("production deployment ordering", () => {
     expect(backendWorkflow).toContain("workflows: [CI]");
   });
 
+  it("configures the player view origin allow-list without a manual step", () => {
+    expect(backendWorkflow).toContain(
+      "PLAYER_VIEW_ALLOWED_ORIGINS: ${{ vars.PLAYER_VIEW_ALLOWED_ORIGINS || 'https://busu.iamdenny.com' }}",
+    );
+    expect(backendWorkflow).toContain(
+      'PLAYER_VIEW_ALLOWED_ORIGINS="$PLAYER_VIEW_ALLOWED_ORIGINS"',
+    );
+  });
+
   it("starts Pages only after a successful production backend workflow", () => {
     expect(pagesWorkflow).toContain("workflows: [Deploy Supabase backend]");
     expect(pagesWorkflow).toContain(
