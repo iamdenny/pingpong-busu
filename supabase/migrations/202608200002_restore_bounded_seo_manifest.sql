@@ -9,7 +9,12 @@
 -- 202608150008 is restored here and the static pages fall back to the identity
 -- summary until that design lands.
 
-create or replace view public.public_player_seo_manifest with (security_invoker = true) as
+-- create or replace cannot remove the record columns (42P16), so the view is
+-- dropped and rebuilt. Nothing else depends on it: the deployment-time SEO
+-- generator and the public read health check are its only readers.
+drop view if exists public.public_player_seo_manifest;
+
+create view public.public_player_seo_manifest with (security_invoker = true) as
 select
   p.public_id::text id,
   p.canonical_name,

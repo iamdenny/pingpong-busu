@@ -12,9 +12,14 @@ const migration = readFileSync(
 
 describe("restored bounded SEO manifest migration", () => {
   it("drops the per-player record snapshot that could not be enumerated", () => {
+    // create or replace cannot remove columns (42P16); the view must be rebuilt.
     expect(migration).toContain(
-      "create or replace view public.public_player_seo_manifest",
+      "drop view if exists public.public_player_seo_manifest",
     );
+    expect(migration).toContain(
+      "create view public.public_player_seo_manifest",
+    );
+    expect(migration).not.toContain("create or replace view");
     for (const column of [
       "recent_observed_division",
       "recent_awards",
