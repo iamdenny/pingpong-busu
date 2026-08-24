@@ -58,14 +58,15 @@ begin
   -- A malformed origin hash is rejected without raising.
   perform public.record_player_view_internal(ranked_public, 'not-a-hash');
 
-  -- Reach the unique session threshold for the ranked player only.
+  -- Reach the unique session threshold for the ranked player only. The window
+  -- is thirty days, so an older bucket still counts.
   insert into public.player_view_counts (player_id, bucket_start, unique_sessions)
-  values (ranked_id, bucket - interval '1 hour', 4)
+  values (ranked_id, bucket - interval '20 days', 2)
   on conflict (player_id, bucket_start)
   do update set unique_sessions = excluded.unique_sessions;
 
   insert into public.player_view_counts (player_id, bucket_start, unique_sessions)
-  values (quiet_id, bucket, 4);
+  values (quiet_id, bucket, 2);
 
   select count(*) into ranked_rows
   from public.public_trending_players
@@ -81,9 +82,10 @@ begin
     raise exception 'a player below the threshold or a merged player was ranked';
   end if;
 
-  -- Counts that left the window are pruned and stop being ranked.
+  -- Counts that left the window are pruned, and origin markers still expire
+  -- after a day even though the ranking now remembers thirty.
   insert into public.player_view_counts (player_id, bucket_start, unique_sessions)
-  values (quiet_id, bucket - interval '30 hours', 50);
+  values (quiet_id, bucket - interval '40 days', 50);
 
   insert into public.player_view_origins (origin_hash, player_id, bucket_start)
   values (other_hash, quiet_id, bucket - interval '30 hours');
@@ -92,7 +94,7 @@ begin
 
   if exists (
     select 1 from public.player_view_counts
-    where bucket_start < now() - interval '25 hours'
+    where bucket_start < now() - interval '31 days'
   ) or exists (
     select 1 from public.player_view_origins
     where bucket_start < now() - interval '25 hours'

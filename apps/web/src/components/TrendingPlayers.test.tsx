@@ -71,7 +71,7 @@ describe("TrendingPlayers", () => {
     );
     expect(screen.getByRole("link", { name: /^10위\s*선수10/u })).toBeVisible();
     expect(
-      screen.getByRole("heading", { name: "최근 24시간 많이 찾은 선수" }),
+      screen.getByRole("heading", { name: "많이 찾은 선수" }),
     ).toBeVisible();
   });
 
