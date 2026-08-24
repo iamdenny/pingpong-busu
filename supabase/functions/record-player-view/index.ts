@@ -15,8 +15,8 @@ const rpc: RecordPlayerViewRpc = async (name, parameters) => {
   const client = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
-  const { error } = await client.rpc(name, parameters);
-  return error ? { error: { message: error.message } } : {};
+  const { data, error } = await client.rpc(name, parameters);
+  return error ? { error: { message: error.message } } : { data };
 };
 
 const handler = createRecordPlayerViewHandler({

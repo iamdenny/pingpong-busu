@@ -11,7 +11,17 @@ export interface RecordPlayerViewEnvironment extends FunctionAuthEnvironment {
 export type RecordPlayerViewRpc = (
   name: "record_player_view_internal",
   parameters: Record<string, unknown>,
-) => Promise<{ error?: { message: string } | null }>;
+) => Promise<{ data?: unknown; error?: { message: string } | null }>;
+
+// The recorder reports which branch it took so an empty ranking can be
+// diagnosed from the response instead of from the database.
+const outcomes = new Set([
+  "counted",
+  "duplicate_origin",
+  "origin_budget",
+  "unknown_player",
+  "invalid_input",
+]);
 
 interface Dependencies {
   environment: RecordPlayerViewEnvironment;
@@ -90,11 +100,14 @@ export function createRecordPlayerViewHandler(dependencies: Dependencies) {
 
     // Only the HMAC of the request origin leaves this handler.
     const originHash = await dependencies.hashOrigin(request, secret);
-    const { error } = await dependencies.rpc("record_player_view_internal", {
-      p_public_id: playerId,
-      p_origin_hash: originHash,
-    });
+    const { data, error } = await dependencies.rpc(
+      "record_player_view_internal",
+      { p_public_id: playerId, p_origin_hash: originHash },
+    );
     if (error) return json({ code: "not_recorded" }, 202);
-    return json({ code: "recorded" }, 202);
+    return json(
+      { code: typeof data === "string" && outcomes.has(data) ? data : "recorded" },
+      202,
+    );
   };
 }
