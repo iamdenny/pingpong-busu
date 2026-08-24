@@ -42,10 +42,13 @@ function handlerWith(rpc: RecordPlayerViewRpc) {
 
 describe("record-player-view handler", () => {
   it("forwards only the player id and an origin hash to the private RPC", async () => {
-    const rpc = vi.fn<RecordPlayerViewRpc>().mockResolvedValue({});
+    const rpc = vi
+      .fn<RecordPlayerViewRpc>()
+      .mockResolvedValue({ data: "counted" });
     const response = await handlerWith(rpc)(request());
 
     expect(response.status).toBe(202);
+    expect(await response.json()).toEqual({ code: "counted" });
     expect(rpc).toHaveBeenCalledWith("record_player_view_internal", {
       p_public_id: playerId,
       p_origin_hash: "a".repeat(64),
@@ -80,6 +83,31 @@ describe("record-player-view handler", () => {
     ])
       expect((await handler(request(body))).status).toBe(400);
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("reports the branch the recorder took", async () => {
+    for (const outcome of [
+      "duplicate_origin",
+      "origin_budget",
+      "unknown_player",
+      "invalid_input",
+    ]) {
+      const rpc = vi
+        .fn<RecordPlayerViewRpc>()
+        .mockResolvedValue({ data: outcome });
+      const response = await handlerWith(rpc)(request());
+      expect(response.status).toBe(202);
+      expect(await response.json()).toEqual({ code: outcome });
+    }
+  });
+
+  it("falls back to a safe code for an unknown outcome", async () => {
+    const rpc = vi
+      .fn<RecordPlayerViewRpc>()
+      .mockResolvedValue({ data: "something else" });
+    const response = await handlerWith(rpc)(request());
+
+    expect(await response.json()).toEqual({ code: "recorded" });
   });
 
   it("never fails the caller when the counter is unavailable", async () => {

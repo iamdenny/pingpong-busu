@@ -12,6 +12,7 @@ declare
   other_hash text := repeat('b', 64);
   bucket timestamptz := date_trunc('hour', now());
   ranked_rows integer;
+  outcome text;
 begin
   insert into public.players (canonical_name, normalized_name)
   values ('조회순위선수', '조회순위선수')
@@ -29,9 +30,18 @@ begin
   set merged_into_player_id = ranked_id, merged_at = now()
   where id = merged_id;
 
-  -- One origin may lift the same player only once per hour.
-  perform public.record_player_view_internal(ranked_public, origin_hash);
-  perform public.record_player_view_internal(ranked_public, origin_hash);
+  -- One origin may lift the same player only once per hour, and the recorder
+  -- reports which branch it took.
+  outcome := public.record_player_view_internal(ranked_public, origin_hash);
+  if outcome <> 'counted' then
+    raise exception 'the first view was not counted (%)', outcome;
+  end if;
+
+  outcome := public.record_player_view_internal(ranked_public, origin_hash);
+  if outcome <> 'duplicate_origin' then
+    raise exception 'a repeated view was not reported as a duplicate (%)', outcome;
+  end if;
+
   perform public.record_player_view_internal(ranked_public, origin_hash);
 
   if (
@@ -43,11 +53,18 @@ begin
   end if;
 
   -- An unknown player and a merged player are never counted.
-  perform public.record_player_view_internal(
+  outcome := public.record_player_view_internal(
     '00000000-0000-4000-8000-000000000000'::uuid,
     other_hash
   );
-  perform public.record_player_view_internal(merged_public, other_hash);
+  if outcome <> 'unknown_player' then
+    raise exception 'an unknown player was not reported (%)', outcome;
+  end if;
+
+  outcome := public.record_player_view_internal(merged_public, other_hash);
+  if outcome <> 'unknown_player' then
+    raise exception 'a merged player was not reported as unknown (%)', outcome;
+  end if;
 
   if exists (
     select 1 from public.player_view_counts where player_id = merged_id
@@ -56,7 +73,10 @@ begin
   end if;
 
   -- A malformed origin hash is rejected without raising.
-  perform public.record_player_view_internal(ranked_public, 'not-a-hash');
+  outcome := public.record_player_view_internal(ranked_public, 'not-a-hash');
+  if outcome <> 'invalid_input' then
+    raise exception 'a malformed origin hash was not reported (%)', outcome;
+  end if;
 
   -- Reach the unique session threshold for the ranked player only. The window
   -- is thirty days, so an older bucket still counts.
