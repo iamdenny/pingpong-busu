@@ -16,7 +16,7 @@ title: "데이터 모델"
 
 `player_view_counts`는 `선수 + 시간 bucket`별 고유 세션 수만 담는 service-role 전용 집계다. `player_view_origins`는 같은 원점이 같은 선수를 한 시간에 두 번 올리지 못하게 막는 `(origin hash, 선수, bucket)` marker이며, 원점은 service-role HMAC-SHA-256 해시로만 저장하고 원본 주소·User-Agent·검색어·referrer는 schema에 없다. 한 원점은 한 시간에 최대 60명까지만 올릴 수 있다.
 
-`public_trending_players`는 최근 24시간 합계 기준 상위 10명만 내보내는 view다. 고유 세션 5회 미만인 선수와 병합된 선수는 제외하고, 순위·공개 ID·이름·대표 지역·대표 소속·별칭만 노출하며 조회 수 자체는 내보내지 않는다. 집계가 private table이므로 이 view만 view 소유자 권한으로 실행하고 anon에는 view select만 부여한다. `prune_player_view_counts_internal`은 25시간이 지난 두 table의 행을 삭제하고 `pg_cron`이 매시 실행한다.
+`public_trending_players`는 최근 30일 합계 기준 상위 10명만 내보내는 view다. 고유 세션 3회 미만인 선수와 병합된 선수는 제외하고, 순위·공개 ID·이름·대표 지역·대표 소속·별칭만 노출하며 조회 수 자체는 내보내지 않는다. 집계가 private table이므로 이 view만 view 소유자 권한으로 실행하고 anon에는 view select만 부여한다. `prune_player_view_counts_internal`은 31일이 지난 집계와 25시간이 지난 origin marker를 삭제하고 `pg_cron`이 매시 실행한다. 순위 창이 30일로 넓어져도 요청 원점에서 파생된 marker의 보존 기간은 늘어나지 않는다.
 
 ## 운영 오류 집계
 

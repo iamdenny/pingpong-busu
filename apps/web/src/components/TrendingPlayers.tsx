@@ -86,8 +86,8 @@ export function TrendingPlayers() {
       aria-labelledby="trending-players-title"
     >
       <div className="trending-players__header">
-        <h2 id="trending-players-title">최근 24시간 많이 찾은 선수</h2>
-        {updatedAt && <span>10분마다 갱신 · {updatedAt}</span>}
+        <h2 id="trending-players-title">많이 찾은 선수</h2>
+        {updatedAt && <span>최근 30일 · {updatedAt}</span>}
       </div>
       <ol
         className="trending-players__list"
