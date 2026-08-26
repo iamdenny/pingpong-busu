@@ -2,7 +2,138 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 import { SupabasePlayerRepository } from "./SupabasePlayerRepository";
 
+function makeSearchRow(id: string, primaryRegion: string | null) {
+  return {
+    id,
+    canonical_name: "홍라켓",
+    normalized_name: "홍라켓",
+    primary_region: primaryRegion,
+    primary_club: null,
+    recent_observed_division: null,
+    recent_observed_division_system: null,
+    result_count: 1,
+    award_results: [],
+    latest_participation_date: null,
+    latest_participation_tournament: null,
+    latest_participation_event: null,
+    latest_participation_checked_at: null,
+    division_observations: [],
+    source_count: 1,
+    last_checked_at: "2026-08-26T00:00:00.000Z",
+    identity_status: "unreviewed" as const,
+    homonym_nickname: null,
+  };
+}
+
+function makeSearchRepository(
+  pages: readonly (readonly ReturnType<typeof makeSearchRow>[])[],
+) {
+  const searchQuery = {
+    select: vi.fn(),
+    ilike: vi.fn(),
+    order: vi.fn(),
+    range: vi.fn(),
+  };
+  searchQuery.select.mockReturnValue(searchQuery);
+  searchQuery.ilike.mockReturnValue(searchQuery);
+  searchQuery.order.mockReturnValue(searchQuery);
+  searchQuery.range.mockImplementation((from: number) =>
+    Promise.resolve({
+      data: pages[Math.floor(from / 200)] ?? [],
+      error: null,
+    }),
+  );
+  const client = { from: vi.fn().mockReturnValue(searchQuery) };
+  return {
+    repository: new SupabasePlayerRepository(
+      client as unknown as SupabaseClient,
+    ),
+    searchQuery,
+  };
+}
+
 describe("SupabasePlayerRepository player search", () => {
+  it("rejects wildcard-only names before querying the public view", async () => {
+    const { repository, searchQuery } = makeSearchRepository([[]]);
+
+    await expect(
+      repository.searchPlayers({ query: "%_", region: "성남" }),
+    ).resolves.toEqual([]);
+    expect(searchQuery.select).not.toHaveBeenCalled();
+  });
+
+  it("filters every name-candidate page with the region hierarchy after fetching", async () => {
+    const firstPage = Array.from({ length: 200 }, (_, index) =>
+      makeSearchRow(`unrelated-${index}`, "용인시"),
+    );
+    const { repository, searchQuery } = makeSearchRepository([
+      firstPage,
+      [makeSearchRow("bundang", "분당구")],
+    ]);
+
+    await expect(
+      repository.searchPlayers({ query: "홍라켓", region: "성남" }),
+    ).resolves.toEqual([
+      expect.objectContaining({ id: "bundang", region: "분당구" }),
+    ]);
+    expect(searchQuery.range).toHaveBeenCalledTimes(2);
+    expect(searchQuery.ilike.mock.calls).toEqual([
+      ["normalized_name", "홍라켓%"],
+      ["normalized_name", "홍라켓%"],
+    ]);
+  });
+
+  it("matches a direct district filter without a database region prefilter", async () => {
+    const { repository, searchQuery } = makeSearchRepository([
+      [
+        makeSearchRow("bundang", "분당구"),
+        makeSearchRow("yongin", "용인시"),
+      ],
+    ]);
+
+    await expect(
+      repository.searchPlayers({ query: "홍라켓", region: "분당" }),
+    ).resolves.toEqual([
+      expect.objectContaining({ id: "bundang", region: "분당구" }),
+    ]);
+    expect(searchQuery.ilike.mock.calls).toEqual([
+      ["normalized_name", "홍라켓%"],
+    ]);
+  });
+
+  it("excludes candidates from an unrelated region", async () => {
+    const { repository } = makeSearchRepository([
+      [makeSearchRow("bundang", "분당구")],
+    ]);
+
+    await expect(
+      repository.searchPlayers({ query: "홍라켓", region: "용인" }),
+    ).resolves.toEqual([]);
+  });
+
+  it("keeps all same-name candidates when a region is not supplied", async () => {
+    const { repository, searchQuery } = makeSearchRepository([
+      [
+        makeSearchRow("bundang", "분당구"),
+        makeSearchRow("yongin", "용인시"),
+        makeSearchRow("unknown", null),
+      ],
+    ]);
+
+    await expect(
+      repository.searchPlayers({ query: "홍라켓" }),
+    ).resolves.toEqual([
+      expect.objectContaining({ id: "bundang" }),
+      expect.objectContaining({ id: "yongin" }),
+      expect.objectContaining({ id: "unknown" }),
+    ]);
+    expect(searchQuery.ilike).toHaveBeenCalledOnce();
+    expect(searchQuery.ilike).toHaveBeenCalledWith(
+      "normalized_name",
+      "홍라켓%",
+    );
+  });
+
   it("accepts a user-entered homonym nickname from the public search view", async () => {
     const row = {
       id: "candidate-1",

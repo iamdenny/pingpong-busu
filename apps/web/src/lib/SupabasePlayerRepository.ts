@@ -7,6 +7,7 @@ import {
   isAwardRank,
   isHomonymNickname,
   isCurrentSummaryRecord,
+  matchesKoreanRegionFilter,
   normalizePlayerName,
   normalizePlayerRecordDivisionSystem,
   sortPlayerRecordsByLatest,
@@ -362,28 +363,31 @@ export class SupabasePlayerRepository implements PlayerRepository {
     }
   }
   async searchPlayers(input: PlayerSearchInput): Promise<PlayerSummary[]> {
-    const query = normalizePlayerName(input.query).replaceAll("%", "");
+    const query = normalizePlayerName(input.query)
+      .replaceAll("%", "")
+      .replaceAll("_", "");
+    if (!query) return [];
     const pageSize = 200;
     const rows: z.infer<typeof summarySchema>[] = [];
     for (let offset = 0; ; offset += pageSize) {
-      let request = this.client
+      const request = this.client
         .from("public_player_search")
         .select("*")
         .ilike("normalized_name", `${query}%`)
         .order("id")
         .range(offset, offset + pageSize - 1);
-      if (input.region)
-        request = request.ilike(
-          "primary_region",
-          `%${input.region.replaceAll("%", "").replaceAll("_", "")}%`,
-        );
       const { data, error } = await request;
       if (error) throw error;
       const page = z.array(summarySchema).parse(data);
       rows.push(...page);
       if (page.length < pageSize) break;
     }
-    return rows.map(toSummary);
+    const matchingRows = input.region
+      ? rows.filter((row) =>
+          matchesKoreanRegionFilter(row.primary_region, input.region),
+        )
+      : rows;
+    return matchingRows.map(toSummary);
   }
   async getPlayer(id: string): Promise<PlayerDetail | null> {
     const [summaryResponse, recordsResponse] = await Promise.all([

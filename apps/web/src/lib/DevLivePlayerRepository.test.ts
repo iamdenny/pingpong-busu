@@ -52,4 +52,36 @@ describe("DevLivePlayerRepository player search", () => {
       }),
     ]);
   });
+
+  it("matches a child district for its parent municipality", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify([
+            {
+              id: "synthetic-bundang",
+              name: "홍라켓",
+              normalizedName: "홍라켓",
+              region: "분당구",
+              resultCount: 1,
+              sourceCount: 1,
+              lastCheckedAt: "2026-08-26T00:00:00.000Z",
+              identityStatus: "unreviewed",
+              dataKind: "live",
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    const repository = new DevLivePlayerRepository();
+
+    await expect(
+      repository.searchPlayers({ query: "홍라켓", region: "성남" }),
+    ).resolves.toEqual([
+      expect.objectContaining({ id: "synthetic-bundang", region: "분당구" }),
+    ]);
+  });
 });

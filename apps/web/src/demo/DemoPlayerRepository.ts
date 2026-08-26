@@ -2,6 +2,7 @@ import {
   findRecentObservedDivisionRecord,
   isAwardRank,
   isCurrentSummaryRecord,
+  matchesKoreanRegionFilter,
   normalizeSearchText,
   normalizePlayerRecordDivisionSystem,
   sortPlayerRecordsByLatest,
@@ -156,7 +157,7 @@ export class DemoPlayerRepository implements PlayerRepository {
             normalizeSearchText(player.club ?? ""),
             normalizeSearchText(player.region ?? ""),
           ].some((value) => value.startsWith(query)) &&
-          (!input.region || player.region?.includes(input.region)) &&
+          matchesKoreanRegionFilter(player.region, input.region ?? "") &&
           (!input.club || player.club === input.club) &&
           (!input.sourceCode ||
             player.sources.some(
