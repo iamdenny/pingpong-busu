@@ -75,6 +75,10 @@ function extractSubdivision(value: string): string | undefined {
   return undefined;
 }
 
+function normalizeRegionFilterValue(value: string | null | undefined): string {
+  return value?.normalize('NFKC').replace(/\s+/gu, ' ').trim() ?? '';
+}
+
 export function inferKoreanRegion(...evidence: Array<string | undefined>): string | undefined {
   const normalizedEvidence = evidence
     .filter((value): value is string => typeof value === 'string')
@@ -97,4 +101,19 @@ export function inferKoreanRegion(...evidence: Array<string | undefined>): strin
 
   const compactEvidence = normalizedEvidence.replace(/\s+/gu, '');
   return suffixlessAliases.find(({ aliases }) => aliases.some((alias) => compactEvidence.includes(alias)))?.region;
+}
+
+export function matchesKoreanRegionFilter(
+  candidateRegion: string | null | undefined,
+  regionFilter: string | null | undefined,
+): boolean {
+  const normalizedFilter = normalizeRegionFilterValue(regionFilter);
+  if (!normalizedFilter) return true;
+
+  const normalizedCandidate = normalizeRegionFilterValue(candidateRegion);
+  if (!normalizedCandidate) return false;
+  if (normalizedCandidate.includes(normalizedFilter)) return true;
+
+  const inferredRegion = inferKoreanRegion(normalizedCandidate);
+  return normalizeRegionFilterValue(inferredRegion).includes(normalizedFilter);
 }

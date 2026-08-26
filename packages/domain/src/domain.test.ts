@@ -11,6 +11,7 @@ import {
   withRecordHashes,
   isAwardRank,
   inferKoreanRegion,
+  matchesKoreanRegionFilter,
   inferDivisionSystem,
   inferEventDivisionSystem,
   inferRecordDivisionSystem,
@@ -434,6 +435,21 @@ describe("Korean region inference", () => {
     expect(
       inferKoreanRegion("제7회 윤봉길배 전국오픈 탁구대회"),
     ).toBeUndefined();
+  });
+});
+
+describe("Korean region filtering", () => {
+  it("matches direct and conservative parent-region evidence", () => {
+    expect(matchesKoreanRegionFilter("분당구", "성남")).toBe(true);
+    expect(matchesKoreanRegionFilter("분당구", "분당")).toBe(true);
+    expect(matchesKoreanRegionFilter("분당구", "용인")).toBe(false);
+  });
+
+  it("normalizes unicode and whitespace and handles empty values", () => {
+    expect(matchesKoreanRegionFilter("  분당구  ", "  성남  ")).toBe(true);
+    expect(matchesKoreanRegionFilter("분당구", "\u3000")).toBe(true);
+    expect(matchesKoreanRegionFilter(undefined, "성남")).toBe(false);
+    expect(matchesKoreanRegionFilter("", "성남")).toBe(false);
   });
 });
 
