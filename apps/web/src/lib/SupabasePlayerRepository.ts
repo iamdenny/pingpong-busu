@@ -363,7 +363,10 @@ export class SupabasePlayerRepository implements PlayerRepository {
     }
   }
   async searchPlayers(input: PlayerSearchInput): Promise<PlayerSummary[]> {
-    const query = normalizePlayerName(input.query).replaceAll("%", "");
+    const query = normalizePlayerName(input.query)
+      .replaceAll("%", "")
+      .replaceAll("_", "");
+    if (!query) return [];
     const pageSize = 200;
     const rows: z.infer<typeof summarySchema>[] = [];
     for (let offset = 0; ; offset += pageSize) {

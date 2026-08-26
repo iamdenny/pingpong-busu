@@ -53,6 +53,15 @@ function makeSearchRepository(
 }
 
 describe("SupabasePlayerRepository player search", () => {
+  it("rejects wildcard-only names before querying the public view", async () => {
+    const { repository, searchQuery } = makeSearchRepository([[]]);
+
+    await expect(
+      repository.searchPlayers({ query: "%_", region: "성남" }),
+    ).resolves.toEqual([]);
+    expect(searchQuery.select).not.toHaveBeenCalled();
+  });
+
   it("filters every name-candidate page with the region hierarchy after fetching", async () => {
     const firstPage = Array.from({ length: 200 }, (_, index) =>
       makeSearchRow(`unrelated-${index}`, "용인시"),

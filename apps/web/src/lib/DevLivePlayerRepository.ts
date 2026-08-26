@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   divisionSystemSchema,
   isHomonymNickname,
+  matchesKoreanRegionFilter,
   type PlayerDetail,
   type PlayerSummary,
   type SourceStatus,
@@ -144,7 +145,9 @@ export class DevLivePlayerRepository implements PlayerRepository {
     return z
       .array(summarySchema)
       .parse(await response.json())
-      .filter((row) => !input.region || row.region?.includes(input.region))
+      .filter((row) =>
+        matchesKoreanRegionFilter(row.region, input.region ?? ""),
+      )
       .map((row) => {
         const awardResults = row.awardResults?.map((award) => ({
           rank: award.rank,
