@@ -10,6 +10,7 @@ export default tseslint.config(
       '**/dist/**',
       '**/coverage/**',
       'supabase/functions/**',
+      'apps/web/public/legacy-redirect.js',
       '.claude/worktrees/**',
       'eslint.config.js',
     ],
