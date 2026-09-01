@@ -39,8 +39,8 @@ describe("production deployment ordering", () => {
     );
   });
 
-  it("starts Pages only after a successful production backend workflow", () => {
-    expect(pagesWorkflow).toContain("workflows: [Deploy Supabase backend]");
+  it("starts Pages from the successful main CI without waiting for backend deployment", () => {
+    expect(pagesWorkflow).toContain("workflows: [CI]");
     expect(pagesWorkflow).toContain(
       "github.event.workflow_run.conclusion == 'success'",
     );
@@ -48,7 +48,7 @@ describe("production deployment ordering", () => {
     expect(pagesWorkflow).not.toContain("workflow_dispatch:");
   });
 
-  it("pins checkout and release to the triggering backend commit", () => {
+  it("pins checkout and release to the triggering CI commit", () => {
     expect(pagesWorkflow).toContain("github.event.workflow_run.head_sha");
     expect(pagesWorkflow).toContain(
       "ref: ${{ needs.validate-ref.outputs.deploy-sha }}",
