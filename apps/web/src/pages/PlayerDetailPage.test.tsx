@@ -42,7 +42,7 @@ describe("PlayerDetailPage metadata", () => {
       document.head.querySelector('meta[property="og:url"]'),
     ).toHaveAttribute(
       "content",
-      "https://busu.iamdenny.com/players/kim-seoul/",
+      "https://modutt.kr/busu/players/kim-seoul/",
     );
     expect(screen.getAllByText("남자 단식")).not.toHaveLength(0);
     expect(screen.getAllByText("개인 단식")).not.toHaveLength(0);

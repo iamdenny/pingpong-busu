@@ -167,7 +167,7 @@ describe("SearchResultsPage", () => {
     ).toHaveAttribute("content", expect.stringContaining("4강 이상 입상 기록"));
     expect(
       document.head.querySelector('meta[property="og:url"]'),
-    ).toHaveAttribute("content", "https://busu.iamdenny.com/search/");
+    ).toHaveAttribute("content", "https://modutt.kr/busu/search/");
     expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute(
       "content",
       "noindex,follow",

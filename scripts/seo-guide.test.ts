@@ -33,7 +33,7 @@ describe("division guide", () => {
   it("publishes the same questions as FAQ structured data", () => {
     const [faq, breadcrumb] = guideJsonLd() as Record<string, unknown>[];
     expect(faq?.["@type"]).toBe("FAQPage");
-    expect(faq?.url).toBe("https://busu.iamdenny.com/guide/");
+    expect(faq?.url).toBe("https://modutt.kr/busu/guide/");
     expect(faq?.name).toBe(guideMetadata.title);
     const questions = faq?.mainEntity as Record<string, unknown>[];
     expect(questions).toHaveLength(guideQuestions.length);

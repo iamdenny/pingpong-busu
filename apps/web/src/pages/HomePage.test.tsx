@@ -70,7 +70,7 @@ describe("HomePage", () => {
     ).toHaveAttribute("content", "탁구 부수 검색·대회 기록 조회 | BUSU");
     expect(
       document.head.querySelector('link[rel="canonical"]'),
-    ).toHaveAttribute("href", "https://busu.iamdenny.com/");
+    ).toHaveAttribute("href", "https://modutt.kr/busu/");
     await screen.findByText("검색 출처");
     const toggle = screen.getByRole("button", { name: /검색 출처/u });
     const details = document.getElementById("home-source-overview-details");

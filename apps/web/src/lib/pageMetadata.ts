@@ -1,7 +1,7 @@
 export const siteMetadata = {
   name: "BUSU",
-  url: "https://busu.iamdenny.com/",
-  imageUrl: "https://busu.iamdenny.com/busu-og.png",
+  url: "https://modutt.kr/busu/",
+  imageUrl: "https://modutt.kr/busu/busu-og.png",
   imageAlt: "BUSU 탁구 선수 부수·입상 기록 통합검색 공유 이미지",
 } as const;
 
@@ -16,13 +16,19 @@ export function buildCanonicalUrl(pathname: string): string {
   const url = new URL(siteMetadata.url);
   const trimmedPath =
     pathname === "/" ? pathname : pathname.replace(/\/+$/u, "");
+  if (/^\/(?:sitemap\.xml|robots\.txt|llms\.txt)$/u.test(trimmedPath)) {
+    url.pathname = trimmedPath;
+    return url.href;
+  }
   const normalizedPath =
     /^\/(?:players\/[^/]+|search|guide|directory(?:\/[^/]+){0,2})$/u.test(
       trimmedPath,
     )
       ? `${trimmedPath}/`
       : trimmedPath;
-  url.pathname = normalizedPath || "/";
+  const route = (normalizedPath || "/").replace(/^\/+/u, "");
+  const base = url.pathname.replace(/\/+$/u, "");
+  url.pathname = route ? `${base}/${route}` : `${base}/`;
   return url.href;
 }
 

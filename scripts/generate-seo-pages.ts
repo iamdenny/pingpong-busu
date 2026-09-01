@@ -95,7 +95,7 @@ export function renderSeoHtml(
 }
 
 const APP_SCRIPT_PATTERN =
-  /\s*<script\b[^>]*\ssrc="(?!https?:)[^"]*"[^>]*>\s*<\/script>/gu;
+  /\s*<script\b[^>]*\ssrc="(?:[^"]*\/)?(?:assets\/index-[^"]*\.js|src\/main\.tsx)"[^>]*>\s*<\/script>/gu;
 const ROOT_CONTAINER = '<div id="root"></div>';
 
 // Vite rewrites asset URLs with the deployment base, so the built template is

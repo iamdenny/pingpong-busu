@@ -11,12 +11,12 @@ function metaContent(selector: string): string | null {
 
 describe("PageMetadata", () => {
   it("builds production canonical URLs for path routes", () => {
-    expect(buildCanonicalUrl("/")).toBe("https://busu.iamdenny.com/");
+    expect(buildCanonicalUrl("/")).toBe("https://modutt.kr/busu/");
     expect(buildCanonicalUrl("/search/")).toBe(
-      "https://busu.iamdenny.com/search/",
+      "https://modutt.kr/busu/search/",
     );
     expect(buildCanonicalUrl("//example.com/players/id")).toBe(
-      "https://busu.iamdenny.com//example.com/players/id",
+      "https://modutt.kr/busu/example.com/players/id",
     );
   });
 
@@ -42,7 +42,7 @@ describe("PageMetadata", () => {
     expect(
       document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
         ?.href,
-    ).toBe("https://busu.iamdenny.com/players/player-id/");
+    ).toBe("https://modutt.kr/busu/players/player-id/");
     expect(metaContent('meta[name="description"]')).toBe(
       "김탁구 선수의 공개 대회 기록입니다.",
     );
@@ -51,10 +51,10 @@ describe("PageMetadata", () => {
       "김탁구 선수 기록 · BUSU",
     );
     expect(metaContent('meta[property="og:url"]')).toBe(
-      "https://busu.iamdenny.com/players/player-id/",
+      "https://modutt.kr/busu/players/player-id/",
     );
     expect(metaContent('meta[property="og:image"]')).toBe(
-      "https://busu.iamdenny.com/busu-og.png",
+      "https://modutt.kr/busu/busu-og.png",
     );
     expect(metaContent('meta[name="twitter:card"]')).toBe(
       "summary_large_image",

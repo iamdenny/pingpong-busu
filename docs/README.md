@@ -10,6 +10,7 @@
 4. [수집 정책](crawling-policy.md)과 [출처 메모](source-notes.md) — 실출처 활성화 조건
 5. [운영](operations.md) — GitHub Pages, Supabase 배포와 개인정보 없는 운영 오류 자동 Issue
 6. [제품 분석](analytics.md) — Cloudflare·셀프 호스트 Umami 이벤트와 데이터 이전
+7. `busu.iamdenny.com`은 레거시 HTML에서 새 canonical과 클라이언트 이동을 제공한다. `sitemap.xml`·`robots.txt`·`llms.txt`는 새 루트 문서를 가리킨다. HTTP 308 이전은 별도 redirect origin을 도입할 때만 가능하다.
 
 ## 개발 문서
 

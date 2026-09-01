@@ -50,7 +50,7 @@ describe("SEO page generation", () => {
     );
     expect(html).toContain("김&lt;&amp;&quot;탁구");
     expect(html.match(/rel="canonical"/gu)).toHaveLength(1);
-    expect(html).toContain(`https://busu.iamdenny.com/players/${id}/`);
+    expect(html).toContain(`https://modutt.kr/busu/players/${id}/`);
     expect(html).toContain('property="og:type" content="profile"');
     expect(html).toContain('property="og:image:width" content="1200"');
     expect(html).toContain('name="twitter:card" content="summary_large_image"');
@@ -78,7 +78,7 @@ describe("SEO page generation", () => {
 
   it("includes only home and eligible players in deterministic sitemap", () => {
     const xml = renderSitemap([player]);
-    expect(xml).toContain("https://busu.iamdenny.com/</loc>");
+    expect(xml).toContain("https://modutt.kr/busu/</loc>");
     expect(xml).toContain(`/players/${id}/</loc>`);
     expect(xml).not.toContain("/search");
   });
@@ -217,7 +217,7 @@ describe("SEO page generation", () => {
       expect(robots).toContain(`User-agent: ${agent}\nAllow: /`);
     expect(robots).not.toContain("Disallow:");
     expect(robots).toContain(
-      "Sitemap: https://busu.iamdenny.com/sitemap.xml\n",
+      "Sitemap: https://modutt.kr/sitemap.xml\n",
     );
   });
 
@@ -230,7 +230,7 @@ describe("SEO page generation", () => {
         type: "website",
         robots: "noindex,follow",
       },
-      "https://busu.iamdenny.com/search",
+      "https://modutt.kr/busu/search",
     );
     expect(html.match(/name="description"/gu)).toHaveLength(1);
   });
@@ -256,7 +256,7 @@ describe("SEO page generation", () => {
 
 describe("crawlable directory output", () => {
   const appTemplate =
-    '<!doctype html><html><head><title>old</title><link rel="stylesheet" href="/assets/index-abc.css"></head><body><div id="root"></div><script type="module" crossorigin src="/assets/index-abc.js"></script><script src="https://static.cloudflareinsights.com/beacon.min.js"></script></body></html>';
+    '<!doctype html><html><head><title>old</title><link rel="stylesheet" href="/assets/index-abc.css"></head><body><div id="root"></div><script type="module" src="/legacy-redirect.js"></script><script type="module" crossorigin src="/assets/index-abc.js"></script><script src="https://static.cloudflareinsights.com/beacon.min.js"></script></body></html>';
 
   async function build(players: SeoPlayer[]): Promise<string> {
     const directory = join(tmpdir(), `busu-seo-${crypto.randomUUID()}`);
@@ -286,10 +286,11 @@ describe("crawlable directory output", () => {
     );
     expect(group).toContain(`href="/players/${id}/"`);
     expect(group).not.toContain('src="/assets/index-abc.js"');
+    expect(group).toContain('src="/legacy-redirect.js"');
     expect(group).toContain('href="/assets/index-abc.css"');
     expect(group).toContain("static.cloudflareinsights.com");
     expect(group).toContain(
-      '<link rel="canonical" href="https://busu.iamdenny.com/directory/g/" />',
+      '<link rel="canonical" href="https://modutt.kr/busu/directory/g/" />',
     );
     expect(group).toContain('name="robots" content="index,follow"');
     const root = await readFile(
@@ -303,10 +304,10 @@ describe("crawlable directory output", () => {
     const directory = await build([player]);
     const sitemap = await readFile(join(directory, "sitemap.xml"), "utf8");
     expect(sitemap).toContain(
-      "<loc>https://busu.iamdenny.com/directory/</loc>",
+      "<loc>https://modutt.kr/busu/directory/</loc>",
     );
     expect(sitemap).toContain(
-      "<loc>https://busu.iamdenny.com/directory/g/</loc>",
+      "<loc>https://modutt.kr/busu/directory/g/</loc>",
     );
     expect(sitemap).toContain(`/players/${id}/</loc>`);
   });
@@ -378,22 +379,22 @@ describe("citation surfaces", () => {
     );
     expect(guide).toContain('"@type":"FAQPage"');
     expect(guide).toContain(
-      'rel="canonical" href="https://busu.iamdenny.com/guide/"',
+      'rel="canonical" href="https://modutt.kr/busu/guide/"',
     );
     expect(guide).toContain("탁구 부수란 무엇인가요?");
     expect(guide).not.toContain('<script type="module" src="/assets');
 
     const llms = await readFile(join(directory, "llms.txt"), "utf8");
     expect(llms.startsWith("# BUSU")).toBe(true);
-    expect(llms).toContain("https://busu.iamdenny.com/guide/");
+    expect(llms).toContain("https://modutt.kr/busu/guide/");
     expect(llms).toContain("부수를 판정하지 않습니다");
     expect(llms).toContain("2026-08-19");
 
     const sitemap = await readFile(join(directory, "sitemap.xml"), "utf8");
     expect(sitemap).toContain(
-      `<loc>https://busu.iamdenny.com/players/${id}/</loc><lastmod>2026-08-19</lastmod>`,
+      `<loc>https://modutt.kr/busu/players/${id}/</loc><lastmod>2026-08-19</lastmod>`,
     );
-    expect(sitemap).toContain("<loc>https://busu.iamdenny.com/guide/</loc>");
+    expect(sitemap).toContain("<loc>https://modutt.kr/busu/guide/</loc>");
   });
 
   it("describes the corpus once, on the home document only", async () => {

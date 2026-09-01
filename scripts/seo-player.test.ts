@@ -89,7 +89,7 @@ describe("player structured data", () => {
   it("emits ProfilePage with a Person main entity", () => {
     const [profile] = playerJsonLd(base) as Record<string, unknown>[];
     expect(profile?.["@type"]).toBe("ProfilePage");
-    expect(profile?.url).toBe(`https://busu.iamdenny.com/players/${base.id}/`);
+    expect(profile?.url).toBe(`https://modutt.kr/busu/players/${base.id}/`);
     const person = profile?.mainEntity as Record<string, unknown>;
     expect(person["@type"]).toBe("Person");
     expect(person.name).toBe("김탁구");
@@ -119,7 +119,7 @@ describe("player structured data", () => {
       "김탁구",
     ]);
     expect(crumbs.at(-1)?.url).toBe(
-      `https://busu.iamdenny.com/players/${base.id}/`,
+      `https://modutt.kr/busu/players/${base.id}/`,
     );
     const [, breadcrumb] = playerJsonLd(base) as Record<string, unknown>[];
     expect(breadcrumb?.["@type"]).toBe("BreadcrumbList");
