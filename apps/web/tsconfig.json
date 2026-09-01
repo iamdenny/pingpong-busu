@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "jsx": "react-jsx", "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"] },
+  "compilerOptions": { "allowJs": true, "jsx": "react-jsx", "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"] },
   "include": ["src", "vite.config.ts"]
 }
